@@ -1,3 +1,9 @@
+# Maven
+target/
+*.class
+*.jar
+*.war
+
 ### Windows
 # Windows thumbnail cache files
 Thumbs.db
@@ -24,3 +30,6 @@ cmake-build-*/
 
 # IntelliJ build output
 out/
+
+# Application properties
+application-dev.yml
