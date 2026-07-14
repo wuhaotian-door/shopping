@@ -11,6 +11,7 @@ import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.entity.Employee;
 import com.class242014group06.exception.AccountLockedException;
 import com.class242014group06.exception.AccountNotFoundException;
+import com.class242014group06.exception.AccountPendingApprovalException;
 import com.class242014group06.exception.PasswordErrorException;
 import com.class242014group06.exception.RegistrationFailedException;
 import com.class242014group06.mapper.EmployeeMapper;
@@ -23,6 +24,8 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
+
+import java.util.List;
 
 
 @Service
@@ -61,6 +64,11 @@ public class EmployeeServiceImpl implements EmployeeService {
         if (employee.getStatus() == StatusConstant.DISABLE) {
             //账号被锁定
             throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+        }
+
+        if (employee.getStatus() == StatusConstant.PENDING) {
+            //账号待审核（非遗传承人注册后等待管理员审核）
+            throw new AccountPendingApprovalException(MessageConstant.ACCOUNT_PENDING);
         }
 
         //3、返回实体对象
@@ -130,10 +138,45 @@ public class EmployeeServiceImpl implements EmployeeService {
         // 对用户输入的密码进行 MD5 加密
         employee.setPassword(DigestUtils.md5DigestAsHex(inheritorRegisterDTO.getPassword().getBytes()));
 
-        // 设置状态为启用
-        employee.setStatus(StatusConstant.ENABLE);
+        // 设置状态为待审核（需要管理员审核通过后才能登录）
+        employee.setStatus(StatusConstant.PENDING);
 
         employeeMapper.insert(employee);
+    }
+
+    /**
+     * 获取待审核的传承人列表
+     * @return
+     */
+    @Override
+    public List<Employee> getPendingList() {
+        return employeeMapper.getByStatus(StatusConstant.PENDING);
+    }
+
+    /**
+     * 审核通过传承人
+     * @param id
+     */
+    @Override
+    public void approveInheritor(Long id) {
+        Employee employee = Employee.builder()
+                .id(id)
+                .status(StatusConstant.ENABLE)
+                .build();
+        employeeMapper.update(employee);
+    }
+
+    /**
+     * 驳回传承人申请
+     * @param id
+     */
+    @Override
+    public void rejectInheritor(Long id) {
+        Employee employee = Employee.builder()
+                .id(id)
+                .status(StatusConstant.DISABLE)
+                .build();
+        employeeMapper.update(employee);
     }
 
 }

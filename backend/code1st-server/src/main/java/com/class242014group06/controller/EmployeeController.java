@@ -20,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -62,6 +63,7 @@ public class EmployeeController {
                 .userName(employee.getUsername())
                 .name(employee.getName())
                 .token(token)
+                .role(employee.getRole())
                 .build();
 
         return Result.success(employeeLoginVO);
@@ -114,7 +116,45 @@ public class EmployeeController {
     public Result<String> registerInheritor(@RequestBody InheritorRegisterDTO inheritorRegisterDTO) {
         log.info("非遗传承人注册：{}", inheritorRegisterDTO);
         employeeService.registerInheritor(inheritorRegisterDTO);
-        return Result.success("注册成功");
+        return Result.success("申请已提交，请等待管理员审核通过");
+    }
+
+    /**
+     * 获取待审核的传承人列表（管理员专用）
+     * @return
+     */
+    @GetMapping("/pending")
+    @ApiOperation("获取待审核的传承人列表")
+    public Result<List<Employee>> getPendingList() {
+        log.info("获取待审核的传承人列表");
+        List<Employee> pendingList = employeeService.getPendingList();
+        return Result.success(pendingList);
+    }
+
+    /**
+     * 审核通过传承人（管理员专用）
+     * @param id
+     * @return
+     */
+    @PutMapping("/{id}/approve")
+    @ApiOperation("审核通过传承人")
+    public Result<String> approveInheritor(@PathVariable Long id) {
+        log.info("审核通过传承人：{}", id);
+        employeeService.approveInheritor(id);
+        return Result.success("审核通过");
+    }
+
+    /**
+     * 驳回传承人申请（管理员专用）
+     * @param id
+     * @return
+     */
+    @PutMapping("/{id}/reject")
+    @ApiOperation("驳回传承人申请")
+    public Result<String> rejectInheritor(@PathVariable Long id) {
+        log.info("驳回传承人申请：{}", id);
+        employeeService.rejectInheritor(id);
+        return Result.success("已驳回");
     }
 
 }

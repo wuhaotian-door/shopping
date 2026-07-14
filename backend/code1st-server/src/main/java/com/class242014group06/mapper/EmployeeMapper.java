@@ -9,6 +9,8 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 @Mapper
 public interface EmployeeMapper {
 
@@ -45,4 +47,12 @@ public interface EmployeeMapper {
      */
     @Select("select * from employee where id = #{id}")
     Employee getById(Long id);
+
+    /**
+     * 根据状态查询员工列表
+     * @param status
+     * @return
+     */
+    @Select("select * from employee where status = #{status} order by create_time desc")
+    List<Employee> getByStatus(Integer status);
 }

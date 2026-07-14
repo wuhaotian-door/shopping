@@ -20,6 +20,7 @@ export interface LoginResponse {
   userName: string
   name: string
   token: string
+  role: RoleType | 'ADMIN'
 }
 
 /** 角色类型 */
@@ -51,4 +52,17 @@ export interface InheritorRegisterRequest {
   phone?: string
   sex?: string
   idNumber: string
+}
+
+/** 待审核用户信息（管理员审核列表用） */
+export interface PendingUser {
+  id: number
+  username: string
+  name: string
+  phone: string
+  sex: string
+  idNumber: string
+  role: string
+  status: number
+  createTime: string
 }

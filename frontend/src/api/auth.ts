@@ -1,5 +1,5 @@
 import request from './request'
-import type { Result, LoginRequest, LoginResponse, AdminCreateRequest, RegisterRequest, InheritorRegisterRequest } from '@/types/api'
+import type { Result, LoginRequest, LoginResponse, AdminCreateRequest, RegisterRequest, InheritorRegisterRequest, PendingUser } from '@/types/api'
 
 /** 登录 */
 export function login(data: LoginRequest): Promise<Result<LoginResponse>> {
@@ -19,4 +19,19 @@ export function selfRegister(data: RegisterRequest): Promise<Result<string>> {
 /** 非遗传承人注册（公开接口，无需登录，信息更详细） */
 export function inheritorRegister(data: InheritorRegisterRequest): Promise<Result<string>> {
   return request.post('/employee/register/inheritor', data)
+}
+
+/** 获取待审核的传承人列表（管理员专用） */
+export function getPendingList(): Promise<Result<PendingUser[]>> {
+  return request.get('/employee/pending')
+}
+
+/** 审核通过传承人（管理员专用） */
+export function approveInheritor(id: number): Promise<Result<string>> {
+  return request.put(`/employee/${id}/approve`)
+}
+
+/** 驳回传承人申请（管理员专用） */
+export function rejectInheritor(id: number): Promise<Result<string>> {
+  return request.put(`/employee/${id}/reject`)
 }

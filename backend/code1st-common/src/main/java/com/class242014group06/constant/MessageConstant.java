@@ -20,5 +20,7 @@ public class MessageConstant {
     public static final String REGISTRATION_FAILED = "注册失败";
     public static final String ADMIN_CANNOT_REGISTER = "管理员无法通过注册页面注册";
     public static final String INVALID_ROLE = "无效的角色类型";
+    public static final String ACCOUNT_PENDING = "账号正在审核中，请等待管理员审核通过";
+    public static final String ACCOUNT_REJECTED = "账号审核未通过，请联系管理员";
 
 }

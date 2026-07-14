@@ -64,6 +64,7 @@ async function handleRegister() {
         sex: form.sex || undefined,
         idNumber: form.idNumber.trim(),
       })
+      router.push('/register-success?type=inheritor')
     } else {
       // 普通用户注册（简化）
       await selfRegister({
@@ -73,8 +74,8 @@ async function handleRegister() {
         phone: form.phone || undefined,
         sex: form.sex || undefined,
       })
+      router.push('/register-success?type=user')
     }
-    router.push('/register-success')
   } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : '注册失败，请重试'
   } finally {
