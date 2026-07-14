@@ -238,7 +238,7 @@ function handleLogout() {
 
         <div class="form-item">
           <label for="reg-idnumber">身份证号</label>
-          <input id="reg-idnumber" v-model="form.idNumber" type="text" placeholder="身份证号" />
+          <input id="reg-idnumber" v-model="form.idNumber" type="text" placeholder="身份证号" maxlength="18" />
         </div>
 
         <p v-if="successMsg" class="success-msg">{{ successMsg }}</p>
