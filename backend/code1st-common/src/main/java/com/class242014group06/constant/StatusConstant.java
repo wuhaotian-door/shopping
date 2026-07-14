@@ -10,4 +10,7 @@ public class StatusConstant {
 
     //禁用
     public static final Integer DISABLE = 0;
+
+    //待审核（非遗传承人注册后等待管理员审核）
+    public static final Integer PENDING = 2;
 }

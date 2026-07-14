@@ -7,6 +7,8 @@ import com.class242014group06.dto.EmployeeRegisterDTO;
 import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.entity.Employee;
 
+import java.util.List;
+
 public interface EmployeeService {
 
     /**
@@ -33,6 +35,24 @@ public interface EmployeeService {
      * @param inheritorRegisterDTO
      */
     void registerInheritor(InheritorRegisterDTO inheritorRegisterDTO);
+
+    /**
+     * 获取待审核的传承人列表
+     * @return
+     */
+    List<Employee> getPendingList();
+
+    /**
+     * 审核通过传承人
+     * @param id
+     */
+    void approveInheritor(Long id);
+
+    /**
+     * 驳回传承人申请
+     * @param id
+     */
+    void rejectInheritor(Long id);
 
     /**
      * 员工分页查询

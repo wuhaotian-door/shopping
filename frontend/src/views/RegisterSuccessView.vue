@@ -1,8 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 
 const router = useRouter()
+const route = useRoute()
+
+const isInheritor = computed(() => route.query.type === 'inheritor')
 
 const countdown = ref(5)
 let timer: ReturnType<typeof setInterval> | null = null
@@ -16,7 +19,11 @@ function goLogin() {
 }
 
 onMounted(() => {
-  document.title = '注册成功——码上非遗'
+  if (isInheritor.value) {
+    document.title = '申请已提交——码上非遗'
+  } else {
+    document.title = '注册成功——码上非遗'
+  }
   timer = setInterval(() => {
     countdown.value--
     if (countdown.value <= 0) {
@@ -41,19 +48,26 @@ onUnmounted(() => {
 
   <div class="success-wrap">
     <div class="success-card">
-      <!-- 勾选图标 -->
-      <div class="check-circle">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+      <!-- 图标 -->
+      <div class="check-circle" :class="{ pending: isInheritor }">
+        <svg v-if="!isInheritor" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
           <polyline points="20 6 9 17 4 12" />
+        </svg>
+        <svg v-else viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10" />
+          <polyline points="12 6 12 12 16 14" />
         </svg>
       </div>
 
-      <h1 class="success-title">注册成功</h1>
-      <p class="success-subtitle">
+      <h1 class="success-title">{{ isInheritor ? '申请已提交' : '注册成功' }}</h1>
+      <p class="success-subtitle" v-if="isInheritor">
+        您的非遗传承人入驻申请已提交，请等待管理员审核通过后再登录。
+      </p>
+      <p class="success-subtitle" v-else>
         {{ countdown > 0 ? `${countdown} 秒后自动跳转到登录页面...` : '正在跳转...' }}
       </p>
 
-      <button class="login-btn" @click="goLogin">立即登录</button>
+      <button class="login-btn" @click="goLogin">前往登录</button>
     </div>
   </div>
 
@@ -117,6 +131,9 @@ onUnmounted(() => {
   justify-content: center;
   margin-bottom: 24px;
 }
+.check-circle.pending {
+  background: #e67e22;
+}
 .check-circle svg {
   width: 40px;
   height: 40px;
@@ -127,11 +144,15 @@ onUnmounted(() => {
   color: #c41e3a;
   margin: 0 0 16px 0;
 }
+.pending ~ .success-title {
+  color: #e67e22;
+}
 
 .success-subtitle {
   font-size: 15px;
   color: #888;
   margin: 0 0 32px 0;
+  line-height: 1.8;
 }
 
 .login-btn {
