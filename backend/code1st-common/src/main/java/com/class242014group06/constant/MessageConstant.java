@@ -17,5 +17,8 @@ public class MessageConstant {
 
     public static final String PASSWORD_EDIT_FAILED = "密码修改失败";
 
+    public static final String REGISTRATION_FAILED = "注册失败";
+    public static final String ADMIN_CANNOT_REGISTER = "管理员无法通过注册页面注册";
+    public static final String INVALID_ROLE = "无效的角色类型";
 
 }

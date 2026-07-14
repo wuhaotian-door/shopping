@@ -2,13 +2,17 @@ package com.class242014group06.service.impl;
 
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.constant.PasswordConstant;
+import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.constant.StatusConstant;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
+import com.class242014group06.dto.EmployeeRegisterDTO;
+import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.entity.Employee;
 import com.class242014group06.exception.AccountLockedException;
 import com.class242014group06.exception.AccountNotFoundException;
 import com.class242014group06.exception.PasswordErrorException;
+import com.class242014group06.exception.RegistrationFailedException;
 import com.class242014group06.mapper.EmployeeMapper;
 import com.class242014group06.service.EmployeeService;
 
@@ -90,5 +94,46 @@ public class EmployeeServiceImpl implements EmployeeService {
         employeeMapper.insert(employee);
     }
 
+    /**
+     * 普通用户自行注册（无需登录）
+     * @param employeeRegisterDTO
+     */
+    @Override
+    public void register(EmployeeRegisterDTO employeeRegisterDTO) {
+        // 强制设置为普通用户角色
+        employeeRegisterDTO.setRole(RoleConstant.USER);
+
+        Employee employee = new Employee();
+        BeanUtils.copyProperties(employeeRegisterDTO, employee);
+
+        // 对用户输入的密码进行 MD5 加密
+        employee.setPassword(DigestUtils.md5DigestAsHex(employeeRegisterDTO.getPassword().getBytes()));
+
+        // 设置状态为启用
+        employee.setStatus(StatusConstant.ENABLE);
+
+        employeeMapper.insert(employee);
+    }
+
+    /**
+     * 非遗传承人注册（无需登录，信息更详细）
+     * @param inheritorRegisterDTO
+     */
+    @Override
+    public void registerInheritor(InheritorRegisterDTO inheritorRegisterDTO) {
+        // 强制设置为非遗传承人角色
+        inheritorRegisterDTO.setRole(RoleConstant.INHERITOR);
+
+        Employee employee = new Employee();
+        BeanUtils.copyProperties(inheritorRegisterDTO, employee);
+
+        // 对用户输入的密码进行 MD5 加密
+        employee.setPassword(DigestUtils.md5DigestAsHex(inheritorRegisterDTO.getPassword().getBytes()));
+
+        // 设置状态为启用
+        employee.setStatus(StatusConstant.ENABLE);
+
+        employeeMapper.insert(employee);
+    }
 
 }

@@ -3,6 +3,8 @@ package com.class242014group06.controller;
 import com.class242014group06.constant.JwtClaimsConstant;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
+import com.class242014group06.dto.EmployeeRegisterDTO;
+import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.entity.Employee;
 import com.class242014group06.properties.JwtProperties;
 import com.class242014group06.result.Result;
@@ -87,6 +89,32 @@ public class EmployeeController {
         log.info("新增员工{}", employeeDTO);
         employeeService.save(employeeDTO);
         return Result.success();
+    }
+
+    /**
+     * 普通用户自行注册（无需登录）
+     * @param employeeRegisterDTO
+     * @return
+     */
+    @PostMapping("/register")
+    @ApiOperation("普通用户注册")
+    public Result<String> register(@RequestBody EmployeeRegisterDTO employeeRegisterDTO) {
+        log.info("普通用户注册：{}", employeeRegisterDTO);
+        employeeService.register(employeeRegisterDTO);
+        return Result.success("注册成功");
+    }
+
+    /**
+     * 非遗传承人注册（无需登录，信息更详细）
+     * @param inheritorRegisterDTO
+     * @return
+     */
+    @PostMapping("/register/inheritor")
+    @ApiOperation("非遗传承人注册")
+    public Result<String> registerInheritor(@RequestBody InheritorRegisterDTO inheritorRegisterDTO) {
+        log.info("非遗传承人注册：{}", inheritorRegisterDTO);
+        employeeService.registerInheritor(inheritorRegisterDTO);
+        return Result.success("注册成功");
     }
 
 }

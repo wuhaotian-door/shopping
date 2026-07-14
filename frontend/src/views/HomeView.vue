@@ -2,7 +2,7 @@
 import { ref, reactive } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import { register } from '@/api/auth'
+import { adminCreate } from '@/api/auth'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -32,7 +32,7 @@ async function handleRegister() {
   successMsg.value = ''
 
   try {
-    await register({
+    await adminCreate({
       username: form.username,
       name: form.name,
       phone: form.phone || undefined,

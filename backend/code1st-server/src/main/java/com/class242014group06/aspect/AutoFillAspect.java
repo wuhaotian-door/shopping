@@ -54,7 +54,11 @@ public class AutoFillAspect {
 
         //准备赋值的数据
         LocalDateTime now = LocalDateTime.now();
-        long currentId = BaseContext.getCurrentId();
+        Long currentId = BaseContext.getCurrentId();
+        // 当用户自行注册等无需登录的场景下,currentId 为 null,使用 0L 占位
+        if (currentId == null) {
+            currentId = 0L;
+        }
 
         //根据不同的操作类型,为对应的属性通过反射来赋值
         if(operationType == OperationType.INSERT){
