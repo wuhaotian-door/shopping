@@ -21,6 +21,7 @@ const loading = ref(false)
 async function handleLogin() {
   if (!form.username || !form.password) {
     errorMsg.value = '请输入用户名和密码'
+
     return
   }
 
@@ -115,7 +116,7 @@ async function handleLogin() {
 
         <div class="switch-tip">
           没有账号？
-          <span @click="$Router.push('/register')" class="register-text">立即注册</span>
+          <span @click="router.push('/register')" class="register-text">立即注册</span>
         </div>
       </div>
     </div>
