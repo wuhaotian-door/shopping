@@ -30,7 +30,12 @@ async function handleLogin() {
 
   try {
     await authStore.login(form.username, form.password)
-    router.push('/')
+    // 按角色跳转：管理员 → /admin，普通用户/传承人 → /
+    if (authStore.userInfo?.role === 'ADMIN') {
+      router.push('/admin')
+    } else {
+      router.push('/')
+    }
   } catch (e: unknown) {
     errorMsg.value = e instanceof Error ? e.message : '登录失败，请重试'
   } finally {
