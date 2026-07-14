@@ -42,6 +42,20 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
 
     /**
+     * 配置跨域
+     *
+     * @param registry
+     */
+    @Override
+    public void addCorsMappings(org.springframework.web.servlet.config.annotation.CorsRegistry registry) {
+        registry.addMapping("/admin/**")
+                .allowedOriginPatterns("http://localhost:*")
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
+                .allowedHeaders("*")
+                .allowCredentials(true);
+    }
+
+    /**
      * 注册自定义拦截器
      *
      * @param registry
