@@ -238,6 +238,7 @@ async function handleRegister() {
                   v-model="form.idNumber"
                   type="text"
                   placeholder="请输入身份证号"
+                  maxlength="18"
               />
             </div>
 
