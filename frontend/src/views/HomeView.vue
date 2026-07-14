@@ -1,589 +1,828 @@
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import { adminCreate, getPendingList, approveInheritor, rejectInheritor } from '@/api/auth'
-import type { PendingUser } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
-// ---------- 注册表单 ----------
-const form = reactive({
-  username: '',
-  name: '',
-  phone: '',
-  sex: '',
-  idNumber: '',
+onMounted(() => {
+  document.title = '码上非遗——感受非遗魅力'
 })
 
-const successMsg = ref('')
-const errorMsg = ref('')
-const registering = ref(false)
+// 登录状态和角色
+const isLoggedIn = computed(() => authStore.isLoggedIn)
+const userRole = computed(() => authStore.userInfo?.role)
+const userName = computed(() => authStore.userInfo?.name)
+const isInheritor = computed(() => userRole.value === 'INHERITOR')
 
-async function handleRegister() {
-  if (!form.username || !form.name) {
-    errorMsg.value = '用户名和姓名为必填项'
-    successMsg.value = ''
-    return
-  }
+// ------- 视频轮播 -------
+const currentSlide = ref(0)
+const slides = [
+  { caption: '汇聚剪纸、刺绣、陶艺、竹编等校园非遗技艺，沉浸式感受传统手工艺魅力' },
+  { caption: '连接校园与民间手工艺传承人，让非遗文化在年轻一代中薪火相传' },
+  { caption: '探索非遗文创产品，体验 AI 智能问答，开启你的非遗文化之旅' },
+]
 
-  registering.value = true
-  errorMsg.value = ''
-  successMsg.value = ''
-
-  try {
-    await adminCreate({
-      username: form.username,
-      name: form.name,
-      phone: form.phone || undefined,
-      sex: form.sex || undefined,
-      idNumber: form.idNumber || undefined,
-    })
-    successMsg.value = `管理员「${form.name}」创建成功，默认密码为 123456`
-    // 清空表单
-    form.username = ''
-    form.name = ''
-    form.phone = ''
-    form.sex = ''
-    form.idNumber = ''
-  } catch (e: unknown) {
-    errorMsg.value = e instanceof Error ? e.message : '创建失败，请重试'
-  } finally {
-    registering.value = false
-  }
+function prevSlide() {
+  currentSlide.value = (currentSlide.value - 1 + slides.length) % slides.length
+}
+function nextSlide() {
+  currentSlide.value = (currentSlide.value + 1) % slides.length
 }
 
-// ---------- 待审核传承人列表 ----------
-const pendingList = ref<PendingUser[]>([])
-const pendingLoading = ref(false)
-const pendingError = ref('')
-const actionLoading = ref<Record<number, string>>({})
+// ------- 资讯筛选 -------
+const activeFilter = ref('')
+const filters = ['剪纸', '刺绣', '陶艺', '竹编', '校园活动', '传承人专访']
+const currentPage = ref(1)
 
-async function loadPendingList() {
-  pendingLoading.value = true
-  pendingError.value = ''
-  try {
-    const res = await getPendingList()
-    pendingList.value = res.data
-  } catch (e: unknown) {
-    pendingError.value = e instanceof Error ? e.message : '加载失败'
-  } finally {
-    pendingLoading.value = false
-  }
+function filterNews(type: string) {
+  activeFilter.value = type
+  currentPage.value = 1
+}
+function goPage(page: number) {
+  if (page < 1) return
+  currentPage.value = page
 }
 
-async function handleApprove(id: number) {
-  actionLoading.value = { ...actionLoading.value, [id]: 'approve' }
-  try {
-    await approveInheritor(id)
-    pendingList.value = pendingList.value.filter(u => u.id !== id)
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : '操作失败')
-  } finally {
-    const next = { ...actionLoading.value }
-    delete next[id]
-    actionLoading.value = next
-  }
-}
+// 模拟资讯数据（后续替换为 API 调用）
+const newsList = ref([
+  { imgUrl: '', title: '校园剪纸艺术展圆满落幕', contentBrief: '近日，由校团委主办的"指尖上的非遗"剪纸艺术展...', createTime: '2026-07-10', viewCount: 1280, tag: '剪纸' },
+  { imgUrl: '', title: '刺绣大师走进课堂，手把手教学', contentBrief: '国家级非遗传承人李秀英老师受邀来校开展刺绣体验课...', createTime: '2026-07-08', viewCount: 960, tag: '刺绣' },
+  { imgUrl: '', title: '陶艺工坊暑期班开始报名', contentBrief: '暑期陶艺体验课程正式上线，面向全校师生开放...', createTime: '2026-07-05', viewCount: 2100, tag: '陶艺' },
+  { imgUrl: '', title: '竹编技艺——从山间到校园', contentBrief: '一场关于传统竹编工艺与现代设计融合的讲座...', createTime: '2026-07-01', viewCount: 756, tag: '竹编' },
+])
 
-async function handleReject(id: number) {
-  actionLoading.value = { ...actionLoading.value, [id]: 'reject' }
-  try {
-    await rejectInheritor(id)
-    pendingList.value = pendingList.value.filter(u => u.id !== id)
-  } catch (e: unknown) {
-    alert(e instanceof Error ? e.message : '操作失败')
-  } finally {
-    const next = { ...actionLoading.value }
-    delete next[id]
-    actionLoading.value = next
-  }
-}
+// 模拟传承人数据
+const masterList = ref([
+  { avatar: '', realName: '李秀英', honorTitle: '国家级非遗传承人 · 苏绣', selfIntro: '从事苏绣创作四十余年，作品多次获国家级大奖，致力于将刺绣技艺带入校园。' },
+  { avatar: '', realName: '张德明', honorTitle: '省级非遗传承人 · 剪纸', selfIntro: '剪纸世家第五代传人，创新融合现代设计元素，让传统剪纸焕发新生。' },
+  { avatar: '', realName: '王师傅', honorTitle: '市级非遗传承人 · 紫砂陶艺', selfIntro: '专注紫砂壶制作三十年，擅长传统器型与文人壶创作。' },
+  { avatar: '', realName: '陈老', honorTitle: '非遗传承人 · 竹编工艺', selfIntro: '精通多种竹编技法，热心推广传统手工艺教育。' },
+])
+
+// 模拟文创产品
+const productList = ref([
+  { imgUrl: '', productName: '非遗剪纸书签套装', detailBrief: '精选校园剪纸作品印制，一套四枚，送礼收藏皆宜。' },
+  { imgUrl: '', productName: '苏绣手帕礼盒', detailBrief: '绣娘纯手工制作，传统花鸟纹样，精致典雅。' },
+])
 
 function handleLogout() {
   authStore.logout()
-  router.push('/login')
+  router.push('/')
 }
-
-onMounted(() => {
-  if (authStore.isAdmin) {
-    loadPendingList()
-  }
-})
 </script>
 
 <template>
-  <div class="home-container">
-    <header class="home-header">
-      <h1>Code1st</h1>
-      <div class="header-right">
-        <span class="user-name">{{ authStore.userInfo?.name }}</span>
-        <span class="role-badge" :class="{ admin: authStore.isAdmin }">
-          {{ authStore.isAdmin ? '管理员' : '用户' }}
+  <!-- ==================== 顶部导航 ==================== -->
+  <header class="page-header">
+    <div class="logo" @click="router.push('/')">码上非遗</div>
+
+    <nav class="nav-links">
+      <a class="nav-item active" href="#">首页</a>
+      <a class="nav-item" href="#news">非遗资讯</a>
+      <a class="nav-item" href="#masters">传承人</a>
+      <a class="nav-item" href="#products">文创周边</a>
+      <a class="nav-item" href="#ai">智能问答</a>
+
+      <!-- 非遗传承人专属导航 -->
+      <template v-if="isInheritor">
+        <span class="nav-separator"></span>
+        <a class="nav-item nav-inheritor" href="#">我的工坊</a>
+        <a class="nav-item nav-inheritor" href="#">工坊管理</a>
+      </template>
+    </nav>
+
+    <!-- 右侧：游客 → 登录按钮 | 已登录 → 用户菜单 -->
+    <div class="header-right">
+      <template v-if="isLoggedIn">
+        <span class="user-role-tag" :class="userRole === 'INHERITOR' ? 'inheritor-tag' : 'user-tag'">
+          {{ isInheritor ? '非遗传承人' : '用户' }}
         </span>
-        <button class="logout-btn" @click="handleLogout">退出登录</button>
-      </div>
-    </header>
+        <span class="user-name">{{ userName }}</span>
+        <button class="logout-btn" @click="handleLogout">退出</button>
+      </template>
+      <template v-else>
+        <button class="login-top-btn" @click="router.push('/login')">登录</button>
+      </template>
+    </div>
+  </header>
 
-    <main class="home-main">
-      <div class="welcome-card">
-        <h2>欢迎回来，{{ authStore.userInfo?.name }}！</h2>
-        <p>你已成功登录系统。</p>
-        <div class="info-row">
-          <span class="info-label">用户名：</span>
-          <span>{{ authStore.userInfo?.userName }}</span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">用户 ID：</span>
-          <span>{{ authStore.userInfo?.id }}</span>
-        </div>
-      </div>
-
-      <!-- 管理员专属：待审核传承人 -->
-      <div v-if="authStore.isAdmin" class="pending-card">
-        <h2>待审核传承人</h2>
-        <p>审核非遗传承人的入驻申请，通过后可登录系统。</p>
-
-        <div v-if="pendingLoading" class="pending-status">加载中...</div>
-        <div v-else-if="pendingError" class="pending-status error">
-          {{ pendingError }}
-          <button class="retry-btn" @click="loadPendingList">重试</button>
-        </div>
-        <div v-else-if="pendingList.length === 0" class="pending-empty">
-          暂无待审核的传承人申请
-        </div>
-        <div v-else class="pending-table-wrap">
-          <table class="pending-table">
-            <thead>
-              <tr>
-                <th>姓名</th>
-                <th>用户名</th>
-                <th>手机号</th>
-                <th>性别</th>
-                <th>身份证号</th>
-                <th>申请时间</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="user in pendingList" :key="user.id">
-                <td>{{ user.name }}</td>
-                <td>{{ user.username }}</td>
-                <td>{{ user.phone || '-' }}</td>
-                <td>{{ user.sex || '-' }}</td>
-                <td>{{ user.idNumber || '-' }}</td>
-                <td>{{ user.createTime?.slice(0, 10) || '-' }}</td>
-                <td class="action-cell">
-                  <button
-                    class="approve-btn"
-                    :disabled="actionLoading[user.id] === 'approve'"
-                    @click="handleApprove(user.id)"
-                  >
-                    {{ actionLoading[user.id] === 'approve' ? '...' : '通过' }}
-                  </button>
-                  <button
-                    class="reject-btn"
-                    :disabled="actionLoading[user.id] === 'reject'"
-                    @click="handleReject(user.id)"
-                  >
-                    {{ actionLoading[user.id] === 'reject' ? '...' : '驳回' }}
-                  </button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+  <!-- ==================== 视频轮播横幅 ==================== -->
+  <section class="banner">
+    <div class="banner-video-wrap">
+      <div class="banner-placeholder">
+        <div class="banner-pattern-overlay"></div>
+        <div class="banner-center-text">
+          <h2>码上非遗</h2>
+          <p>感受非遗魅力</p>
+          <button v-if="!isLoggedIn" class="banner-join-btn" @click="router.push('/register')">立即加入</button>
+          <button v-if="isInheritor" class="banner-join-btn inheritor-btn" @click="router.push('/')">管理我的工坊</button>
         </div>
       </div>
+    </div>
+    <div class="banner-caption">
+      <p>{{ slides[currentSlide].caption }}</p>
+    </div>
+    <button class="banner-btn banner-prev" @click="prevSlide">‹</button>
+    <button class="banner-btn banner-next" @click="nextSlide">›</button>
+    <div class="banner-dots">
+      <span
+          v-for="(slide, i) in slides"
+          :key="i"
+          class="dot"
+          :class="{ active: i === currentSlide }"
+          @click="currentSlide = i"
+      ></span>
+    </div>
+  </section>
 
-      <div v-if="authStore.isAdmin" class="register-card">
-        <h2>注册新管理员</h2>
-        <p>新管理员的默认密码为 <strong>123456</strong>，请提醒其尽快修改。</p>
+  <!-- ==================== 非遗资讯区域 ==================== -->
+  <section class="news-section" id="news">
+    <h2 class="section-main-title">非遗资讯中心</h2>
+    <div class="news-wrap">
+      <!-- 左侧筛选栏 -->
+      <aside class="news-filter-sidebar">
+        <h3>分类筛选</h3>
+        <div class="filter-tag-list">
+          <div class="filter-tag" :class="{ active: activeFilter === '' }" @click="filterNews('')">全部资讯</div>
+          <div v-for="f in filters" :key="f" class="filter-tag" :class="{ active: activeFilter === f }" @click="filterNews(f)">{{ f }}</div>
+        </div>
+        <h3 style="margin-top: 24px">发布时间</h3>
+        <div class="filter-tag-list">
+          <div class="filter-tag">近一周</div>
+          <div class="filter-tag">近一月</div>
+          <div class="filter-tag">今年</div>
+        </div>
+        <h3 style="margin-top: 24px">排序方式</h3>
+        <div class="filter-tag-list">
+          <div class="filter-tag active">最新发布</div>
+          <div class="filter-tag">浏览量最高</div>
+        </div>
+      </aside>
 
-        <form class="register-form" @submit.prevent="handleRegister">
-          <div class="form-row">
-            <div class="form-item">
-              <label for="reg-username">用户名 *</label>
-              <input
-                id="reg-username"
-                v-model="form.username"
-                type="text"
-                placeholder="登录用户名"
-              />
-            </div>
-            <div class="form-item">
-              <label for="reg-name">姓名 *</label>
-              <input
-                id="reg-name"
-                v-model="form.name"
-                type="text"
-                placeholder="真实姓名"
-              />
+      <!-- 右侧资讯列表 -->
+      <div class="news-card-list">
+        <div v-for="news in newsList" :key="news.title" class="news-card">
+          <div class="news-card-img">
+            <div class="img-placeholder">{{ news.tag }}</div>
+          </div>
+          <div class="news-card-text">
+            <h4>{{ news.title }}</h4>
+            <p class="desc">{{ news.contentBrief }}</p>
+            <div class="news-card-bottom">
+              <span>{{ news.createTime }}</span>
+              <span>浏览 {{ news.viewCount }}</span>
             </div>
           </div>
-
-          <div class="form-row">
-            <div class="form-item">
-              <label for="reg-phone">手机号</label>
-              <input
-                id="reg-phone"
-                v-model="form.phone"
-                type="text"
-                placeholder="手机号"
-              />
-            </div>
-            <div class="form-item">
-              <label for="reg-sex">性别</label>
-              <select id="reg-sex" v-model="form.sex">
-                <option value="">请选择</option>
-                <option value="男">男</option>
-                <option value="女">女</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-item">
-            <label for="reg-idnumber">身份证号</label>
-            <input
-              id="reg-idnumber"
-              v-model="form.idNumber"
-              type="text"
-              placeholder="身份证号"
-            />
-          </div>
-
-          <p v-if="successMsg" class="success-msg">{{ successMsg }}</p>
-          <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
-
-          <button type="submit" class="register-btn" :disabled="registering">
-            {{ registering ? '创建中...' : '创建管理员' }}
-          </button>
-        </form>
+        </div>
+        <div v-if="newsList.length === 0" class="empty-state">暂无资讯内容</div>
+        <div class="news-page-bar">
+          <span @click="goPage(currentPage - 1)">上一页</span>
+          <span class="active">{{ currentPage }}</span>
+          <span @click="goPage(currentPage + 1)">下一页</span>
+        </div>
       </div>
-    </main>
-  </div>
+    </div>
+  </section>
+
+  <!-- ==================== 传承人区域 ==================== -->
+  <section class="master-full-section" id="masters">
+    <h2 class="section-title">入驻非遗传承人</h2>
+    <div class="master-card-grid">
+      <div v-for="master in masterList" :key="master.realName" class="master-card">
+        <div class="master-card-top">
+          <div class="master-avatar-big"></div>
+        </div>
+        <div class="master-card-body">
+          <h3>{{ master.realName }}</h3>
+          <p class="master-tech">{{ master.honorTitle }}</p>
+          <p class="master-intro">{{ master.selfIntro }}</p>
+          <a href="#" class="master-book-btn">预约工坊</a>
+        </div>
+      </div>
+      <div v-if="masterList.length === 0" class="empty-state" style="grid-column:1/-1">暂无入驻传承人</div>
+    </div>
+  </section>
+
+  <!-- ==================== 底部文创 + AI ==================== -->
+  <section class="bottom-section" id="products">
+    <div>
+      <h2 class="section-title">文创商品推荐</h2>
+      <div v-for="product in productList" :key="product.productName" class="product-card">
+        <div class="product-image">
+          <div class="img-placeholder-sm">文创</div>
+        </div>
+        <div class="product-info">
+          <h3>{{ product.productName }}</h3>
+          <p>{{ product.detailBrief }}</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="ai">
+      <h2 class="section-title">AI 非遗小百科</h2>
+      <div class="ai-chat-box">
+        <div class="chat-bubble">剪纸怎么入门？</div>
+        <div class="chat-bubble">了解更多非遗知识</div>
+        <p class="ai-desc">智能问答入口，依托 RAG 知识库帮助用户快速了解非遗技艺、传承历史和文创产品信息。</p>
+        <a href="#" class="ai-ask-btn">立即提问</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 页脚 ==================== -->
+  <footer class="page-footer">
+    <p>校园非遗与文创传承人平台 © 2026 码上非遗</p>
+  </footer>
 </template>
 
 <style scoped>
-.home-container {
-  min-height: 100vh;
-  background: #f5f6fa;
+/* ==================== 全局重置 ==================== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
 }
 
-.home-header {
+/* ==================== 顶部导航 ==================== */
+.page-header {
+  background-color: #c41e3a;
+  color: #fff;
+  padding: 0 5%;
+  height: 64px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 32px;
-  height: 60px;
-  background: #fff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  position: sticky;
+  top: 0;
+  z-index: 100;
 }
-
-.home-header h1 {
-  font-size: 18px;
-  color: #333;
-  margin: 0;
+.logo {
+  font-size: 20px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.nav-links {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.nav-item {
+  color: #fff;
+  text-decoration: none;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 4px 0;
+  border-bottom: 2px solid transparent;
+  transition: border-color 0.2s;
+}
+.nav-item:hover,
+.nav-item.active {
+  border-bottom-color: #fff;
+}
+.nav-separator {
+  width: 1px;
+  height: 18px;
+  background: rgba(255,255,255,0.4);
+  margin: 0 4px;
+}
+.nav-inheritor {
+  color: #ffd700;
+}
+.nav-inheritor:hover {
+  border-bottom-color: #ffd700;
 }
 
 .header-right {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
 }
-
-.user-name {
-  font-size: 14px;
-  color: #555;
-}
-
-.logout-btn {
-  padding: 6px 16px;
-  font-size: 13px;
-  color: #e74c3c;
-  background: #fff;
-  border: 1px solid #e74c3c;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.logout-btn:hover {
-  color: #fff;
-  background: #e74c3c;
-}
-
-.home-main {
-  padding: 32px;
-  display: flex;
-  gap: 32px;
-  flex-wrap: wrap;
-  align-items: flex-start;
-}
-
-/* ---- 欢迎卡片 ---- */
-.welcome-card {
-  flex: 1 1 360px;
-  max-width: 480px;
-  padding: 32px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
-}
-
-.welcome-card h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #333;
-}
-
-.welcome-card > p {
-  margin: 0 0 24px 0;
-  font-size: 14px;
-  color: #999;
-}
-
-.info-row {
-  padding: 10px 0;
-  border-bottom: 1px solid #f0f0f0;
-  font-size: 14px;
-  color: #555;
-}
-
-.info-row:last-child {
-  border-bottom: none;
-}
-
-.info-label {
-  color: #999;
-  margin-right: 8px;
-}
-
-.role-badge {
+.user-role-tag {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 10px;
-  background: #e8e8e8;
-  color: #666;
+  font-weight: bold;
 }
-.role-badge.admin {
-  background: #c41e3a;
-  color: #fff;
-}
-
-/* ---- 待审核卡片 ---- */
-.pending-card {
-  flex: 1 1 100%;
-  max-width: 1000px;
-  padding: 32px;
+.user-tag {
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  color: #c41e3a;
 }
-
-.pending-card h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #333;
+.inheritor-tag {
+  background: #ffd700;
+  color: #8b4513;
 }
-
-.pending-card > p {
-  margin: 0 0 20px 0;
-  font-size: 13px;
-  color: #999;
-}
-
-.pending-status {
-  text-align: center;
-  padding: 24px;
-  color: #888;
+.user-name {
   font-size: 14px;
 }
-.pending-status.error {
-  color: #e74c3c;
-}
-
-.retry-btn {
-  margin-left: 10px;
-  padding: 4px 12px;
+.logout-btn {
+  padding: 6px 14px;
   font-size: 12px;
+  color: #fff;
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.4);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.logout-btn:hover {
+  background: rgba(255,255,255,0.3);
+}
+.login-top-btn {
+  padding: 8px 22px;
+  font-size: 14px;
   color: #c41e3a;
   background: #fff;
-  border: 1px solid #c41e3a;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.pending-empty {
-  text-align: center;
-  padding: 32px;
-  color: #bbb;
-  font-size: 14px;
-}
-
-.pending-table-wrap {
-  overflow-x: auto;
-}
-
-.pending-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.pending-table th,
-.pending-table td {
-  padding: 12px 10px;
-  text-align: left;
-  border-bottom: 1px solid #f0f0f0;
-  white-space: nowrap;
-}
-
-.pending-table th {
-  color: #999;
-  font-weight: 600;
-  font-size: 12px;
-}
-
-.pending-table td {
-  color: #444;
-}
-
-.action-cell {
-  display: flex;
-  gap: 8px;
-}
-
-.approve-btn,
-.reject-btn {
-  padding: 4px 14px;
-  font-size: 12px;
-  border-radius: 4px;
-  cursor: pointer;
   border: none;
-  transition: all 0.2s;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+}
+.login-top-btn:hover {
+  background: #ffe9ec;
 }
 
-.approve-btn {
-  background: #27ae60;
+/* ==================== 视频轮播横幅 ==================== */
+.banner {
+  width: 100%;
+  height: 460px;
+  position: relative;
+  overflow: hidden;
+}
+.banner-video-wrap {
+  width: 100%;
+  height: 100%;
+}
+.banner-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #c41e3a 0%, #e8647a 50%, #f0a0b0 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.banner-pattern-overlay {
+  position: absolute;
+  inset: 0;
+  background:
+      radial-gradient(circle at 20% 50%, rgba(255,255,255,0.08) 0%, transparent 50%),
+      radial-gradient(circle at 80% 50%, rgba(255,255,255,0.06) 0%, transparent 50%);
+}
+.banner-center-text {
+  text-align: center;
   color: #fff;
+  z-index: 2;
 }
-.approve-btn:hover:not(:disabled) {
-  background: #219a52;
+.banner-center-text h2 {
+  font-size: 56px;
+  letter-spacing: 6px;
+  margin-bottom: 12px;
+  text-shadow: 0 2px 12px rgba(0,0,0,0.2);
 }
-
-.reject-btn {
-  background: #e74c3c;
-  color: #fff;
+.banner-center-text p {
+  font-size: 22px;
+  opacity: 0.9;
+  letter-spacing: 4px;
 }
-.reject-btn:hover:not(:disabled) {
-  background: #c0392b;
-}
-
-.approve-btn:disabled,
-.reject-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-/* ---- 注册卡片 ---- */
-.register-card {
-  flex: 1 1 400px;
-  max-width: 560px;
-  padding: 32px;
+.banner-join-btn {
+  margin-top: 24px;
+  padding: 12px 36px;
+  font-size: 16px;
+  color: #c41e3a;
   background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+  border: none;
+  border-radius: 24px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
 }
-
-.register-card h2 {
-  margin: 0 0 8px 0;
-  font-size: 20px;
-  color: #333;
+.banner-join-btn:hover {
+  background: #ffe9ec;
+  transform: scale(1.05);
 }
+.banner-join-btn.inheritor-btn {
+  color: #8b4513;
+  background: #ffd700;
+}
+.banner-join-btn.inheritor-btn:hover {
+  background: #ffe44d;
+}
+.banner-caption {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  padding: 30px 5%;
+  background: linear-gradient(to top, rgba(196, 30, 58, 0.75), transparent 75%);
+  color: #fff;
+}
+.banner-caption p {
+  font-size: 17px;
+  line-height: 1.6;
+  max-width: 700px;
+}
+.banner-btn {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.22);
+  border: none;
+  color: #fff;
+  font-size: 24px;
+  cursor: pointer;
+  transition: 0.25s;
+  line-height: 44px;
+  text-align: center;
+}
+.banner-btn:hover {
+  background: rgba(255,255,255,0.45);
+}
+.banner-prev { left: 3%; }
+.banner-next { right: 3%; }
+.banner-dots {
+  position: absolute;
+  bottom: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.35);
+  cursor: pointer;
+  transition: 0.2s;
+}
+.dot.active { background: #fff; }
 
-.register-card > p {
-  margin: 0 0 24px 0;
+/* ==================== 非遗资讯区域 ==================== */
+.news-section {
+  padding: 50px 5%;
+  background-color: #fff;
+}
+.section-main-title {
+  text-align: center;
+  color: #c41e3a;
+  margin-bottom: 40px;
+  font-size: 26px;
+  position: relative;
+}
+.section-main-title::after {
+  content: "";
+  width: 60px;
+  height: 3px;
+  background: #c41e3a;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+}
+.news-wrap {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 30px;
+}
+.news-filter-sidebar {
+  background: #fff5f7;
+  border-radius: 10px;
+  padding: 24px;
+}
+.news-filter-sidebar h3 {
+  color: #c41e3a;
+  margin-bottom: 16px;
+  font-size: 16px;
+  border-left: 4px solid #c41e3a;
+  padding-left: 10px;
+}
+.filter-tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.filter-tag {
+  padding: 6px 14px;
+  border: 1px solid #e8647a;
+  border-radius: 20px;
   font-size: 13px;
-  color: #999;
+  cursor: pointer;
+  transition: 0.2s;
+  user-select: none;
 }
-
-.register-form {
+.filter-tag.active {
+  background: #c41e3a;
+  color: #fff;
+  border-color: #c41e3a;
+}
+.filter-tag:hover:not(.active) {
+  background: #ffe9ec;
+}
+.news-card-list {
   display: flex;
   flex-direction: column;
+  gap: 20px;
 }
-
-.form-row {
+.news-card {
   display: flex;
   gap: 16px;
+  border: 1px solid #eee;
+  border-radius: 10px;
+  overflow: hidden;
+  transition: 0.3s;
+  cursor: pointer;
 }
-
-.form-row .form-item {
+.news-card:hover {
+  box-shadow: 0 6px 18px rgba(196,30,58,0.12);
+  transform: translateY(-3px);
+}
+.news-card-img {
+  width: 160px;
+  height: 120px;
+  flex-shrink: 0;
+}
+.img-placeholder {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8647a, #c41e3a);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+}
+.news-card-text {
+  padding: 12px 12px 12px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
   flex: 1;
 }
-
-.form-item {
-  margin-bottom: 18px;
-}
-
-.form-item label {
-  display: block;
-  font-size: 13px;
-  color: #555;
+.news-card-text h4 {
+  font-size: 17px;
+  color: #222;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
-
-.form-item input,
-.form-item select {
-  width: 100%;
-  height: 40px;
-  padding: 0 12px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
+.news-card-text .desc {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.news-card-bottom {
+  margin-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #999;
+}
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: #999;
   font-size: 14px;
-  color: #333;
-  box-sizing: border-box;
-  transition: border-color 0.2s;
-  background: #fff;
 }
-
-.form-item input:focus,
-.form-item select:focus {
-  outline: none;
-  border-color: #667eea;
+.news-page-bar {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 10px;
 }
-
-.success-msg {
-  color: #27ae60;
-  font-size: 13px;
-  margin: 0 0 14px 0;
-  text-align: center;
-}
-
-.error-msg {
-  color: #e74c3c;
-  font-size: 13px;
-  margin: 0 0 14px 0;
-  text-align: center;
-}
-
-.register-btn {
-  height: 42px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: #fff;
-  border: none;
-  border-radius: 6px;
-  font-size: 15px;
+.news-page-bar span {
+  padding: 6px 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   cursor: pointer;
-  transition: opacity 0.2s;
+  font-size: 13px;
+  transition: 0.2s;
+}
+.news-page-bar span.active {
+  background: #c41e3a;
+  color: #fff;
+  border-color: #c41e3a;
+}
+.news-page-bar span:hover:not(.active) {
+  background: #fef0f2;
 }
 
-.register-btn:hover:not(:disabled) {
-  opacity: 0.9;
+/* ==================== 传承人区域 ==================== */
+.master-full-section {
+  padding: 50px 5%;
+  background: #fcf4e8;
+}
+.section-title {
+  color: #c41e3a;
+  margin-bottom: 35px;
+  font-size: 26px;
+  text-align: center;
+  position: relative;
+}
+.section-title::after {
+  content: "";
+  width: 60px;
+  height: 3px;
+  background: #c41e3a;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: -10px;
+}
+.master-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 28px;
+}
+.master-card {
+  background-color: #fff;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.07);
+  transition: 0.3s;
+}
+.master-card:hover {
+  transform: translateY(-6px);
+  box-shadow: 0 10px 26px rgba(196,30,58,0.14);
+}
+.master-card-top {
+  height: 180px;
+  background: linear-gradient(135deg, #ffe9ec, #fef0f2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+.master-avatar-big {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e8647a, #c41e3a);
+  border: 4px solid #fff;
+}
+.master-card-body {
+  padding: 20px;
+  text-align: center;
+}
+.master-card-body h3 {
+  font-size: 20px;
+  color: #222;
+  margin-bottom: 6px;
+}
+.master-tech {
+  color: #c41e3a;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+.master-intro {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.7;
+  margin-bottom: 18px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+}
+.master-book-btn {
+  display: inline-block;
+  padding: 9px 24px;
+  background: #c41e3a;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 22px;
+  font-size: 14px;
+  transition: 0.2s;
+}
+.master-book-btn:hover {
+  background: #a8162b;
 }
 
-.register-btn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+/* ==================== 底部文创 + AI ==================== */
+.bottom-section {
+  padding: 40px 5%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 32px;
+  background-color: #fff;
+}
+.product-card {
+  display: flex;
+  gap: 16px;
+  background-color: #fff5f7;
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+  transition: 0.2s;
+}
+.product-card:hover {
+  background-color: #ffe9ec;
+}
+.product-image {
+  width: 80px;
+  height: 80px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+.img-placeholder-sm {
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(135deg, #e8647a, #f0a0b0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 12px;
+}
+.product-info h3 {
+  font-size: 16px;
+  color: #222;
+  margin-bottom: 6px;
+}
+.product-info p {
+  font-size: 13px;
+  color: #666;
+  line-height: 1.6;
+}
+.ai-chat-box {
+  background-color: #fff5f7;
+  border: 1px solid #e8647a;
+  border-radius: 12px;
+  padding: 24px;
+}
+.chat-bubble {
+  background-color: #ffe9ec;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  color: #555;
+}
+.ai-desc {
+  margin-top: 16px;
+  color: #666;
+  font-size: 14px;
+  line-height: 1.7;
+}
+.ai-ask-btn {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 10px 20px;
+  background: #c41e3a;
+  color: #fff;
+  border-radius: 6px;
+  text-decoration: none;
+  font-size: 14px;
+  transition: 0.2s;
+}
+.ai-ask-btn:hover {
+  background: #a8162b;
+}
+
+/* ==================== 页脚 ==================== */
+.page-footer {
+  background-color: #c41e3a;
+  color: #fff;
+  text-align: center;
+  padding: 24px 5%;
+}
+
+/* ==================== 响应式 ==================== */
+@media (max-width: 992px) {
+  .banner { height: 360px; }
+  .banner-center-text h2 { font-size: 40px; }
+  .news-wrap { grid-template-columns: 1fr; }
+  .bottom-section { grid-template-columns: 1fr; }
+  .nav-links { gap: 12px; }
+}
+@media (max-width: 576px) {
+  .page-header {
+    flex-direction: column;
+    height: auto;
+    padding: 12px 16px;
+    gap: 10px;
+  }
+  .nav-links { flex-wrap: wrap; justify-content: center; gap: 10px; }
+  .banner { height: 280px; }
+  .banner-center-text h2 { font-size: 32px; }
+  .banner-center-text p { font-size: 16px; }
+  .banner-caption p { font-size: 14px; }
+  .news-card { flex-direction: column; }
+  .news-card-img { width: 100%; height: 160px; }
+  .master-card-grid { grid-template-columns: 1fr; }
 }
 </style>
