@@ -18,6 +18,9 @@ export const useAuthStore = defineStore('auth', () => {
   /** 是否为管理员 */
   const isAdmin = computed(() => userInfo.value?.role === 'ADMIN')
 
+  /** 是否为非遗传承人 */
+  const isInheritor = computed(() => userInfo.value?.role === 'INHERITOR')
+
   /** 登录 */
   async function login(username: string, password: string) {
     const res = await loginApi({ username, password })
@@ -35,5 +38,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(USER_KEY)
   }
 
-  return { token, userInfo, isLoggedIn, isAdmin, login, logout }
+  return { token, userInfo, isLoggedIn, isAdmin, isInheritor, login, logout }
 })

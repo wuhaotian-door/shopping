@@ -34,6 +34,12 @@ const router = createRouter({
       component: () => import('@/views/AdminPlaceholderView.vue'),
       meta: { requiresAuth: true, requiresAdmin: true },
     },
+    {
+      path: '/inheritor',
+      name: 'Inheritor',
+      component: () => import('@/views/InheritorDashboard.vue'),
+      meta: { requiresAuth: true, requiresInheritor: true },
+    },
   ],
 })
 
@@ -54,6 +60,19 @@ router.beforeEach((to, _from, next) => {
     return
   }
 
+  // 需要传承人权限的路由
+  if (to.meta.requiresInheritor) {
+    if (!authStore.isLoggedIn) {
+      next('/login')
+    } else if (authStore.userInfo?.role !== 'INHERITOR') {
+      // 非传承人角色跳回首页
+      next('/')
+    } else {
+      next()
+    }
+    return
+  }
+
   // 需要登录的路由
   if (to.meta.requiresAuth && !authStore.isLoggedIn) {
     next('/login')
@@ -64,6 +83,8 @@ router.beforeEach((to, _from, next) => {
   if (to.path === '/login' && authStore.isLoggedIn) {
     if (authStore.userInfo?.role === 'ADMIN') {
       next('/admin')
+    } else if (authStore.userInfo?.role === 'INHERITOR') {
+      next('/inheritor')
     } else {
       next('/')
     }

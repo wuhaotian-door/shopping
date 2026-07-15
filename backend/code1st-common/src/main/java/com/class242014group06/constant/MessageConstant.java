@@ -23,4 +23,9 @@ public class MessageConstant {
     public static final String ACCOUNT_PENDING = "账号正在审核中，请等待管理员审核通过";
     public static final String ACCOUNT_REJECTED = "账号审核未通过，请联系管理员";
 
+    // 订单相关
+    public static final String ORDER_NOT_FOUND = "订单不存在";
+    public static final String ORDER_STATUS_ERROR = "订单状态异常";
+    public static final String ORDER_SUBMIT_SUCCESS = "预约提交成功";
+
 }

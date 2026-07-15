@@ -66,3 +66,33 @@ export interface PendingUser {
   status: number
   createTime: string
 }
+
+// ==================== 订单 ====================
+
+/** 订单状态 */
+export type OrderStatus = 0 | 1 | 2 | 3
+// 0-待确认, 1-已确认, 2-已完成, 3-已取消
+
+/** 订单提交请求 */
+export interface OrderSubmitRequest {
+  userName: string
+  phone: string
+  inheritorId: number
+  appointmentDate: string // yyyy-MM-dd
+  timeSlot: string
+  peopleCount: number
+  remark: string
+}
+
+/** 订单返回对象 */
+export interface OrderVO {
+  id: number
+  userName: string
+  phone: string
+  appointmentDate: string
+  timeSlot: string
+  peopleCount: number
+  remark: string
+  status: OrderStatus
+  createTime: string
+}

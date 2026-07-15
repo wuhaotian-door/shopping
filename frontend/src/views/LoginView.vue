@@ -30,9 +30,11 @@ async function handleLogin() {
 
   try {
     await authStore.login(form.username, form.password)
-    // 按角色跳转：管理员 → /admin，普通用户/传承人 → /
+    // 按角色跳转：管理员 → /admin，传承人 → /inheritor，普通用户 → /
     if (authStore.userInfo?.role === 'ADMIN') {
       router.push('/admin')
+    } else if (authStore.userInfo?.role === 'INHERITOR') {
+      router.push('/inheritor')
     } else {
       router.push('/')
     }
