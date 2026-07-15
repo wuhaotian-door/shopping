@@ -25,7 +25,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.util.DigestUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 
 @Service
@@ -177,6 +179,56 @@ public class EmployeeServiceImpl implements EmployeeService {
                 .status(StatusConstant.DISABLE)
                 .build();
         employeeMapper.update(employee);
+    }
+
+    /**
+     * 查询所有员工
+     * @return
+     */
+    @Override
+    public List<Employee> listAll() {
+        return employeeMapper.listAll();
+    }
+
+    /**
+     * 根据关键字搜索员工
+     * @param keyword
+     * @return
+     */
+    @Override
+    public List<Employee> search(String keyword) {
+        return employeeMapper.searchByKeyword(keyword);
+    }
+
+    /**
+     * 修改员工状态（启用/禁用）
+     * @param id
+     * @param status
+     */
+    @Override
+    public void updateStatus(Long id, Integer status) {
+        Employee employee = Employee.builder()
+                .id(id)
+                .status(status)
+                .build();
+        employeeMapper.update(employee);
+    }
+
+    /**
+     * 获取仪表盘统计数据
+     * @return
+     */
+    @Override
+    public Map<String, Long> getStatistics() {
+        Map<String, Long> stats = new HashMap<>();
+        stats.put("totalUsers", employeeMapper.countAll());
+        stats.put("userCount", employeeMapper.countByRole(RoleConstant.USER));
+        stats.put("inheritorCount", employeeMapper.countByRole(RoleConstant.INHERITOR));
+        stats.put("adminCount", employeeMapper.countByRole(RoleConstant.ADMIN));
+        stats.put("pendingCount", employeeMapper.countByStatus(StatusConstant.PENDING));
+        stats.put("enabledCount", employeeMapper.countByStatus(StatusConstant.ENABLE));
+        stats.put("disabledCount", employeeMapper.countByStatus(StatusConstant.DISABLE));
+        return stats;
     }
 
 }

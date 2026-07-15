@@ -96,4 +96,25 @@ public class OrderController {
         orderService.complete(id, inheritorId);
         return Result.success("订单已完成");
     }
+
+    /**
+     * 管理员查看所有订单
+     */
+    @GetMapping("/all")
+    @ApiOperation("管理员查看所有订单")
+    public Result<List<OrderVO>> listAll() {
+        log.info("管理员查看所有订单");
+        return Result.success(orderService.listAll());
+    }
+
+    /**
+     * 管理员取消订单
+     */
+    @PutMapping("/{id}/cancel")
+    @ApiOperation("管理员取消订单")
+    public Result<String> cancelByAdmin(@PathVariable Long id) {
+        log.info("管理员取消订单，orderId：{}", id);
+        orderService.cancelByAdmin(id);
+        return Result.success("订单已取消");
+    }
 }

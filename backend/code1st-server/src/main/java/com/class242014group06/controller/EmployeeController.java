@@ -157,4 +157,52 @@ public class EmployeeController {
         return Result.success("已驳回");
     }
 
+    /**
+     * 获取所有用户列表（管理员专用）
+     * @return
+     */
+    @GetMapping("/list")
+    @ApiOperation("获取所有用户列表")
+    public Result<List<Employee>> listAll() {
+        log.info("获取所有用户列表");
+        return Result.success(employeeService.listAll());
+    }
+
+    /**
+     * 搜索用户（管理员专用）
+     * @param keyword
+     * @return
+     */
+    @GetMapping("/search")
+    @ApiOperation("搜索用户")
+    public Result<List<Employee>> search(@RequestParam String keyword) {
+        log.info("搜索用户：{}", keyword);
+        return Result.success(employeeService.search(keyword));
+    }
+
+    /**
+     * 修改用户状态（管理员专用）
+     * @param id
+     * @param status 状态值
+     * @return
+     */
+    @PutMapping("/{id}/status")
+    @ApiOperation("修改用户状态")
+    public Result<String> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        log.info("修改用户状态：id={}, status={}", id, status);
+        employeeService.updateStatus(id, status);
+        return Result.success("状态已更新");
+    }
+
+    /**
+     * 获取仪表盘统计数据（管理员专用）
+     * @return
+     */
+    @GetMapping("/statistics")
+    @ApiOperation("获取仪表盘统计数据")
+    public Result<Map<String, Long>> getStatistics() {
+        log.info("获取仪表盘统计数据");
+        return Result.success(employeeService.getStatistics());
+    }
+
 }

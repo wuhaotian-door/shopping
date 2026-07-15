@@ -87,6 +87,7 @@ export interface OrderSubmitRequest {
 /** 订单返回对象 */
 export interface OrderVO {
   id: number
+  inheritorId: number
   userName: string
   phone: string
   appointmentDate: string
