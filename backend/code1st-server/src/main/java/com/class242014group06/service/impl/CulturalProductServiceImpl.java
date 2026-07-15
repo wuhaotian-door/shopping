@@ -1,5 +1,6 @@
 package com.class242014group06.service.impl;
 
+import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.CulturalProductDTO;
 import com.class242014group06.entity.CulturalProduct;
 import com.class242014group06.entity.Employee;
@@ -39,10 +40,10 @@ public class CulturalProductServiceImpl implements CulturalProductService {
     public void update(Long productId, Long inheritorId, CulturalProductDTO dto) {
         CulturalProduct existing = productMapper.getById(productId);
         if (existing == null) {
-            throw new BaseException("产品不存在");
+            throw new BaseException(MessageConstant.PRODUCT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权修改此产品");
+            throw new BaseException(MessageConstant.PRODUCT_NO_PERMISSION);
         }
         CulturalProduct product = new CulturalProduct();
         BeanUtils.copyProperties(dto, product);
@@ -54,10 +55,10 @@ public class CulturalProductServiceImpl implements CulturalProductService {
     public void delete(Long productId, Long inheritorId) {
         CulturalProduct existing = productMapper.getById(productId);
         if (existing == null) {
-            throw new BaseException("产品不存在");
+            throw new BaseException(MessageConstant.PRODUCT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权删除此产品");
+            throw new BaseException(MessageConstant.PRODUCT_NO_PERMISSION);
         }
         productMapper.deleteById(productId);
     }
@@ -66,10 +67,10 @@ public class CulturalProductServiceImpl implements CulturalProductService {
     public void toggleStatus(Long productId, Long inheritorId, Integer status) {
         CulturalProduct existing = productMapper.getById(productId);
         if (existing == null) {
-            throw new BaseException("产品不存在");
+            throw new BaseException(MessageConstant.PRODUCT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权操作此产品");
+            throw new BaseException(MessageConstant.PRODUCT_NO_PERMISSION);
         }
         CulturalProduct product = CulturalProduct.builder()
                 .id(productId)

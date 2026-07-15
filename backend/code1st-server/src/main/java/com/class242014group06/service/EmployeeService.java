@@ -81,10 +81,4 @@ public interface EmployeeService {
      */
     Map<String, Long> getStatistics();
 
-    /**
-     * 员工分页查询
-     * @param employeePageQueryDTO
-     * @return
-     */
-
 }

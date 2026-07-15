@@ -54,6 +54,10 @@ function goPage(page: number) {
 
 // ------- 知识库文章（从API加载） -------
 const newsList = ref<KnowledgeArticleVO[]>([])
+const filteredNews = computed(() => {
+  if (!activeFilter.value) return newsList.value
+  return newsList.value.filter(a => a.category === activeFilter.value)
+})
 async function loadArticles() {
   try {
     const res = await listPublicArticles()
@@ -175,7 +179,7 @@ function handleLogout() {
 
       <!-- 右侧资讯列表 -->
       <div class="news-card-list">
-        <div v-for="news in newsList" :key="news.id" class="news-card">
+        <div v-for="news in filteredNews" :key="news.id" class="news-card">
           <div class="news-card-img">
             <div class="img-placeholder">{{ news.category || '非遗' }}</div>
           </div>
@@ -188,7 +192,7 @@ function handleLogout() {
             </div>
           </div>
         </div>
-        <div v-if="newsList.length === 0" class="empty-state">暂无资讯内容</div>
+        <div v-if="filteredNews.length === 0" class="empty-state">{{ activeFilter ? '该分类暂无资讯' : '暂无资讯内容' }}</div>
         <div class="news-page-bar">
           <span @click="goPage(currentPage - 1)">上一页</span>
           <span class="active">{{ currentPage }}</span>

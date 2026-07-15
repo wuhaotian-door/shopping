@@ -1,11 +1,7 @@
 package com.class242014group06.controller;
 
-import com.class242014group06.constant.RoleConstant;
-import com.class242014group06.constant.StatusConstant;
 import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.InheritorProfileDTO;
-import com.class242014group06.entity.Employee;
-import com.class242014group06.mapper.EmployeeMapper;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.InheritorProfileService;
 import com.class242014group06.vo.InheritorProfileVO;
@@ -28,9 +24,6 @@ public class InheritorProfileController {
 
     @Autowired
     private InheritorProfileService profileService;
-
-    @Autowired
-    private EmployeeMapper employeeMapper;
 
     /**
      * 获取当前登录传承人的个人资料

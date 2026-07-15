@@ -1,5 +1,6 @@
 package com.class242014group06.service.impl;
 
+import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.HeritageProjectDTO;
 import com.class242014group06.entity.Employee;
 import com.class242014group06.entity.HeritageProject;
@@ -40,10 +41,10 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     public void update(Long projectId, Long inheritorId, HeritageProjectDTO dto) {
         HeritageProject existing = projectMapper.getById(projectId);
         if (existing == null) {
-            throw new BaseException("项目不存在");
+            throw new BaseException(MessageConstant.PROJECT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权修改此项目");
+            throw new BaseException(MessageConstant.PROJECT_NO_PERMISSION);
         }
         HeritageProject project = new HeritageProject();
         BeanUtils.copyProperties(dto, project);
@@ -55,10 +56,10 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     public void delete(Long projectId, Long inheritorId) {
         HeritageProject existing = projectMapper.getById(projectId);
         if (existing == null) {
-            throw new BaseException("项目不存在");
+            throw new BaseException(MessageConstant.PROJECT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权删除此项目");
+            throw new BaseException(MessageConstant.PROJECT_NO_PERMISSION);
         }
         projectMapper.deleteById(projectId);
     }
@@ -67,10 +68,10 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     public void toggleStatus(Long projectId, Long inheritorId, Integer status) {
         HeritageProject existing = projectMapper.getById(projectId);
         if (existing == null) {
-            throw new BaseException("项目不存在");
+            throw new BaseException(MessageConstant.PROJECT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权操作此项目");
+            throw new BaseException(MessageConstant.PROJECT_NO_PERMISSION);
         }
         HeritageProject project = HeritageProject.builder()
                 .id(projectId)

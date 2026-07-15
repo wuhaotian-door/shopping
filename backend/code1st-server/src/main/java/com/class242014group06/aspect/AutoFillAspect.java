@@ -62,35 +62,44 @@ public class AutoFillAspect {
 
         //根据不同的操作类型,为对应的属性通过反射来赋值
         if(operationType == OperationType.INSERT){
-            //为四个公共字段赋值
+            //为四个公共字段赋值（逐个 try-catch，避免某个字段不存在导致其他字段也无法赋值）
             try {
-                //这里使用常量类来规范查询方法名时所用的字符串
                 Method setCreateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class);
-                Method setCreateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_USER, Long.class);
-                Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
-                Method setUpdateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_USER, Long.class);
-
                 setCreateTime.invoke(entity, now);
+            } catch (Exception e) {
+                // 实体可能没有 createTime 字段，忽略
+            }
+            try {
+                Method setCreateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_USER, Long.class);
                 setCreateUser.invoke(entity, currentId);
+            } catch (Exception e) {
+                // 实体可能没有 createUser 字段（如 AppointmentSlot、InheritorProfile），忽略
+            }
+            try {
+                Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
                 setUpdateTime.invoke(entity, now);
+            } catch (Exception e) {
+                // 实体可能没有 updateTime 字段，忽略
+            }
+            try {
+                Method setUpdateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_USER, Long.class);
                 setUpdateUser.invoke(entity, currentId);
             } catch (Exception e) {
-                e.printStackTrace();
+                // 实体可能没有 updateUser 字段，忽略
             }
         }else if(operationType == OperationType.UPDATE){
+            // UPDATE 只填充 updateTime 和 updateUser，不覆盖 createTime 和 createUser
             try {
-                //这里使用常量类来规范查询方法名时所用的字符串
-                Method setCreateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_TIME, LocalDateTime.class);
-                Method setCreateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_CREATE_USER, Long.class);
                 Method setUpdateTime = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_TIME, LocalDateTime.class);
-                Method setUpdateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_USER, Long.class);
-
-                setCreateTime.invoke(entity, now);
-                setCreateUser.invoke(entity, currentId);
                 setUpdateTime.invoke(entity, now);
+            } catch (Exception e) {
+                // 实体可能没有 updateTime 字段，忽略
+            }
+            try {
+                Method setUpdateUser = entity.getClass().getDeclaredMethod(AutoFillConstant.SET_UPDATE_USER, Long.class);
                 setUpdateUser.invoke(entity, currentId);
             } catch (Exception e) {
-                e.printStackTrace();
+                // 实体可能没有 updateUser 字段，忽略
             }
         }
     }

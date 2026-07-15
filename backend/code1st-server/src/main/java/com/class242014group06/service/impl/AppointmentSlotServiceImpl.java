@@ -1,5 +1,6 @@
 package com.class242014group06.service.impl;
 
+import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.entity.AppointmentSlot;
 import com.class242014group06.exception.BaseException;
 import com.class242014group06.mapper.AppointmentSlotMapper;
@@ -32,10 +33,10 @@ public class AppointmentSlotServiceImpl implements AppointmentSlotService {
     public void update(Long slotId, Long inheritorId, AppointmentSlot slot) {
         AppointmentSlot existing = slotMapper.getById(slotId);
         if (existing == null) {
-            throw new BaseException("时段不存在");
+            throw new BaseException(MessageConstant.SLOT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权操作此时段");
+            throw new BaseException(MessageConstant.SLOT_NO_PERMISSION);
         }
         slot.setId(slotId);
         slotMapper.update(slot);
@@ -45,10 +46,10 @@ public class AppointmentSlotServiceImpl implements AppointmentSlotService {
     public void delete(Long slotId, Long inheritorId) {
         AppointmentSlot existing = slotMapper.getById(slotId);
         if (existing == null) {
-            throw new BaseException("时段不存在");
+            throw new BaseException(MessageConstant.SLOT_NOT_FOUND);
         }
         if (!existing.getInheritorId().equals(inheritorId)) {
-            throw new BaseException("无权操作此时段");
+            throw new BaseException(MessageConstant.SLOT_NO_PERMISSION);
         }
         slotMapper.deleteById(slotId);
     }
