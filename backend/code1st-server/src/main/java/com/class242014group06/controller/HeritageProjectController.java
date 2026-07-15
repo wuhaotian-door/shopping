@@ -1,0 +1,98 @@
+package com.class242014group06.controller;
+
+import com.class242014group06.context.BaseContext;
+import com.class242014group06.dto.HeritageProjectDTO;
+import com.class242014group06.result.Result;
+import com.class242014group06.service.HeritageProjectService;
+import com.class242014group06.vo.HeritageProjectVO;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 非遗项目管理
+ */
+@RestController
+@RequestMapping("/admin/project")
+@Slf4j
+@Api(tags = "非遗项目接口")
+public class HeritageProjectController {
+
+    @Autowired
+    private HeritageProjectService projectService;
+
+    /**
+     * 传承人创建项目
+     */
+    @PostMapping
+    @ApiOperation("创建非遗项目")
+    public Result<String> create(@RequestBody HeritageProjectDTO dto) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("创建非遗项目，inheritorId：{}", inheritorId);
+        projectService.create(inheritorId, dto);
+        return Result.success("项目创建成功");
+    }
+
+    /**
+     * 传承人更新项目
+     */
+    @PutMapping("/{id}")
+    @ApiOperation("更新非遗项目")
+    public Result<String> update(@PathVariable Long id, @RequestBody HeritageProjectDTO dto) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("更新非遗项目，id：{}，inheritorId：{}", id, inheritorId);
+        projectService.update(id, inheritorId, dto);
+        return Result.success("项目更新成功");
+    }
+
+    /**
+     * 传承人删除项目
+     */
+    @DeleteMapping("/{id}")
+    @ApiOperation("删除非遗项目")
+    public Result<String> delete(@PathVariable Long id) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("删除非遗项目，id：{}，inheritorId：{}", id, inheritorId);
+        projectService.delete(id, inheritorId);
+        return Result.success("项目已删除");
+    }
+
+    /**
+     * 切换项目上下架
+     */
+    @PutMapping("/{id}/status")
+    @ApiOperation("切换项目上下架")
+    public Result<String> toggleStatus(@PathVariable Long id, @RequestParam Integer status) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("切换项目状态，id：{}，status：{}", id, status);
+        projectService.toggleStatus(id, inheritorId, status);
+        return Result.success(status == 1 ? "项目已上架" : "项目已下架");
+    }
+
+    /**
+     * 传承人查看自己的项目列表
+     */
+    @GetMapping("/my")
+    @ApiOperation("查看自己的项目列表")
+    public Result<List<HeritageProjectVO>> listMyProjects() {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("查看自己的项目列表，inheritorId：{}", inheritorId);
+        List<HeritageProjectVO> list = projectService.listByInheritor(inheritorId);
+        return Result.success(list);
+    }
+
+    /**
+     * 公开接口：查询所有已上架项目
+     */
+    @GetMapping("/public")
+    @ApiOperation("查询所有已上架项目（公开）")
+    public Result<List<HeritageProjectVO>> listPublished() {
+        log.info("公开查询所有已上架项目");
+        List<HeritageProjectVO> list = projectService.listPublished();
+        return Result.success(list);
+    }
+}
