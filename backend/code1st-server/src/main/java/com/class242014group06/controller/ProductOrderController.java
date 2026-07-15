@@ -2,6 +2,8 @@ package com.class242014group06.controller;
 
 import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.ProductOrderSubmitDTO;
+import com.class242014group06.entity.User;
+import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.ProductOrderService;
 import com.class242014group06.vo.ProductOrderVO;
@@ -25,6 +27,9 @@ public class ProductOrderController {
     @Autowired
     private ProductOrderService productOrderService;
 
+    @Autowired
+    private UserMapper userMapper;
+
     /**
      * 用户提交商品购买订单
      */
@@ -33,8 +38,13 @@ public class ProductOrderController {
     public Result<String> submit(@RequestBody ProductOrderSubmitDTO productOrderSubmitDTO) {
         Long userId = BaseContext.getCurrentId();
         log.info("用户提交商品订单，userId：{}，订单：{}", userId, productOrderSubmitDTO);
-        // 从BaseContext或token获取用户名，这里简化处理
-        productOrderService.submit(userId, "用户", productOrderSubmitDTO);
+        // 从数据库查询用户姓名
+        String userName = "";
+        User user = userMapper.getById(userId);
+        if (user != null) {
+            userName = user.getName();
+        }
+        productOrderService.submit(userId, userName, productOrderSubmitDTO);
         return Result.success("下单成功");
     }
 

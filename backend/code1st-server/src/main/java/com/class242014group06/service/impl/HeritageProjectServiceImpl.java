@@ -2,10 +2,10 @@ package com.class242014group06.service.impl;
 
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.HeritageProjectDTO;
-import com.class242014group06.entity.Employee;
+import com.class242014group06.entity.Inheritor;
 import com.class242014group06.entity.HeritageProject;
 import com.class242014group06.exception.BaseException;
-import com.class242014group06.mapper.EmployeeMapper;
+import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.HeritageProjectMapper;
 import com.class242014group06.service.HeritageProjectService;
 import com.class242014group06.vo.HeritageProjectVO;
@@ -23,7 +23,7 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     private HeritageProjectMapper projectMapper;
 
     @Autowired
-    private EmployeeMapper employeeMapper;
+    private InheritorMapper inheritorMapper;
 
     @Override
     public void create(Long inheritorId, HeritageProjectDTO dto) {
@@ -83,7 +83,7 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     @Override
     public List<HeritageProjectVO> listByInheritor(Long inheritorId) {
         List<HeritageProject> projects = projectMapper.getByInheritorId(inheritorId);
-        Employee inheritor = employeeMapper.getById(inheritorId);
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
         String inheritorName = inheritor != null ? inheritor.getName() : "";
         return projects.stream()
                 .map(p -> toVO(p, inheritorName))
@@ -95,7 +95,7 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
         List<HeritageProject> projects = projectMapper.listPublished();
         return projects.stream()
                 .map(p -> {
-                    Employee inheritor = employeeMapper.getById(p.getInheritorId());
+                    Inheritor inheritor = inheritorMapper.getById(p.getInheritorId());
                     String inheritorName = inheritor != null ? inheritor.getName() : "";
                     return toVO(p, inheritorName);
                 })

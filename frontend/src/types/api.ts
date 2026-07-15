@@ -231,6 +231,49 @@ export interface CulturalProductDTO {
   status?: number
 }
 
+// ==================== 商城商品 ====================
+
+export interface ProductVO {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  imageUrl: string
+  category: string
+  inheritorId: number
+  inheritorName: string
+  status: number
+  createTime: string
+}
+
+// ==================== 商品订单 ====================
+
+export interface ProductOrderVO {
+  id: number
+  userName: string
+  phone: string
+  address: string
+  productId: number
+  productName: string
+  productImage: string
+  price: number
+  quantity: number
+  totalAmount: number
+  inheritorId: number
+  remark: string
+  status: number
+  createTime: string
+}
+
+export interface ProductOrderSubmitRequest {
+  phone: string
+  address: string
+  productId: number
+  quantity: number
+  remark: string
+}
+
 // ==================== 预约时段 ====================
 
 export interface AppointmentSlot {

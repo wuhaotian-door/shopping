@@ -10,7 +10,7 @@ public interface ProductService {
     /**
      * 传承人上架商品
      */
-    void add(Long inheritorId, String inheritorName, ProductSubmitDTO dto);
+    void add(Long inheritorId, ProductSubmitDTO dto);
 
     /**
      * 传承人修改商品

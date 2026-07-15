@@ -66,8 +66,7 @@ public class ProductController {
     public Result<String> add(@RequestBody ProductSubmitDTO productSubmitDTO) {
         Long inheritorId = BaseContext.getCurrentId();
         log.info("传承人上架商品，inheritorId：{}，商品：{}", inheritorId, productSubmitDTO);
-        // 从当前登录用户信息中获取姓名
-        productService.add(inheritorId, "传承人", productSubmitDTO);
+        productService.add(inheritorId, productSubmitDTO);
         return Result.success("商品上架成功");
     }
 

@@ -69,10 +69,13 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                         "/admin/employee/login",
                         "/admin/employee/register",
                         "/admin/employee/register/inheritor",
+                        "/admin/auth/login",
+                        "/admin/auth/register",
+                        "/admin/auth/register/inheritor",
                         "/admin/inheritor/profile/public",
                         "/admin/knowledge/public",
                         "/admin/project/public",
-                        "/admin/product/public",
+                        "/admin/cultural-product/public",
                         "/admin/slot/available"
                 );
     }
