@@ -88,8 +88,8 @@ function handleLogout() {
       <!-- 非遗传承人专属导航 -->
       <template v-if="isInheritor">
         <span class="nav-separator"></span>
-        <a class="nav-item nav-inheritor" href="#">我的工坊</a>
-        <a class="nav-item nav-inheritor" href="#">工坊管理</a>
+        <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">我的工坊</a>
+        <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">工坊管理</a>
       </template>
     </nav>
 
@@ -117,7 +117,7 @@ function handleLogout() {
           <h2>码上非遗</h2>
           <p>感受非遗魅力</p>
           <button v-if="!isLoggedIn" class="banner-join-btn" @click="router.push('/register')">立即加入</button>
-          <button v-if="isInheritor" class="banner-join-btn inheritor-btn" @click="router.push('/')">管理我的工坊</button>
+          <button v-if="isInheritor" class="banner-join-btn inheritor-btn" @click="router.push('/inheritor')">进入我的工坊</button>
         </div>
       </div>
     </div>
