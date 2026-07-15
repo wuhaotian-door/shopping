@@ -168,6 +168,7 @@ function handleLogout() {
               <th>姓名</th>
               <th>用户名</th>
               <th>手机号</th>
+              <th>地区</th>
               <th>性别</th>
               <th>身份证号</th>
               <th>申请时间</th>
@@ -179,6 +180,7 @@ function handleLogout() {
               <td>{{ user.name }}</td>
               <td>{{ user.username }}</td>
               <td>{{ user.phone || '-' }}</td>
+              <td>{{ user.region || '-' }}</td>
               <td>{{ user.sex || '-' }}</td>
               <td>{{ user.idNumber || '-' }}</td>
               <td>{{ user.createTime?.slice(0, 10) || '-' }}</td>

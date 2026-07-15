@@ -52,6 +52,8 @@ export interface InheritorRegisterRequest {
   phone?: string
   sex?: string
   idNumber: string
+  /** 所属地区，如：江苏省苏州市 */
+  region: string
 }
 
 /** 待审核用户信息（管理员审核列表用） */
@@ -62,6 +64,8 @@ export interface PendingUser {
   phone: string
   sex: string
   idNumber: string
+  /** 所属地区 */
+  region: string
   role: string
   status: number
   createTime: string
@@ -94,5 +98,55 @@ export interface OrderVO {
   peopleCount: number
   remark: string
   status: OrderStatus
+  createTime: string
+}
+
+// ==================== 商品 ====================
+
+/** 商品返回对象 */
+export interface ProductVO {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  imageUrl: string
+  category: string
+  inheritorId: number
+  inheritorName: string
+  status: number
+  createTime: string
+}
+
+// ==================== 商品订单 ====================
+
+/** 商品订单状态 */
+export type ProductOrderStatus = 0 | 1 | 2 | 3
+// 0-待发货, 1-已发货, 2-已完成, 3-已取消
+
+/** 商品订单提交请求 */
+export interface ProductOrderSubmitRequest {
+  phone: string
+  address: string
+  productId: number
+  quantity: number
+  remark?: string
+}
+
+/** 商品订单返回对象 */
+export interface ProductOrderVO {
+  id: number
+  userName: string
+  phone: string
+  address: string
+  productId: number
+  productName: string
+  productImage: string
+  price: number
+  quantity: number
+  totalAmount: number
+  inheritorId: number
+  remark: string
+  status: ProductOrderStatus
   createTime: string
 }

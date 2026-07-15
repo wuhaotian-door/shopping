@@ -70,3 +70,6 @@ $RECYCLE.BIN/
 # =====================
 logs/
 *.log
+
+.workbuddy
+/.workbuddy/memory/2026-07-15.md

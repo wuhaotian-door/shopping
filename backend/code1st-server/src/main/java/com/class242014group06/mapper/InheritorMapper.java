@@ -1,0 +1,34 @@
+package com.class242014group06.mapper;
+
+import com.class242014group06.annotation.AutoFill;
+import com.class242014group06.entity.Inheritor;
+import com.class242014group06.enumeration.OperationType;
+import org.apache.ibatis.annotations.Insert;
+import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
+
+/**
+ * 非遗传承人 Mapper
+ */
+@Mapper
+public interface InheritorMapper {
+
+    @Select("select * from inheritor where username = #{username}")
+    Inheritor getByUsername(String username);
+
+    @AutoFill(value = OperationType.INSERT)
+    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, create_time, update_time, create_user, update_user, status) " +
+            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
+    void insert(Inheritor inheritor);
+
+    @Select("select * from inheritor where id = #{id}")
+    Inheritor getById(Long id);
+
+    @Select("select * from inheritor where status = #{status} order by create_time desc")
+    List<Inheritor> getByStatus(Integer status);
+
+    @AutoFill(value = OperationType.UPDATE)
+    void update(Inheritor inheritor);
+}

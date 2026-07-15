@@ -40,6 +40,12 @@ const router = createRouter({
       component: () => import('@/views/InheritorDashboard.vue'),
       meta: { requiresAuth: true, requiresInheritor: true },
     },
+    {
+      path: '/store',
+      name: 'Store',
+      component: () => import('@/views/StoreView.vue'),
+      meta: { requiresAuth: false },
+    },
   ],
 })
 

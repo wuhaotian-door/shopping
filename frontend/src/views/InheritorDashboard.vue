@@ -3,7 +3,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { listInheritorOrders, confirmOrder, rejectOrder, completeOrder } from '@/api/order'
-import type { OrderVO } from '@/types/api'
+import {
+  listMyProducts, addProduct, updateProduct, offProduct, onProduct,
+  listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder,
+} from '@/api/product'
+import type { OrderVO, ProductVO, ProductOrderVO, ProductOrderStatus } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -11,16 +15,20 @@ const router = useRouter()
 onMounted(() => {
   document.title = '非遗传承人工坊 — 码上非遗'
   loadOrders()
+  loadMyProducts()
+  loadProductOrders()
 })
 
 const userName = computed(() => authStore.userInfo?.name)
 
 // 当前激活的 tab
-type TabKey = 'orders' | 'articles' | 'consultation' | 'profile'
+type TabKey = 'orders' | 'products' | 'productOrders' | 'articles' | 'consultation' | 'profile'
 const activeTab = ref<TabKey>('orders')
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'orders', label: '预约订单' },
+  { key: 'products', label: '商品管理' },
+  { key: 'productOrders', label: '商品订单' },
   { key: 'articles', label: '发表文章' },
   { key: 'consultation', label: '咨询' },
   { key: 'profile', label: '入驻管理' },
@@ -70,6 +78,131 @@ async function handleOrderAction(order: OrderVO, action: 'confirm' | 'reject' | 
     await loadOrders()
   } catch {
     // 操作失败时不做状态变更
+  }
+}
+
+// ==================== 商品管理 ====================
+const myProductList = ref<ProductVO[]>([])
+const productLoading = ref(false)
+const showProductForm = ref(false)
+const editingProduct = ref<ProductVO | null>(null)
+const productForm = ref({
+  name: '',
+  description: '',
+  price: 0,
+  stock: 0,
+  imageUrl: '',
+  category: '',
+})
+const productFormMsg = ref('')
+const productCategories = ['剪纸', '刺绣', '陶艺', '竹编', '综合']
+
+async function loadMyProducts() {
+  productLoading.value = true
+  try {
+    const res = await listMyProducts()
+    myProductList.value = res.data
+  } catch {
+    // ignore
+  } finally {
+    productLoading.value = false
+  }
+}
+
+function openAddProduct() {
+  editingProduct.value = null
+  productForm.value = { name: '', description: '', price: 0, stock: 0, imageUrl: '', category: '' }
+  productFormMsg.value = ''
+  showProductForm.value = true
+}
+
+function openEditProduct(product: ProductVO) {
+  editingProduct.value = product
+  productForm.value = {
+    name: product.name,
+    description: product.description || '',
+    price: product.price,
+    stock: product.stock,
+    imageUrl: product.imageUrl || '',
+    category: product.category || '',
+  }
+  productFormMsg.value = ''
+  showProductForm.value = true
+}
+
+function closeProductForm() {
+  showProductForm.value = false
+  editingProduct.value = null
+}
+
+async function submitProductForm() {
+  if (!productForm.value.name || !productForm.value.price) {
+    productFormMsg.value = '商品名称和价格不能为空'
+    return
+  }
+  productFormMsg.value = ''
+  try {
+    if (editingProduct.value) {
+      await updateProduct(editingProduct.value.id, productForm.value)
+    } else {
+      await addProduct(productForm.value)
+    }
+    showProductForm.value = false
+    await loadMyProducts()
+  } catch {
+    productFormMsg.value = '操作失败，请稍后重试'
+  }
+}
+
+async function toggleProductStatus(product: ProductVO) {
+  try {
+    if (product.status === 1) {
+      await offProduct(product.id)
+    } else {
+      await onProduct(product.id)
+    }
+    await loadMyProducts()
+  } catch {
+    // ignore
+  }
+}
+
+// ==================== 商品订单 ====================
+const productOrderList = ref<ProductOrderVO[]>([])
+const productOrderLoading = ref(false)
+
+const poStatusMap: Record<ProductOrderStatus, { text: string; cls: string }> = {
+  0: { text: '待发货', cls: 'status-pending' },
+  1: { text: '已发货', cls: 'status-shipped' },
+  2: { text: '已完成', cls: 'status-completed' },
+  3: { text: '已取消', cls: 'status-cancelled' },
+}
+
+async function loadProductOrders() {
+  productOrderLoading.value = true
+  try {
+    const res = await listInheritorProductOrders()
+    productOrderList.value = res.data
+  } catch {
+    // ignore
+  } finally {
+    productOrderLoading.value = false
+  }
+}
+
+async function handlePOAction(order: ProductOrderVO, action: 'ship' | 'complete' | 'cancel') {
+  try {
+    if (action === 'ship') {
+      await shipProductOrder(order.id)
+    } else if (action === 'complete') {
+      await completeProductOrder(order.id)
+    } else if (action === 'cancel') {
+      await cancelProductOrder(order.id)
+    }
+    await loadProductOrders()
+    await loadMyProducts()
+  } catch {
+    // ignore
   }
 }
 
@@ -267,6 +400,162 @@ function saveProfile() {
           </table>
           <div v-if="orderLoading" class="empty-state">加载中…</div>
           <div v-else-if="orderList.length === 0" class="empty-state">暂无预约订单</div>
+        </div>
+      </section>
+
+      <!-- ========== 商品管理 ========== -->
+      <section v-if="activeTab === 'products'" class="tab-content">
+        <div class="section-header">
+          <h2>商品管理</h2>
+          <button class="btn-primary" @click="openAddProduct">上架新商品</button>
+        </div>
+
+        <!-- 商品表单弹窗 -->
+        <div v-if="showProductForm" class="modal-overlay" @click.self="closeProductForm">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h3>{{ editingProduct ? '编辑商品' : '上架新商品' }}</h3>
+              <button class="modal-close" @click="closeProductForm">✕</button>
+            </div>
+            <div class="modal-body">
+              <div class="form-group">
+                <label>商品名称 *</label>
+                <input v-model="productForm.name" type="text" class="form-input" placeholder="请输入商品名称" />
+              </div>
+              <div class="form-group">
+                <label>分类</label>
+                <select v-model="productForm.category" class="form-input">
+                  <option value="" disabled>请选择分类</option>
+                  <option v-for="cat in productCategories" :key="cat" :value="cat">{{ cat }}</option>
+                </select>
+              </div>
+              <div class="form-row">
+                <div class="form-group flex-1">
+                  <label>价格 (¥) *</label>
+                  <input v-model.number="productForm.price" type="number" step="0.01" min="0" class="form-input" placeholder="0.00" />
+                </div>
+                <div class="form-group flex-1">
+                  <label>库存</label>
+                  <input v-model.number="productForm.stock" type="number" min="0" class="form-input" placeholder="0" />
+                </div>
+              </div>
+              <div class="form-group">
+                <label>商品描述</label>
+                <textarea v-model="productForm.description" class="form-textarea" rows="3" placeholder="请输入商品描述"></textarea>
+              </div>
+              <div v-if="productFormMsg" class="order-msg">{{ productFormMsg }}</div>
+            </div>
+            <div class="modal-footer">
+              <button class="btn-outline" @click="closeProductForm">取消</button>
+              <button class="btn-primary" @click="submitProductForm">
+                {{ editingProduct ? '保存修改' : '立即上架' }}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="order-table">
+            <thead>
+              <tr>
+                <th>商品名称</th>
+                <th>分类</th>
+                <th>价格</th>
+                <th>库存</th>
+                <th>状态</th>
+                <th>创建时间</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="product in myProductList" :key="product.id">
+                <td>{{ product.name }}</td>
+                <td><span class="category-tag">{{ product.category }}</span></td>
+                <td>¥{{ product.price.toFixed(2) }}</td>
+                <td>{{ product.stock }}</td>
+                <td>
+                  <span class="status-tag" :class="product.status === 1 ? 'status-confirmed' : 'status-cancelled'">
+                    {{ product.status === 1 ? '上架中' : '已下架' }}
+                  </span>
+                </td>
+                <td>{{ product.createTime?.slice(0, 10) }}</td>
+                <td class="action-cell">
+                  <button class="btn-confirm" @click="openEditProduct(product)">编辑</button>
+                  <button
+                    v-if="product.status === 1"
+                    class="btn-reject"
+                    @click="toggleProductStatus(product)"
+                  >下架</button>
+                  <button
+                    v-else
+                    class="btn-confirm"
+                    style="background: #17a2b8"
+                    @click="toggleProductStatus(product)"
+                  >上架</button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="productLoading" class="empty-state">加载中…</div>
+          <div v-else-if="myProductList.length === 0" class="empty-state">暂无商品，点击"上架新商品"开始</div>
+        </div>
+      </section>
+
+      <!-- ========== 商品订单 ========== -->
+      <section v-if="activeTab === 'productOrders'" class="tab-content">
+        <div class="section-header">
+          <h2>商品订单</h2>
+          <div class="order-stats">
+            <span class="stat-item">待发货 <strong>{{ productOrderList.filter(o => o.status === 0).length }}</strong></span>
+            <span class="stat-item">已发货 <strong>{{ productOrderList.filter(o => o.status === 1).length }}</strong></span>
+            <span class="stat-item">已完成 <strong>{{ productOrderList.filter(o => o.status === 2).length }}</strong></span>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table class="order-table">
+            <thead>
+              <tr>
+                <th>用户</th>
+                <th>商品</th>
+                <th>单价</th>
+                <th>数量</th>
+                <th>金额</th>
+                <th>联系电话</th>
+                <th>地址</th>
+                <th>状态</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="order in productOrderList" :key="order.id">
+                <td>{{ order.userName }}</td>
+                <td>{{ order.productName }}</td>
+                <td>¥{{ order.price.toFixed(2) }}</td>
+                <td>{{ order.quantity }}</td>
+                <td>¥{{ order.totalAmount.toFixed(2) }}</td>
+                <td>{{ order.phone }}</td>
+                <td class="remark-cell">{{ order.address }}</td>
+                <td>
+                  <span class="status-tag" :class="poStatusMap[order.status]?.cls">
+                    {{ poStatusMap[order.status]?.text }}
+                  </span>
+                </td>
+                <td class="action-cell">
+                  <template v-if="order.status === 0">
+                    <button class="btn-confirm" style="background: #17a2b8" @click="handlePOAction(order, 'ship')">发货</button>
+                    <button class="btn-reject" @click="handlePOAction(order, 'cancel')">取消</button>
+                  </template>
+                  <template v-else-if="order.status === 1">
+                    <button class="btn-confirm" @click="handlePOAction(order, 'complete')">完成</button>
+                  </template>
+                  <span v-else class="no-action">—</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <div v-if="productOrderLoading" class="empty-state">加载中…</div>
+          <div v-else-if="productOrderList.length === 0" class="empty-state">暂无商品订单</div>
         </div>
       </section>
 
@@ -694,6 +983,10 @@ function saveProfile() {
   background: #f8d7da;
   color: #721c24;
 }
+.status-shipped {
+  background: #cce5ff;
+  color: #004085;
+}
 
 /* 操作按钮 */
 .btn-confirm {
@@ -1073,6 +1366,64 @@ function saveProfile() {
   text-align: center;
   padding: 20px 5%;
   font-size: 14px;
+}
+
+/* ==================== 商品管理弹窗 ==================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.45);
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.modal-content {
+  background: #fff;
+  border-radius: 12px;
+  width: 480px;
+  max-width: 90vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+}
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 1px solid #eee;
+}
+.modal-header h3 { font-size: 18px; color: #c41e3a; }
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 20px;
+  cursor: pointer;
+  color: #999;
+}
+.modal-close:hover { color: #333; }
+.modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+}
+.modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid #eee;
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+.order-msg {
+  margin-top: 12px;
+  padding: 10px;
+  border-radius: 6px;
+  background: #fff3cd;
+  color: #856404;
+  font-size: 13px;
+  text-align: center;
 }
 
 /* ==================== 响应式 ==================== */

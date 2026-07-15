@@ -18,6 +18,7 @@ const form = reactive({
   phone: '',
   sex: '',
   idNumber: '',
+  region: '',
   role: '' as RoleType | '',
 })
 
@@ -38,6 +39,7 @@ function validate(): string | null {
   if (isInheritor.value) {
     if (!form.idNumber.trim()) return '请输入身份证号'
     if (!form.phone.trim()) return '请输入手机号'
+    if (!form.region.trim()) return '请输入所属地区'
   }
 
   return null
@@ -63,6 +65,7 @@ async function handleRegister() {
         phone: form.phone.trim(),
         sex: form.sex || undefined,
         idNumber: form.idNumber.trim(),
+        region: form.region.trim(),
       })
       router.push('/register-success?type=inheritor')
     } else {
@@ -239,6 +242,16 @@ async function handleRegister() {
                   type="text"
                   placeholder="请输入身份证号"
                   maxlength="18"
+              />
+            </div>
+
+            <div class="form-item">
+              <label for="reg-region">所属地区 *</label>
+              <input
+                  id="reg-region"
+                  v-model="form.region"
+                  type="text"
+                  placeholder="如：江苏省苏州市"
               />
             </div>
 
