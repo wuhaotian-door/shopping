@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /**
  * 注册用户 Mapper
  */
@@ -26,4 +28,16 @@ public interface UserMapper {
 
     @AutoFill(value = OperationType.UPDATE)
     void update(User user);
+
+    @Select("select * from user order by create_time desc")
+    List<User> listAll();
+
+    @Select("select * from user where name like concat('%', #{keyword}, '%') or username like concat('%', #{keyword}, '%') order by create_time desc")
+    List<User> searchByKeyword(String keyword);
+
+    @Select("select count(*) from user")
+    Long countAll();
+
+    @Select("select count(*) from user where status = #{status}")
+    Long countByStatus(Integer status);
 }

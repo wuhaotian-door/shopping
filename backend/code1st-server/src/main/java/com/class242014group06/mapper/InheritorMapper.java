@@ -31,4 +31,16 @@ public interface InheritorMapper {
 
     @AutoFill(value = OperationType.UPDATE)
     void update(Inheritor inheritor);
+
+    @Select("select * from inheritor order by create_time desc")
+    List<Inheritor> listAll();
+
+    @Select("select * from inheritor where name like concat('%', #{keyword}, '%') or username like concat('%', #{keyword}, '%') order by create_time desc")
+    List<Inheritor> searchByKeyword(String keyword);
+
+    @Select("select count(*) from inheritor")
+    Long countAll();
+
+    @Select("select count(*) from inheritor where status = #{status}")
+    Long countByStatus(Integer status);
 }
