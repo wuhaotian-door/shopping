@@ -2,12 +2,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
+import { listPublicArticles } from '@/api/knowledge'
+import { listPublicProfiles } from '@/api/profile'
+import { listPublicProducts } from '@/api/product'
+import type { KnowledgeArticleVO, InheritorProfileVO, CulturalProductVO } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
 
 onMounted(() => {
   document.title = '码上非遗——感受非遗魅力'
+  loadArticles()
+  loadMasters()
+  loadProducts()
 })
 
 // 登录状态和角色
@@ -45,27 +52,32 @@ function goPage(page: number) {
   currentPage.value = page
 }
 
-// 模拟资讯数据（后续替换为 API 调用）
-const newsList = ref([
-  { imgUrl: '', title: '校园剪纸艺术展圆满落幕', contentBrief: '近日，由校团委主办的"指尖上的非遗"剪纸艺术展...', createTime: '2026-07-10', viewCount: 1280, tag: '剪纸' },
-  { imgUrl: '', title: '刺绣大师走进课堂，手把手教学', contentBrief: '国家级非遗传承人李秀英老师受邀来校开展刺绣体验课...', createTime: '2026-07-08', viewCount: 960, tag: '刺绣' },
-  { imgUrl: '', title: '陶艺工坊暑期班开始报名', contentBrief: '暑期陶艺体验课程正式上线，面向全校师生开放...', createTime: '2026-07-05', viewCount: 2100, tag: '陶艺' },
-  { imgUrl: '', title: '竹编技艺——从山间到校园', contentBrief: '一场关于传统竹编工艺与现代设计融合的讲座...', createTime: '2026-07-01', viewCount: 756, tag: '竹编' },
-])
+// ------- 知识库文章（从API加载） -------
+const newsList = ref<KnowledgeArticleVO[]>([])
+async function loadArticles() {
+  try {
+    const res = await listPublicArticles()
+    newsList.value = res.data || []
+  } catch { /* keep empty */ }
+}
 
-// 模拟传承人数据
-const masterList = ref([
-  { avatar: '', realName: '李秀英', honorTitle: '国家级非遗传承人 · 苏绣', selfIntro: '从事苏绣创作四十余年，作品多次获国家级大奖，致力于将刺绣技艺带入校园。' },
-  { avatar: '', realName: '张德明', honorTitle: '省级非遗传承人 · 剪纸', selfIntro: '剪纸世家第五代传人，创新融合现代设计元素，让传统剪纸焕发新生。' },
-  { avatar: '', realName: '王师傅', honorTitle: '市级非遗传承人 · 紫砂陶艺', selfIntro: '专注紫砂壶制作三十年，擅长传统器型与文人壶创作。' },
-  { avatar: '', realName: '陈老', honorTitle: '非遗传承人 · 竹编工艺', selfIntro: '精通多种竹编技法，热心推广传统手工艺教育。' },
-])
+// ------- 传承人列表（从API加载） -------
+const masterList = ref<InheritorProfileVO[]>([])
+async function loadMasters() {
+  try {
+    const res = await listPublicProfiles()
+    masterList.value = res.data || []
+  } catch { /* keep empty */ }
+}
 
-// 模拟文创产品
-const productList = ref([
-  { imgUrl: '', productName: '非遗剪纸书签套装', detailBrief: '精选校园剪纸作品印制，一套四枚，送礼收藏皆宜。' },
-  { imgUrl: '', productName: '苏绣手帕礼盒', detailBrief: '绣娘纯手工制作，传统花鸟纹样，精致典雅。' },
-])
+// ------- 文创产品（从API加载） -------
+const productList = ref<CulturalProductVO[]>([])
+async function loadProducts() {
+  try {
+    const res = await listPublicProducts()
+    productList.value = res.data || []
+  } catch { /* keep empty */ }
+}
 
 function handleLogout() {
   authStore.logout()
@@ -163,15 +175,15 @@ function handleLogout() {
 
       <!-- 右侧资讯列表 -->
       <div class="news-card-list">
-        <div v-for="news in newsList" :key="news.title" class="news-card">
+        <div v-for="news in newsList" :key="news.id" class="news-card">
           <div class="news-card-img">
-            <div class="img-placeholder">{{ news.tag }}</div>
+            <div class="img-placeholder">{{ news.category || '非遗' }}</div>
           </div>
           <div class="news-card-text">
             <h4>{{ news.title }}</h4>
-            <p class="desc">{{ news.contentBrief }}</p>
+            <p class="desc">{{ news.content?.slice(0, 100) || '' }}</p>
             <div class="news-card-bottom">
-              <span>{{ news.createTime }}</span>
+              <span>{{ news.createTime?.slice(0, 10) }}</span>
               <span>浏览 {{ news.viewCount }}</span>
             </div>
           </div>
@@ -190,14 +202,14 @@ function handleLogout() {
   <section class="master-full-section" id="masters">
     <h2 class="section-title">入驻非遗传承人</h2>
     <div class="master-card-grid">
-      <div v-for="master in masterList" :key="master.realName" class="master-card">
+      <div v-for="master in masterList" :key="master.employeeId" class="master-card">
         <div class="master-card-top">
           <div class="master-avatar-big"></div>
         </div>
         <div class="master-card-body">
-          <h3>{{ master.realName }}</h3>
-          <p class="master-tech">{{ master.honorTitle }}</p>
-          <p class="master-intro">{{ master.selfIntro }}</p>
+          <h3>{{ master.name }}</h3>
+          <p class="master-tech">{{ master.honorTitle || '非遗传承人' }}</p>
+          <p class="master-intro">{{ master.selfIntro?.slice(0, 80) || '' }}</p>
           <a href="#" class="master-book-btn">预约工坊</a>
         </div>
       </div>
@@ -209,13 +221,14 @@ function handleLogout() {
   <section class="bottom-section" id="products">
     <div>
       <h2 class="section-title">文创商品推荐</h2>
-      <div v-for="product in productList" :key="product.productName" class="product-card">
+      <div v-for="product in productList" :key="product.id" class="product-card">
         <div class="product-image">
           <div class="img-placeholder-sm">文创</div>
         </div>
         <div class="product-info">
           <h3>{{ product.productName }}</h3>
-          <p>{{ product.detailBrief }}</p>
+          <p>{{ product.detailBrief || '' }}</p>
+          <div class="product-price" v-if="product.price">¥{{ product.price }}</div>
         </div>
       </div>
     </div>
@@ -757,6 +770,12 @@ function handleLogout() {
   font-size: 13px;
   color: #666;
   line-height: 1.6;
+}
+.product-price {
+  margin-top: 6px;
+  font-size: 16px;
+  color: #c41e3a;
+  font-weight: bold;
 }
 .ai-chat-box {
   background-color: #fff5f7;

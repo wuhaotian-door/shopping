@@ -55,4 +55,13 @@ public interface EmployeeMapper {
      */
     @Select("select * from employee where status = #{status} order by create_time desc")
     List<Employee> getByStatus(Integer status);
+
+    /**
+     * 根据角色和状态查询员工列表（用于首页展示已启用的传承人）
+     * @param role
+     * @param status
+     * @return
+     */
+    @Select("select * from employee where role = #{role} and status = #{status} order by create_time desc")
+    List<Employee> getByRoleAndStatus(String role, Integer status);
 }
