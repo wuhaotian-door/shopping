@@ -43,6 +43,10 @@ public class MessageConstant {
     // 产品相关
     public static final String PRODUCT_NOT_FOUND = "产品不存在";
     public static final String PRODUCT_NO_PERMISSION = "无权操作此产品";
+    public static final String PRODUCT_STOCK_INSUFFICIENT = "库存不足";
+    public static final String PRODUCT_PERMISSION_DENIED = "无权操作此商品";
+    public static final String PRODUCT_ORDER_NOT_FOUND = "商品订单不存在";
+    public static final String PRODUCT_ORDER_PERMISSION_DENIED = "无权操作此订单";
 
     // 文章相关
     public static final String ARTICLE_NOT_FOUND = "文章不存在";

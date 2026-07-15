@@ -2,10 +2,10 @@ package com.class242014group06.service.impl;
 
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.InheritorProfileDTO;
-import com.class242014group06.entity.Employee;
+import com.class242014group06.entity.Inheritor;
 import com.class242014group06.entity.InheritorProfile;
 import com.class242014group06.exception.BaseException;
-import com.class242014group06.mapper.EmployeeMapper;
+import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.InheritorProfileMapper;
 import com.class242014group06.service.InheritorProfileService;
 import com.class242014group06.vo.InheritorProfileVO;
@@ -23,26 +23,26 @@ public class InheritorProfileServiceImpl implements InheritorProfileService {
     private InheritorProfileMapper profileMapper;
 
     @Autowired
-    private EmployeeMapper employeeMapper;
+    private InheritorMapper inheritorMapper;
 
     @Override
-    public InheritorProfileVO getByEmployeeId(Long employeeId) {
-        Employee employee = employeeMapper.getById(employeeId);
-        if (employee == null) {
+    public InheritorProfileVO getByEmployeeId(Long inheritorId) {
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
+        if (inheritor == null) {
             throw new BaseException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
-        InheritorProfile profile = profileMapper.getByEmployeeId(employeeId);
-        return buildVO(employee, profile);
+        InheritorProfile profile = profileMapper.getByEmployeeId(inheritorId);
+        return buildVO(inheritor, profile);
     }
 
     @Override
-    public void saveOrUpdate(Long employeeId, InheritorProfileDTO dto) {
-        InheritorProfile existing = profileMapper.getByEmployeeId(employeeId);
+    public void saveOrUpdate(Long inheritorId, InheritorProfileDTO dto) {
+        InheritorProfile existing = profileMapper.getByEmployeeId(inheritorId);
         if (existing == null) {
             // 新建
             InheritorProfile profile = new InheritorProfile();
             BeanUtils.copyProperties(dto, profile);
-            profile.setEmployeeId(employeeId);
+            profile.setEmployeeId(inheritorId);
             profileMapper.insert(profile);
         } else {
             // 更新
@@ -58,20 +58,20 @@ public class InheritorProfileServiceImpl implements InheritorProfileService {
         List<InheritorProfile> profiles = profileMapper.listAll();
         List<InheritorProfileVO> result = new ArrayList<>();
         for (InheritorProfile profile : profiles) {
-            Employee employee = employeeMapper.getById(profile.getEmployeeId());
-            if (employee != null) {
-                result.add(buildVO(employee, profile));
+            Inheritor inheritor = inheritorMapper.getById(profile.getEmployeeId());
+            if (inheritor != null) {
+                result.add(buildVO(inheritor, profile));
             }
         }
         return result;
     }
 
-    private InheritorProfileVO buildVO(Employee employee, InheritorProfile profile) {
+    private InheritorProfileVO buildVO(Inheritor inheritor, InheritorProfile profile) {
         InheritorProfileVO.InheritorProfileVOBuilder builder = InheritorProfileVO.builder()
-                .employeeId(employee.getId())
-                .name(employee.getName())
-                .phone(employee.getPhone())
-                .sex(employee.getSex());
+                .employeeId(inheritor.getId())
+                .name(inheritor.getName())
+                .phone(inheritor.getPhone())
+                .sex(inheritor.getSex());
 
         if (profile != null) {
             builder.id(profile.getId())

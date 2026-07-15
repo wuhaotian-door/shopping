@@ -17,7 +17,7 @@ import java.util.List;
  * 文创产品管理
  */
 @RestController
-@RequestMapping("/admin/product")
+@RequestMapping("/admin/cultural-product")
 @Slf4j
 @Api(tags = "文创产品接口")
 public class CulturalProductController {

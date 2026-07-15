@@ -3,10 +3,10 @@ package com.class242014group06.service.impl;
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.CulturalProductDTO;
 import com.class242014group06.entity.CulturalProduct;
-import com.class242014group06.entity.Employee;
+import com.class242014group06.entity.Inheritor;
 import com.class242014group06.exception.BaseException;
 import com.class242014group06.mapper.CulturalProductMapper;
-import com.class242014group06.mapper.EmployeeMapper;
+import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.service.CulturalProductService;
 import com.class242014group06.vo.CulturalProductVO;
 import org.springframework.beans.BeanUtils;
@@ -23,7 +23,7 @@ public class CulturalProductServiceImpl implements CulturalProductService {
     private CulturalProductMapper productMapper;
 
     @Autowired
-    private EmployeeMapper employeeMapper;
+    private InheritorMapper inheritorMapper;
 
     @Override
     public void create(Long inheritorId, CulturalProductDTO dto) {
@@ -82,7 +82,7 @@ public class CulturalProductServiceImpl implements CulturalProductService {
     @Override
     public List<CulturalProductVO> listByInheritor(Long inheritorId) {
         List<CulturalProduct> products = productMapper.getByInheritorId(inheritorId);
-        Employee inheritor = employeeMapper.getById(inheritorId);
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
         String inheritorName = inheritor != null ? inheritor.getName() : "";
         return products.stream()
                 .map(p -> toVO(p, inheritorName))
@@ -94,7 +94,7 @@ public class CulturalProductServiceImpl implements CulturalProductService {
         List<CulturalProduct> products = productMapper.listPublished();
         return products.stream()
                 .map(p -> {
-                    Employee inheritor = employeeMapper.getById(p.getInheritorId());
+                    Inheritor inheritor = inheritorMapper.getById(p.getInheritorId());
                     String inheritorName = inheritor != null ? inheritor.getName() : "";
                     return toVO(p, inheritorName);
                 })

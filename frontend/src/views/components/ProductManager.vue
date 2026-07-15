@@ -1,23 +1,22 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { listMyProducts, createProduct, updateProduct, deleteProduct, toggleProductStatus } from '@/api/product'
-import type { CulturalProductVO, CulturalProductDTO } from '@/types/api'
+import { listMyProducts, addProduct, updateProduct, offProduct, onProduct } from '@/api/product'
+import type { ProductVO } from '@/types/api'
 
-const products = ref<CulturalProductVO[]>([])
+const products = ref<ProductVO[]>([])
 const loading = ref(false)
 const showEditor = ref(false)
 const editingId = ref<number | null>(null)
 
 const categories = ['剪纸', '刺绣', '陶艺', '竹编', '手工艺品', '文具礼品', '家居装饰', '其他']
 
-const form = ref<CulturalProductDTO>({
-  productName: '',
+const form = ref({
+  name: '',
   category: '',
-  detailBrief: '',
   description: '',
   price: 0,
   stock: 0,
-  status: 0,
+  imageUrl: '',
 })
 
 const submitMsg = ref('')
@@ -34,63 +33,63 @@ async function loadProducts() {
 
 function openCreate() {
   editingId.value = null
-  form.value = { productName: '', category: '', detailBrief: '', description: '', price: 0, stock: 0, status: 0 }
+  form.value = { name: '', category: '', description: '', price: 0, stock: 0, imageUrl: '' }
   showEditor.value = true
   submitMsg.value = ''
 }
 
-function openEdit(product: CulturalProductVO) {
+function openEdit(product: ProductVO) {
   editingId.value = product.id
   form.value = {
-    productName: product.productName,
-    category: product.category,
-    detailBrief: product.detailBrief,
-    description: product.description,
+    name: product.name,
+    category: product.category || '',
+    description: product.description || '',
     price: product.price,
     stock: product.stock,
-    status: product.status,
+    imageUrl: product.imageUrl || '',
   }
   showEditor.value = true
   submitMsg.value = ''
 }
 
 async function handleSave() {
-  if (!form.value.productName) { submitMsg.value = '请填写产品名称'; return }
+  if (!form.value.name) { submitMsg.value = '请填写商品名称'; return }
   try {
     if (editingId.value) {
       await updateProduct(editingId.value, form.value)
     } else {
-      await createProduct(form.value)
+      await addProduct(form.value)
     }
     showEditor.value = false
     await loadProducts()
   } catch { submitMsg.value = '保存失败' }
 }
 
-async function handleDelete(id: number) {
-  if (!confirm('确定删除此产品吗？')) return
-  try { await deleteProduct(id); await loadProducts() } catch { /* ignore */ }
-}
-
-async function handleToggle(product: CulturalProductVO) {
-  const newStatus = product.status === 1 ? 0 : 1
-  try { await toggleProductStatus(product.id, newStatus); await loadProducts() } catch { /* ignore */ }
+async function handleToggle(product: ProductVO) {
+  try {
+    if (product.status === 1) {
+      await offProduct(product.id)
+    } else {
+      await onProduct(product.id)
+    }
+    await loadProducts()
+  } catch { /* ignore */ }
 }
 </script>
 
 <template>
   <section class="tab-content">
     <div class="section-header">
-      <h2>文创产品管理</h2>
-      <button class="btn-primary" @click="openCreate">+ 添加产品</button>
+      <h2>商品设置</h2>
+      <button class="btn-primary" @click="openCreate">+ 上架商品</button>
     </div>
 
     <div v-if="showEditor" class="editor-card">
-      <h3>{{ editingId ? '编辑产品' : '添加新产品' }}</h3>
+      <h3>{{ editingId ? '编辑商品' : '上架新商品' }}</h3>
       <div class="form-row">
         <div class="form-group flex-2">
-          <label>产品名称 *</label>
-          <input v-model="form.productName" type="text" class="form-input" placeholder="产品名称" />
+          <label>商品名称 *</label>
+          <input v-model="form.name" type="text" class="form-input" placeholder="商品名称" />
         </div>
         <div class="form-group flex-1">
           <label>分类</label>
@@ -109,21 +108,14 @@ async function handleToggle(product: CulturalProductVO) {
           <label>库存</label>
           <input v-model.number="form.stock" type="number" min="0" class="form-input" />
         </div>
-        <div class="form-group flex-1">
-          <label>状态</label>
-          <select v-model="form.status" class="form-input">
-            <option :value="0">下架</option>
-            <option :value="1">上架</option>
-          </select>
-        </div>
       </div>
       <div class="form-group">
-        <label>简介</label>
-        <input v-model="form.detailBrief" type="text" class="form-input" placeholder="一句话简介" />
+        <label>图片链接</label>
+        <input v-model="form.imageUrl" type="text" class="form-input" placeholder="商品图片URL" />
       </div>
       <div class="form-group">
-        <label>详细描述</label>
-        <textarea v-model="form.description" class="form-textarea" rows="4" placeholder="产品详情..."></textarea>
+        <label>商品描述</label>
+        <textarea v-model="form.description" class="form-textarea" rows="4" placeholder="商品详情..."></textarea>
       </div>
       <div class="form-actions">
         <button class="btn-primary" @click="handleSave">保存</button>
@@ -136,13 +128,13 @@ async function handleToggle(product: CulturalProductVO) {
       <table class="order-table">
         <thead>
           <tr>
-            <th>产品名称</th><th>分类</th><th>价格</th><th>库存</th>
+            <th>商品名称</th><th>分类</th><th>价格</th><th>库存</th>
             <th>状态</th><th>创建时间</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="p in products" :key="p.id">
-            <td class="article-title-cell">{{ p.productName }}</td>
+            <td class="article-title-cell">{{ p.name }}</td>
             <td><span class="category-tag">{{ p.category || '-' }}</span></td>
             <td>¥{{ p.price }}</td>
             <td>{{ p.stock }}</td>
@@ -157,13 +149,12 @@ async function handleToggle(product: CulturalProductVO) {
               <button class="btn-confirm" @click="handleToggle(p)">
                 {{ p.status === 1 ? '下架' : '上架' }}
               </button>
-              <button class="btn-reject" @click="handleDelete(p.id)">删除</button>
             </td>
           </tr>
         </tbody>
       </table>
       <div v-if="loading" class="empty-state">加载中…</div>
-      <div v-else-if="products.length === 0" class="empty-state">暂无产品，点击"添加产品"创建</div>
+      <div v-else-if="products.length === 0" class="empty-state">暂无商品，点击"+ 上架商品"开始</div>
     </div>
   </section>
 </template>
@@ -189,8 +180,6 @@ async function handleToggle(product: CulturalProductVO) {
 .btn-confirm:hover { background: #218838; }
 .btn-outline-sm { padding: 5px 10px; font-size: 12px; color: #c41e3a; background: #fff; border: 1px solid #c41e3a; border-radius: 4px; cursor: pointer; }
 .btn-outline-sm:hover { background: #fff5f7; }
-.btn-reject { padding: 5px 10px; font-size: 12px; color: #fff; background: #dc3545; border: none; border-radius: 4px; cursor: pointer; }
-.btn-reject:hover { background: #c82333; }
 .btn-primary { padding: 10px 24px; font-size: 14px; color: #fff; background: #c41e3a; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-primary:hover { background: #a8162b; }
 .btn-outline { padding: 10px 24px; font-size: 14px; color: #c41e3a; background: #fff; border: 1px solid #c41e3a; border-radius: 6px; cursor: pointer; }

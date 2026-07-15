@@ -26,14 +26,12 @@ public class ProductServiceImpl implements ProductService {
     private InheritorMapper inheritorMapper;
 
     @Override
-    public void add(Long inheritorId, String inheritorName, ProductSubmitDTO dto) {
-        // 如果传入了名称就直接用，否则从数据库查询
-        String name = inheritorName;
-        if (name == null || "传承人".equals(name)) {
-            Inheritor inheritor = inheritorMapper.getById(inheritorId);
-            if (inheritor != null) {
-                name = inheritor.getName();
-            }
+    public void add(Long inheritorId, ProductSubmitDTO dto) {
+        // 从数据库查询传承人姓名
+        String name = "";
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
+        if (inheritor != null) {
+            name = inheritor.getName();
         }
         Product product = new Product();
         BeanUtils.copyProperties(dto, product);

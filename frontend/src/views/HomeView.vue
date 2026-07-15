@@ -4,7 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { listPublicArticles } from '@/api/knowledge'
 import { listPublicProfiles } from '@/api/profile'
-import { listPublicProducts } from '@/api/product'
+import { listPublicProducts } from '@/api/culturalProduct'
 import type { KnowledgeArticleVO, InheritorProfileVO, CulturalProductVO } from '@/types/api'
 
 const authStore = useAuthStore()

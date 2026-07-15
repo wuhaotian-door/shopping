@@ -2,10 +2,10 @@ package com.class242014group06.service.impl;
 
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.KnowledgeArticleDTO;
-import com.class242014group06.entity.Employee;
+import com.class242014group06.entity.Inheritor;
 import com.class242014group06.entity.KnowledgeArticle;
 import com.class242014group06.exception.BaseException;
-import com.class242014group06.mapper.EmployeeMapper;
+import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.KnowledgeArticleMapper;
 import com.class242014group06.service.KnowledgeArticleService;
 import com.class242014group06.vo.KnowledgeArticleVO;
@@ -23,7 +23,7 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     private KnowledgeArticleMapper articleMapper;
 
     @Autowired
-    private EmployeeMapper employeeMapper;
+    private InheritorMapper inheritorMapper;
 
     @Override
     public void create(Long authorId, KnowledgeArticleDTO dto) {
@@ -67,7 +67,7 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     @Override
     public List<KnowledgeArticleVO> listByAuthor(Long authorId) {
         List<KnowledgeArticle> articles = articleMapper.getByAuthorId(authorId);
-        Employee author = employeeMapper.getById(authorId);
+        Inheritor author = inheritorMapper.getById(authorId);
         String authorName = author != null ? author.getName() : "";
         return articles.stream()
                 .map(a -> toVO(a, authorName))
@@ -79,7 +79,7 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
         List<KnowledgeArticle> articles = articleMapper.listPublished();
         return articles.stream()
                 .map(a -> {
-                    Employee author = employeeMapper.getById(a.getAuthorId());
+                    Inheritor author = inheritorMapper.getById(a.getAuthorId());
                     String authorName = author != null ? author.getName() : "";
                     return toVO(a, authorName);
                 })
