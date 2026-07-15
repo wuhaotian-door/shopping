@@ -1,0 +1,100 @@
+package com.class242014group06.controller;
+
+import com.class242014group06.context.BaseContext;
+import com.class242014group06.dto.ProductOrderSubmitDTO;
+import com.class242014group06.result.Result;
+import com.class242014group06.service.ProductOrderService;
+import com.class242014group06.vo.ProductOrderVO;
+import io.swagger.annotations.Api;
+import io.swagger.annotations.ApiOperation;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 商品订单管理 — 用户下单 & 传承人处理订单
+ */
+@RestController
+@RequestMapping("/admin/product-order")
+@Slf4j
+@Api(tags = "商品订单相关接口")
+public class ProductOrderController {
+
+    @Autowired
+    private ProductOrderService productOrderService;
+
+    /**
+     * 用户提交商品购买订单
+     */
+    @PostMapping
+    @ApiOperation("用户提交商品购买订单")
+    public Result<String> submit(@RequestBody ProductOrderSubmitDTO productOrderSubmitDTO) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户提交商品订单，userId：{}，订单：{}", userId, productOrderSubmitDTO);
+        // 从BaseContext或token获取用户名，这里简化处理
+        productOrderService.submit(userId, "用户", productOrderSubmitDTO);
+        return Result.success("下单成功");
+    }
+
+    /**
+     * 用户查看自己的商品订单
+     */
+    @GetMapping("/my")
+    @ApiOperation("用户查看自己的商品订单")
+    public Result<List<ProductOrderVO>> listMyOrders() {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户查看自己的商品订单，userId：{}", userId);
+        List<ProductOrderVO> orders = productOrderService.listByUser(userId);
+        return Result.success(orders);
+    }
+
+    /**
+     * 传承人查看自己商品的订单
+     */
+    @GetMapping("/inheritor")
+    @ApiOperation("传承人查看自己商品的订单")
+    public Result<List<ProductOrderVO>> listInheritorOrders() {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("传承人查看商品订单，inheritorId：{}", inheritorId);
+        List<ProductOrderVO> orders = productOrderService.listByInheritor(inheritorId);
+        return Result.success(orders);
+    }
+
+    /**
+     * 传承人发货
+     */
+    @PutMapping("/{id}/ship")
+    @ApiOperation("传承人发货")
+    public Result<String> ship(@PathVariable Long id) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("传承人发货，orderId：{}，inheritorId：{}", id, inheritorId);
+        productOrderService.ship(id, inheritorId);
+        return Result.success("已发货");
+    }
+
+    /**
+     * 传承人完成订单
+     */
+    @PutMapping("/{id}/complete")
+    @ApiOperation("传承人完成订单")
+    public Result<String> complete(@PathVariable Long id) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("传承人完成订单，orderId：{}，inheritorId：{}", id, inheritorId);
+        productOrderService.complete(id, inheritorId);
+        return Result.success("订单已完成");
+    }
+
+    /**
+     * 取消订单
+     */
+    @PutMapping("/{id}/cancel")
+    @ApiOperation("取消商品订单")
+    public Result<String> cancel(@PathVariable Long id) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("取消商品订单，orderId：{}，userId：{}", id, userId);
+        productOrderService.cancel(id, userId);
+        return Result.success("订单已取消");
+    }
+}

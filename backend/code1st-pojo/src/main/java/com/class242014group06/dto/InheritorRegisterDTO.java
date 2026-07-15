@@ -28,6 +28,9 @@ public class InheritorRegisterDTO implements Serializable {
     @ApiModelProperty("身份证号")
     private String idNumber;
 
+    @ApiModelProperty("所属地区（如：江苏省苏州市）")
+    private String region;
+
     @ApiModelProperty("角色：INHERITOR-非遗传承人")
     private String role;
 }

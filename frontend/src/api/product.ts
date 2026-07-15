@@ -1,32 +1,90 @@
 import request from './request'
-import type { Result, CulturalProductVO, CulturalProductDTO } from '@/types/api'
+import type { Result, ProductVO, ProductOrderVO, ProductOrderSubmitRequest } from '@/types/api'
 
-/** 创建产品 */
-export function createProduct(data: CulturalProductDTO): Promise<Result<string>> {
+// ==================== 商品 ====================
+
+/** 查询所有上架商品 */
+export function listProducts(): Promise<Result<ProductVO[]>> {
+  return request.get('/product')
+}
+
+/** 按分类查询商品 */
+export function listProductsByCategory(category: string): Promise<Result<ProductVO[]>> {
+  return request.get(`/product/category/${encodeURIComponent(category)}`)
+}
+
+/** 查询商品详情 */
+export function getProductById(id: number): Promise<Result<ProductVO>> {
+  return request.get(`/product/${id}`)
+}
+
+/** 传承人上架商品 */
+export function addProduct(data: {
+  name: string
+  description?: string
+  price: number
+  stock: number
+  imageUrl?: string
+  category?: string
+}): Promise<Result<string>> {
   return request.post('/product', data)
 }
 
-/** 更新产品 */
-export function updateProduct(id: number, data: CulturalProductDTO): Promise<Result<string>> {
+/** 传承人修改商品 */
+export function updateProduct(id: number, data: {
+  name?: string
+  description?: string
+  price?: number
+  stock?: number
+  imageUrl?: string
+  category?: string
+}): Promise<Result<string>> {
   return request.put(`/product/${id}`, data)
 }
 
-/** 删除产品 */
-export function deleteProduct(id: number): Promise<Result<string>> {
-  return request.delete(`/product/${id}`)
+/** 传承人下架商品 */
+export function offProduct(id: number): Promise<Result<string>> {
+  return request.put(`/product/${id}/off`)
 }
 
-/** 切换产品上下架 */
-export function toggleProductStatus(id: number, status: number): Promise<Result<string>> {
-  return request.put(`/product/${id}/status`, null, { params: { status } })
+/** 传承人上架商品 */
+export function onProduct(id: number): Promise<Result<string>> {
+  return request.put(`/product/${id}/on`)
 }
 
-/** 查看自己的产品列表 */
-export function listMyProducts(): Promise<Result<CulturalProductVO[]>> {
+/** 传承人查看自己的商品 */
+export function listMyProducts(): Promise<Result<ProductVO[]>> {
   return request.get('/product/my')
 }
 
-/** 查询所有已上架产品（公开） */
-export function listPublicProducts(): Promise<Result<CulturalProductVO[]>> {
-  return request.get('/product/public')
+// ==================== 商品订单 ====================
+
+/** 用户提交商品订单 */
+export function submitProductOrder(data: ProductOrderSubmitRequest): Promise<Result<string>> {
+  return request.post('/product-order', data)
+}
+
+/** 用户查看自己的商品订单 */
+export function listMyProductOrders(): Promise<Result<ProductOrderVO[]>> {
+  return request.get('/product-order/my')
+}
+
+/** 传承人查看自己商品的订单 */
+export function listInheritorProductOrders(): Promise<Result<ProductOrderVO[]>> {
+  return request.get('/product-order/inheritor')
+}
+
+/** 传承人发货 */
+export function shipProductOrder(id: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/ship`)
+}
+
+/** 传承人完成订单 */
+export function completeProductOrder(id: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/complete`)
+}
+
+/** 取消商品订单 */
+export function cancelProductOrder(id: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/cancel`)
 }

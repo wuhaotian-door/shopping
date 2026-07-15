@@ -52,6 +52,8 @@ export interface InheritorRegisterRequest {
   phone?: string
   sex?: string
   idNumber: string
+  /** 所属地区，如：江苏省苏州市 */
+  region: string
 }
 
 /** 待审核用户信息（管理员审核列表用） */
@@ -62,6 +64,8 @@ export interface PendingUser {
   phone: string
   sex: string
   idNumber: string
+  /** 所属地区 */
+  region: string
   role: string
   status: number
   createTime: string

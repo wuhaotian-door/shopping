@@ -243,10 +243,52 @@ function handleLogout() {
           <button class="top-btn" @click="router.push('/')">返回首页</button>
           <button class="top-btn logout" @click="handleLogout">退出登录</button>
         </div>
-      </header>
-
-      <!-- 内容区 -->
-      <main class="content">
+        暂无待审核的传承人申请
+      </div>
+      <div v-else class="pending-table-wrap">
+        <table class="pending-table">
+          <thead>
+            <tr>
+              <th>姓名</th>
+              <th>用户名</th>
+              <th>手机号</th>
+              <th>地区</th>
+              <th>性别</th>
+              <th>身份证号</th>
+              <th>申请时间</th>
+              <th>操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-for="user in pendingList" :key="user.id">
+              <td>{{ user.name }}</td>
+              <td>{{ user.username }}</td>
+              <td>{{ user.phone || '-' }}</td>
+              <td>{{ user.region || '-' }}</td>
+              <td>{{ user.sex || '-' }}</td>
+              <td>{{ user.idNumber || '-' }}</td>
+              <td>{{ user.createTime?.slice(0, 10) || '-' }}</td>
+              <td class="action-cell">
+                <button
+                  class="approve-btn"
+                  :disabled="actionLoading[user.id] === 'approve'"
+                  @click="handleApprove(user.id)"
+                >
+                  {{ actionLoading[user.id] === 'approve' ? '处理中...' : '通过' }}
+                </button>
+                <button
+                  class="reject-btn"
+                  :disabled="actionLoading[user.id] === 'reject'"
+                  @click="handleReject(user.id)"
+                >
+                  {{ actionLoading[user.id] === 'reject' ? '处理中...' : '驳回' }}
+                </button>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
 
         <!-- ===== 1. 仪表盘 ===== -->
         <section v-if="activeMenu === 'dashboard'" class="dashboard">
