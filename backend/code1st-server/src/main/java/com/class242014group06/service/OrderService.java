@@ -48,4 +48,16 @@ public interface OrderService {
      * @param inheritorId 传承人ID（用于校验权限）
      */
     void complete(Long orderId, Long inheritorId);
+
+    /**
+     * 管理员查询所有订单
+     * @return 订单VO列表
+     */
+    List<OrderVO> listAll();
+
+    /**
+     * 管理员取消订单
+     * @param orderId 订单ID
+     */
+    void cancelByAdmin(Long orderId);
 }

@@ -118,11 +118,37 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
+     * 管理员查询所有订单
+     */
+    @Override
+    public List<OrderVO> listAll() {
+        List<OrderAppointment> orders = orderMapper.listAll();
+        return orders.stream().map(this::toVO).collect(Collectors.toList());
+    }
+
+    /**
+     * 管理员取消订单
+     */
+    @Override
+    public void cancelByAdmin(Long orderId) {
+        OrderAppointment order = orderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        OrderAppointment update = OrderAppointment.builder()
+                .id(orderId)
+                .status(OrderStatusConstant.CANCELLED)
+                .build();
+        orderMapper.update(update);
+    }
+
+    /**
      * Entity → VO
      */
     private OrderVO toVO(OrderAppointment order) {
         return OrderVO.builder()
                 .id(order.getId())
+                .inheritorId(order.getInheritorId())
                 .userName(order.getUserName())
                 .phone(order.getPhone())
                 .appointmentDate(order.getAppointmentDate())

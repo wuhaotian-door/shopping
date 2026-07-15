@@ -87,6 +87,7 @@ export interface OrderSubmitRequest {
 /** 订单返回对象 */
 export interface OrderVO {
   id: number
+  inheritorId: number
   userName: string
   phone: string
   appointmentDate: string
@@ -95,4 +96,31 @@ export interface OrderVO {
   remark: string
   status: OrderStatus
   createTime: string
+}
+
+// ==================== 管理后台 ====================
+
+/** 用户完整信息（管理员用户管理用） */
+export interface UserInfo {
+  id: number
+  username: string
+  name: string
+  phone: string
+  sex: string
+  idNumber: string
+  role: string
+  status: number
+  createTime: string
+  updateTime: string
+}
+
+/** 仪表盘统计数据 */
+export interface DashboardStats {
+  totalUsers: number
+  userCount: number
+  inheritorCount: number
+  adminCount: number
+  pendingCount: number
+  enabledCount: number
+  disabledCount: number
 }
