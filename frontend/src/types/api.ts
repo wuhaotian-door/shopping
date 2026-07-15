@@ -65,8 +65,8 @@ export interface PendingUser {
   sex: string
   idNumber: string
   /** 所属地区 */
-  region: string
-  role: string
+  region?: string
+  role?: string
   status: number
   createTime: string
 }

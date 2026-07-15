@@ -41,14 +41,18 @@ function switchMenu(key: MenuKey) {
 // ==================== 1. 仪表盘 ====================
 const stats = ref<DashboardStats | null>(null)
 const statsLoading = ref(false)
+const statsError = ref('')
 
 async function loadDashboard() {
   statsLoading.value = true
+  statsError.value = ''
   try {
     const res = await getDashboardStats()
     stats.value = res.data
-  } catch { /* ignore */ }
-  finally { statsLoading.value = false }
+  } catch (e: unknown) {
+    statsError.value = e instanceof Error ? e.message : '加载统计数据失败'
+    console.error('Dashboard stats error:', e)
+  } finally { statsLoading.value = false }
 }
 
 // ==================== 2. 用户管理 ====================
@@ -249,7 +253,12 @@ function handleLogout() {
         <!-- ===== 1. 仪表盘 ===== -->
         <section v-if="activeMenu === 'dashboard'" class="dashboard">
           <div v-if="statsLoading" class="loading-text">加载中...</div>
-          <template v-else-if="stats">
+          <div v-else-if="statsError" class="error-text">
+            {{ statsError }}
+            <button class="btn-sm btn-primary" style="margin-left: 12px" @click="loadDashboard">重试</button>
+          </div>
+          <div v-else-if="!stats" class="empty-text">暂无统计数据</div>
+          <template v-else>
             <div class="stat-grid">
               <div class="stat-card">
                 <div class="stat-num">{{ stats.totalUsers }}</div>
@@ -377,6 +386,7 @@ function handleLogout() {
                   <th>手机号</th>
                   <th>性别</th>
                   <th>身份证号</th>
+                  <th>所属地区</th>
                   <th>申请时间</th>
                   <th>操作</th>
                 </tr>
@@ -388,6 +398,7 @@ function handleLogout() {
                   <td>{{ user.phone || '-' }}</td>
                   <td>{{ user.sex || '-' }}</td>
                   <td>{{ user.idNumber || '-' }}</td>
+                  <td>{{ user.region || '-' }}</td>
                   <td>{{ user.createTime?.slice(0, 10) || '-' }}</td>
                   <td class="action-col">
                     <button class="btn-sm btn-success" :disabled="!!pendingActionLoading[user.id]" @click="handleApprove(user.id)">

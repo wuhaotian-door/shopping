@@ -7,6 +7,8 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
+import java.util.List;
+
 /**
  * 管理员 Mapper
  */
@@ -26,4 +28,16 @@ public interface AdminMapper {
 
     @AutoFill(value = OperationType.UPDATE)
     void update(Admin admin);
+
+    @Select("select * from admin order by create_time desc")
+    List<Admin> listAll();
+
+    @Select("select * from admin where name like concat('%', #{keyword}, '%') or username like concat('%', #{keyword}, '%') order by create_time desc")
+    List<Admin> searchByKeyword(String keyword);
+
+    @Select("select count(*) from admin")
+    Long countAll();
+
+    @Select("select count(*) from admin where status = #{status}")
+    Long countByStatus(Integer status);
 }

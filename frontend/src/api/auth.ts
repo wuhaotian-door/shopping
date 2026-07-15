@@ -8,7 +8,7 @@ export function login(data: LoginRequest): Promise<Result<LoginResponse>> {
 
 /** 注册新管理员（需登录后调用） */
 export function adminCreate(data: AdminCreateRequest): Promise<Result<null>> {
-  return request.post('/auth', data)
+  return request.post('/employee', data)
 }
 
 /** 普通用户自行注册（公开接口，无需登录） */
@@ -33,7 +33,7 @@ export function approveInheritor(id: number): Promise<Result<string>> {
 
 /** 驳回传承人申请（管理员专用） */
 export function rejectInheritor(id: number): Promise<Result<string>> {
-  return request.put(`/employee/${id}/reject`)
+  return request.put(`/auth/${id}/reject`)
 }
 
 /** 获取所有用户列表（管理员专用） */
