@@ -67,6 +67,30 @@ export interface PendingUser {
   createTime: string
 }
 
+/** 用户列表信息（管理员用户管理用） */
+export interface UserInfo {
+  id: number
+  username: string
+  name: string
+  phone: string
+  sex: string
+  idNumber: string
+  role: string
+  status: number
+  createTime: string
+}
+
+/** 仪表盘统计数据 */
+export interface DashboardStats {
+  totalUsers: number
+  userCount: number
+  inheritorCount: number
+  adminCount: number
+  pendingCount: number
+  enabledCount: number
+  disabledCount: number
+}
+
 // ==================== 订单 ====================
 
 /** 订单状态 */

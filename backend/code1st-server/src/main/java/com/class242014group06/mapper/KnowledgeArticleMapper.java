@@ -3,6 +3,7 @@ package com.class242014group06.mapper;
 import com.class242014group06.annotation.AutoFill;
 import com.class242014group06.entity.KnowledgeArticle;
 import com.class242014group06.enumeration.OperationType;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -47,6 +48,6 @@ public interface KnowledgeArticleMapper {
     /**
      * 删除文章
      */
-    @Select("delete from knowledge_article where id = #{id}")
+    @Delete("delete from knowledge_article where id = #{id}")
     void deleteById(Long id);
 }

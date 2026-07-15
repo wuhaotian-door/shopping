@@ -41,10 +41,10 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     public void update(Long articleId, Long authorId, KnowledgeArticleDTO dto) {
         KnowledgeArticle existing = articleMapper.getById(articleId);
         if (existing == null) {
-            throw new BaseException("文章不存在");
+            throw new BaseException(MessageConstant.ARTICLE_NOT_FOUND);
         }
         if (!existing.getAuthorId().equals(authorId)) {
-            throw new BaseException("无权修改此文章");
+            throw new BaseException(MessageConstant.ARTICLE_NO_PERMISSION);
         }
         KnowledgeArticle article = new KnowledgeArticle();
         BeanUtils.copyProperties(dto, article);
@@ -56,10 +56,10 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     public void delete(Long articleId, Long authorId) {
         KnowledgeArticle existing = articleMapper.getById(articleId);
         if (existing == null) {
-            throw new BaseException("文章不存在");
+            throw new BaseException(MessageConstant.ARTICLE_NOT_FOUND);
         }
         if (!existing.getAuthorId().equals(authorId)) {
-            throw new BaseException("无权删除此文章");
+            throw new BaseException(MessageConstant.ARTICLE_NO_PERMISSION);
         }
         articleMapper.deleteById(articleId);
     }
