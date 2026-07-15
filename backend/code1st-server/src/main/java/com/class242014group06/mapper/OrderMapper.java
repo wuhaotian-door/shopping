@@ -45,4 +45,10 @@ public interface OrderMapper {
      */
     @Select("select * from appointment_order where inheritor_id = #{inheritorId} order by create_time desc")
     List<OrderAppointment> getByInheritorId(Long inheritorId);
+
+    /**
+     * 管理员查询所有订单
+     */
+    @Select("select * from appointment_order order by create_time desc")
+    List<OrderAppointment> listAll();
 }

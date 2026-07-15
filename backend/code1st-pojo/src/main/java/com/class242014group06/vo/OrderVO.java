@@ -20,6 +20,9 @@ public class OrderVO implements Serializable {
 
     private Long id;
 
+    /** 传承人ID */
+    private Long inheritorId;
+
     /** 预约用户姓名 */
     private String userName;
 

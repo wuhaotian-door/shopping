@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.class242014group06.mapper.CulturalProductMapper">
+
+    <update id="update" parameterType="CulturalProduct">
+        update cultural_product
+        <set>
+            <if test="productName != null">product_name = #{productName},</if>
+            <if test="category != null">category = #{category},</if>
+            <if test="detailBrief != null">detail_brief = #{detailBrief},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="price != null">price = #{price},</if>
+            <if test="coverUrl != null">cover_url = #{coverUrl},</if>
+            <if test="stock != null">stock = #{stock},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="updateTime != null">update_time = #{updateTime},</if>
+            <if test="updateUser != null">update_user = #{updateUser},</if>
+        </set>
+        where id = #{id}
+    </update>
+
+</mapper>

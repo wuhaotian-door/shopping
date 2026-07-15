@@ -28,13 +28,24 @@ public class MessageConstant {
     public static final String ORDER_STATUS_ERROR = "订单状态异常";
     public static final String ORDER_SUBMIT_SUCCESS = "预约提交成功";
 
-    // 商品相关
-    public static final String PRODUCT_NOT_FOUND = "商品不存在";
-    public static final String PRODUCT_PERMISSION_DENIED = "无权操作该商品";
+    // 通用操作
+    public static final String NOT_FOUND = "不存在";
+    public static final String NO_PERMISSION = "无权操作";
 
-    // 商品订单相关
-    public static final String PRODUCT_ORDER_NOT_FOUND = "商品订单不存在";
-    public static final String PRODUCT_ORDER_PERMISSION_DENIED = "无权操作该订单";
-    public static final String PRODUCT_STOCK_INSUFFICIENT = "商品库存不足";
+    // 时段相关
+    public static final String SLOT_NOT_FOUND = "时段不存在";
+    public static final String SLOT_NO_PERMISSION = "无权操作此时段";
+
+    // 项目相关
+    public static final String PROJECT_NOT_FOUND = "项目不存在";
+    public static final String PROJECT_NO_PERMISSION = "无权操作此项目";
+
+    // 产品相关
+    public static final String PRODUCT_NOT_FOUND = "产品不存在";
+    public static final String PRODUCT_NO_PERMISSION = "无权操作此产品";
+
+    // 文章相关
+    public static final String ARTICLE_NOT_FOUND = "文章不存在";
+    public static final String ARTICLE_NO_PERMISSION = "无权操作此文章";
 
 }

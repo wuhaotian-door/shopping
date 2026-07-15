@@ -66,9 +66,14 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .addPathPatterns("/admin/**")
                 .excludePathPatterns(
-                    "/admin/auth/login",
-                    "/admin/auth/register",
-                    "/admin/auth/register/inheritor"
+                        "/admin/employee/login",
+                        "/admin/employee/register",
+                        "/admin/employee/register/inheritor",
+                        "/admin/inheritor/profile/public",
+                        "/admin/knowledge/public",
+                        "/admin/project/public",
+                        "/admin/product/public",
+                        "/admin/slot/available"
                 );
     }
     /**

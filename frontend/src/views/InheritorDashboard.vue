@@ -2,12 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
-import { listInheritorOrders, confirmOrder, rejectOrder, completeOrder } from '@/api/order'
-import {
-  listMyProducts, addProduct, updateProduct, offProduct, onProduct,
-  listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder,
-} from '@/api/product'
-import type { OrderVO, ProductVO, ProductOrderVO, ProductOrderStatus } from '@/types/api'
+import OrderManager from './components/OrderManager.vue'
+import SlotManager from './components/SlotManager.vue'
+import KnowledgeManager from './components/KnowledgeManager.vue'
+import ProjectManager from './components/ProjectManager.vue'
+import ProductManager from './components/ProductManager.vue'
+import ConsultationPanel from './components/ConsultationPanel.vue'
+import InheritorProfile from './components/InheritorProfile.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -27,10 +28,11 @@ const activeTab = ref<TabKey>('orders')
 
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'orders', label: '预约订单' },
-  { key: 'products', label: '商品管理' },
-  { key: 'productOrders', label: '商品订单' },
-  { key: 'articles', label: '发表文章' },
-  { key: 'consultation', label: '咨询' },
+  { key: 'slots', label: '时段管理' },
+  { key: 'knowledge', label: '知识库' },
+  { key: 'projects', label: '非遗项目' },
+  { key: 'products', label: '文创产品' },
+  { key: 'consultation', label: '咨询消息' },
   { key: 'profile', label: '入驻管理' },
 ]
 
@@ -761,13 +763,6 @@ function saveProfile() {
 </template>
 
 <style scoped>
-/* ==================== 全局重置 ==================== */
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
 /* ==================== 顶部导航 ==================== */
 .page-header {
   background-color: #c41e3a;
@@ -806,6 +801,7 @@ function saveProfile() {
   display: flex;
   align-items: center;
   gap: 6px;
+  overflow-x: auto;
 }
 .nav-tab {
   color: rgba(255,255,255,0.8);
@@ -1428,33 +1424,8 @@ function saveProfile() {
 
 /* ==================== 响应式 ==================== */
 @media (max-width: 992px) {
-  .nav-tabs {
-    gap: 2px;
-  }
-  .nav-tab {
-    padding: 8px 10px;
-    font-size: 13px;
-  }
-  .profile-detail-grid {
-    grid-template-columns: 1fr;
-  }
-  .chat-msg {
-    max-width: 90%;
-  }
-  .order-table {
-    font-size: 12px;
-  }
-  .order-table th,
-  .order-table td {
-    padding: 10px 8px;
-  }
-  .form-row {
-    flex-direction: column;
-    gap: 0;
-  }
-  .form-row .form-group[style] {
-    width: 100% !important;
-  }
+  .nav-tabs { gap: 2px; }
+  .nav-tab { padding: 8px 10px; font-size: 13px; }
 }
 @media (max-width: 768px) {
   .page-header {
@@ -1467,28 +1438,7 @@ function saveProfile() {
     order: 3;
     width: 100%;
     justify-content: center;
-    overflow-x: auto;
   }
-  .order-stats {
-    display: none;
-  }
-  .table-wrap {
-    overflow-x: auto;
-  }
-  .order-table {
-    min-width: 800px;
-  }
-  .profile-avatar-section {
-    flex-direction: column;
-    text-align: center;
-  }
-}
-@media (max-width: 576px) {
-  .header-right {
-    gap: 6px;
-  }
-  .inheritor-badge {
-    display: none;
-  }
+  .inheritor-badge { display: none; }
 }
 </style>

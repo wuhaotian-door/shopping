@@ -295,3 +295,111 @@ VALUES
     (8, '吴老师', '138****0123', '苏州市姑苏区干将路168号',     7,  '紫砂主人杯·圆润',   '', 158.00, 2, 316.00,   2, '分别寄两个地址',         1, NOW(), NOW()),
     (8, '吴老师', '138****0123', '苏州市姑苏区干将路168号',     10, '竹编茶具托盘',      '', 128.00, 1, 128.00,   3, NULL,                      2, NOW(), NOW());
 
+-- =====================================================
+-- 传承人详细信息表
+-- =====================================================
+DROP TABLE IF EXISTS inheritor_profile;
+
+CREATE TABLE inheritor_profile (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    employee_id     BIGINT NOT NULL UNIQUE COMMENT '关联employee表',
+    honor_title     VARCHAR(100) COMMENT '荣誉称号',
+    self_intro      TEXT COMMENT '个人简介',
+    craft_types     VARCHAR(500) COMMENT '擅长技艺，逗号分隔',
+    address         VARCHAR(200) COMMENT '所在地',
+    avatar_url      VARCHAR(500) COMMENT '头像URL',
+    create_time     DATETIME COMMENT '创建时间',
+    update_time     DATETIME COMMENT '修改时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='传承人详细信息表';
+
+-- =====================================================
+-- 非遗知识库文章表
+-- =====================================================
+DROP TABLE IF EXISTS knowledge_article;
+
+CREATE TABLE knowledge_article (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    author_id       BIGINT NOT NULL COMMENT '作者ID（传承人）',
+    title           VARCHAR(200) NOT NULL COMMENT '文章标题',
+    category        VARCHAR(50) COMMENT '分类',
+    content         TEXT COMMENT '文章内容',
+    cover_url       VARCHAR(500) COMMENT '封面图',
+    status          INT DEFAULT 0 COMMENT '0-草稿 1-已发布',
+    view_count      INT DEFAULT 0 COMMENT '浏览量',
+    create_time     DATETIME COMMENT '创建时间',
+    update_time     DATETIME COMMENT '修改时间',
+    create_user     BIGINT COMMENT '创建人',
+    update_user     BIGINT COMMENT '修改人',
+    INDEX idx_author (author_id),
+    INDEX idx_category (category),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非遗知识库文章表';
+
+-- =====================================================
+-- 非遗项目表
+-- =====================================================
+DROP TABLE IF EXISTS heritage_project;
+
+CREATE TABLE heritage_project (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    inheritor_id    BIGINT NOT NULL COMMENT '传承人ID',
+    title           VARCHAR(200) NOT NULL COMMENT '项目标题',
+    category        VARCHAR(50) COMMENT '项目分类',
+    description     TEXT COMMENT '项目描述',
+    cover_url       VARCHAR(500) COMMENT '封面图',
+    location        VARCHAR(200) COMMENT '活动地点',
+    start_date      DATE COMMENT '开始日期',
+    end_date        DATE COMMENT '结束日期',
+    max_people      INT COMMENT '最大参与人数',
+    current_people  INT DEFAULT 0 COMMENT '当前报名人数',
+    status          INT DEFAULT 0 COMMENT '0-下架 1-上架',
+    create_time     DATETIME COMMENT '创建时间',
+    update_time     DATETIME COMMENT '修改时间',
+    create_user     BIGINT COMMENT '创建人',
+    update_user     BIGINT COMMENT '修改人',
+    INDEX idx_inheritor (inheritor_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非遗项目表';
+
+-- =====================================================
+-- 文创产品表
+-- =====================================================
+DROP TABLE IF EXISTS cultural_product;
+
+CREATE TABLE cultural_product (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    inheritor_id    BIGINT NOT NULL COMMENT '传承人ID',
+    product_name    VARCHAR(200) NOT NULL COMMENT '产品名称',
+    category        VARCHAR(50) COMMENT '产品分类',
+    detail_brief    VARCHAR(500) COMMENT '简介',
+    description     TEXT COMMENT '详细描述',
+    price           DECIMAL(10,2) COMMENT '价格',
+    cover_url       VARCHAR(500) COMMENT '封面图',
+    stock           INT DEFAULT 0 COMMENT '库存',
+    status          INT DEFAULT 0 COMMENT '0-下架 1-上架',
+    create_time     DATETIME COMMENT '创建时间',
+    update_time     DATETIME COMMENT '修改时间',
+    create_user     BIGINT COMMENT '创建人',
+    update_user     BIGINT COMMENT '修改人',
+    INDEX idx_inheritor (inheritor_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文创产品表';
+
+-- =====================================================
+-- 可预约时段表
+-- =====================================================
+DROP TABLE IF EXISTS appointment_slot;
+
+CREATE TABLE appointment_slot (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    inheritor_id    BIGINT NOT NULL COMMENT '传承人ID',
+    slot_date       DATE NOT NULL COMMENT '日期',
+    time_slot       VARCHAR(100) NOT NULL COMMENT '时段，如 上午 9:00-11:00',
+    max_people      INT DEFAULT 5 COMMENT '该时段最大可预约人数',
+    booked_count    INT DEFAULT 0 COMMENT '已预约人数',
+    status          INT DEFAULT 1 COMMENT '1-可用 0-不可用',
+    create_time     DATETIME COMMENT '创建时间',
+    update_time     DATETIME COMMENT '修改时间',
+    INDEX idx_inheritor_date (inheritor_id, slot_date)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='可预约时段表';
+
