@@ -55,4 +55,42 @@ public interface EmployeeMapper {
      */
     @Select("select * from employee where status = #{status} order by create_time desc")
     List<Employee> getByStatus(Integer status);
+
+    /**
+     * 查询所有员工
+     * @return
+     */
+    @Select("select * from employee order by create_time desc")
+    List<Employee> listAll();
+
+    /**
+     * 根据关键字搜索员工（姓名或用户名）
+     * @param keyword
+     * @return
+     */
+    @Select("select * from employee where name like concat('%', #{keyword}, '%') or username like concat('%', #{keyword}, '%') order by create_time desc")
+    List<Employee> searchByKeyword(String keyword);
+
+    /**
+     * 统计各角色人数
+     * @param role
+     * @return
+     */
+    @Select("select count(*) from employee where role = #{role}")
+    Long countByRole(String role);
+
+    /**
+     * 统计各状态人数
+     * @param status
+     * @return
+     */
+    @Select("select count(*) from employee where status = #{status}")
+    Long countByStatus(Integer status);
+
+    /**
+     * 统计总人数
+     * @return
+     */
+    @Select("select count(*) from employee")
+    Long countAll();
 }

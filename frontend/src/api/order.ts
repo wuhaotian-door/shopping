@@ -30,3 +30,13 @@ export function rejectOrder(id: number): Promise<Result<string>> {
 export function completeOrder(id: number): Promise<Result<string>> {
   return request.put(`/order/${id}/complete`)
 }
+
+/** 管理员查看所有订单 */
+export function listAllOrders(): Promise<Result<OrderVO[]>> {
+  return request.get('/order/all')
+}
+
+/** 管理员取消订单 */
+export function cancelOrder(id: number): Promise<Result<string>> {
+  return request.put(`/order/${id}/cancel`)
+}
