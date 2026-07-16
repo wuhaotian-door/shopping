@@ -1,5 +1,5 @@
 import request from './request'
-import type { Result, LoginRequest, LoginResponse, AdminCreateRequest, RegisterRequest, InheritorRegisterRequest, PendingUser, UserInfo, DashboardStats } from '@/types/api'
+import type { Result, LoginRequest, LoginResponse, AdminCreateRequest, RegisterRequest, InheritorRegisterRequest, PendingUser, UserInfo, DashboardStats, ForgotPasswordRequest, ResetPasswordRequest } from '@/types/api'
 
 /** 登录 */
 export function login(data: LoginRequest): Promise<Result<LoginResponse>> {
@@ -54,4 +54,14 @@ export function updateUserStatus(id: number, status: number): Promise<Result<str
 /** 获取仪表盘统计数据（管理员专用） */
 export function getDashboardStats(): Promise<Result<DashboardStats>> {
   return request.get('/employee/statistics')
+}
+
+/** 忘记密码 — 发送邮箱验证码（公开接口） */
+export function sendResetCode(data: ForgotPasswordRequest): Promise<Result<string>> {
+  return request.post('/auth/forgot-password/send-code', data)
+}
+
+/** 忘记密码 — 验证码重置密码（公开接口） */
+export function resetPassword(data: ResetPasswordRequest): Promise<Result<string>> {
+  return request.post('/auth/forgot-password/reset', data)
 }

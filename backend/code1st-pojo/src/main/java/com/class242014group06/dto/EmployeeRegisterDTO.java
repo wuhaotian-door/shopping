@@ -22,6 +22,9 @@ public class EmployeeRegisterDTO implements Serializable {
     @ApiModelProperty("手机号")
     private String phone;
 
+    @ApiModelProperty("邮箱")
+    private String email;
+
     @ApiModelProperty("性别")
     private String sex;
 

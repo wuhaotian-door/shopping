@@ -72,6 +72,8 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                         "/admin/auth/login",
                         "/admin/auth/register",
                         "/admin/auth/register/inheritor",
+                        "/admin/auth/forgot-password/send-code",
+                        "/admin/auth/forgot-password/reset",
                         "/admin/inheritor/profile/public",
                         "/admin/knowledge/public",
                         "/admin/project/public",

@@ -13,6 +13,7 @@ const router = useRouter()
 const form = reactive({
   username: '',
   name: '',
+  email: '',
   password: '',
   confirmPassword: '',
   phone: '',
@@ -30,6 +31,7 @@ const isInheritor = computed(() => form.role === 'INHERITOR')
 function validate(): string | null {
   if (!form.username.trim()) return '请输入用户名'
   if (!form.name.trim()) return '请输入姓名'
+  if (!form.email.trim()) return '请输入邮箱'
   if (!form.password) return '请输入密码'
   if (form.password.length < 6) return '密码长度至少为 6 位'
   if (form.password !== form.confirmPassword) return '两次输入的密码不一致'
@@ -76,6 +78,7 @@ async function handleRegister() {
         password: form.password,
         phone: form.phone || undefined,
         sex: form.sex || undefined,
+        email: form.email.trim(),
       })
       router.push('/register-success?type=user')
     }
@@ -191,6 +194,17 @@ async function handleRegister() {
                 v-model="form.name"
                 type="text"
                 placeholder="真实姓名"
+            />
+          </div>
+
+          <div class="form-item">
+            <label for="reg-email">邮箱 *</label>
+            <input
+                id="reg-email"
+                v-model="form.email"
+                type="email"
+                placeholder="用于找回密码"
+                autocomplete="email"
             />
           </div>
 

@@ -5,7 +5,9 @@ import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
 import com.class242014group06.dto.EmployeeRegisterDTO;
+import com.class242014group06.dto.ForgotPasswordDTO;
 import com.class242014group06.dto.InheritorRegisterDTO;
+import com.class242014group06.dto.ResetPasswordDTO;
 import com.class242014group06.entity.Inheritor;
 import com.class242014group06.properties.JwtProperties;
 import com.class242014group06.result.Result;
@@ -122,5 +124,27 @@ public class AuthController {
         log.info("驳回传承人申请：{}", id);
         inheritorService.reject(id);
         return Result.success("已驳回");
+    }
+
+    /**
+     * 忘记密码 — 发送邮箱验证码（公开接口）
+     */
+    @PostMapping("/forgot-password/send-code")
+    @ApiOperation("发送密码重置验证码")
+    public Result<String> sendResetCode(@RequestBody ForgotPasswordDTO dto) {
+        log.info("发送密码重置验证码：{}", dto.getUsername());
+        authService.sendResetCode(dto);
+        return Result.success("验证码已发送至注册邮箱");
+    }
+
+    /**
+     * 忘记密码 — 验证码校验并重置密码（公开接口）
+     */
+    @PostMapping("/forgot-password/reset")
+    @ApiOperation("验证码重置密码")
+    public Result<String> resetPassword(@RequestBody ResetPasswordDTO dto) {
+        log.info("重置密码：{}", dto.getUsername());
+        authService.resetPassword(dto);
+        return Result.success("密码重置成功");
     }
 }

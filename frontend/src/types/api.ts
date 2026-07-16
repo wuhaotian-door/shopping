@@ -42,6 +42,19 @@ export interface RegisterRequest {
   password: string
   phone?: string
   sex?: string
+  email?: string
+}
+
+/** 忘记密码 — 发送验证码请求 */
+export interface ForgotPasswordRequest {
+  username: string
+}
+
+/** 忘记密码 — 重置密码请求 */
+export interface ResetPasswordRequest {
+  username: string
+  code: string
+  newPassword: string
 }
 
 /** 非遗传承人注册请求参数（公开接口，详细信息） */

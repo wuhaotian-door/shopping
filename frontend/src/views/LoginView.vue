@@ -116,6 +116,10 @@ async function handleLogin() {
 
           <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
 
+          <div class="form-options">
+            <span class="forgot-link" @click="router.push('/forgot-password')">忘记密码？</span>
+          </div>
+
           <button type="submit" class="login-btn" :disabled="loading">
             {{ loading ? '登录中...' : '登 录' }}
           </button>
@@ -473,6 +477,19 @@ export default {
   font-size: 13px;
   margin: 0 0 16px 0;
   text-align: center;
+}
+.form-options {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+}
+.forgot-link {
+  font-size: 13px;
+  color: #c41e3a;
+  cursor: pointer;
+}
+.forgot-link:hover {
+  text-decoration: underline;
 }
 .login-btn {
   width: 100%;
