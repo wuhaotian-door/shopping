@@ -362,44 +362,24 @@ CREATE TABLE heritage_project (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非遗项目表';
 
 -- =====================================================
--- 文创产品表
--- =====================================================
-DROP TABLE IF EXISTS cultural_product;
-
-CREATE TABLE cultural_product (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
-    inheritor_id    BIGINT NOT NULL COMMENT '传承人ID',
-    product_name    VARCHAR(200) NOT NULL COMMENT '产品名称',
-    category        VARCHAR(50) COMMENT '产品分类',
-    detail_brief    VARCHAR(500) COMMENT '简介',
-    description     TEXT COMMENT '详细描述',
-    price           DECIMAL(10,2) COMMENT '价格',
-    cover_url       VARCHAR(500) COMMENT '封面图',
-    stock           INT DEFAULT 0 COMMENT '库存',
-    status          INT DEFAULT 0 COMMENT '0-下架 1-上架',
-    create_time     DATETIME COMMENT '创建时间',
-    update_time     DATETIME COMMENT '修改时间',
-    create_user     BIGINT COMMENT '创建人',
-    update_user     BIGINT COMMENT '修改人',
-    INDEX idx_inheritor (inheritor_id),
-    INDEX idx_status (status)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文创产品表';
-
--- =====================================================
 -- 可预约时段表
 -- =====================================================
 DROP TABLE IF EXISTS appointment_slot;
 
 CREATE TABLE appointment_slot (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
-    inheritor_id    BIGINT NOT NULL COMMENT '传承人ID',
-    slot_date       DATE NOT NULL COMMENT '日期',
-    time_slot       VARCHAR(100) NOT NULL COMMENT '时段，如 上午 9:00-11:00',
-    max_people      INT DEFAULT 5 COMMENT '该时段最大可预约人数',
-    booked_count    INT DEFAULT 0 COMMENT '已预约人数',
-    status          INT DEFAULT 1 COMMENT '1-可用 0-不可用',
-    create_time     DATETIME COMMENT '创建时间',
-    update_time     DATETIME COMMENT '修改时间',
-    INDEX idx_inheritor_date (inheritor_id, slot_date)
+    id                  BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    inheritor_id        BIGINT NOT NULL COMMENT '传承人ID',
+    slot_date           DATE NOT NULL COMMENT '日期',
+    start_time          TIME NOT NULL COMMENT '开始时间',
+    end_time            TIME NOT NULL COMMENT '结束时间',
+    recurrence_type     VARCHAR(20) DEFAULT 'NONE' COMMENT '重复类型: NONE-不重复, WEEKLY-每周, MONTHLY-每月',
+    recurrence_end_date DATE COMMENT '重复截止日期',
+    max_people          INT DEFAULT 5 COMMENT '该时段最大可预约人数',
+    booked_count        INT DEFAULT 0 COMMENT '已预约人数',
+    status              INT DEFAULT 1 COMMENT '1-可用 0-不可用',
+    create_time         DATETIME COMMENT '创建时间',
+    update_time         DATETIME COMMENT '修改时间',
+    INDEX idx_inheritor_date (inheritor_id, slot_date),
+    INDEX idx_inheritor_date_time (inheritor_id, slot_date, start_time, end_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='可预约时段表';
 

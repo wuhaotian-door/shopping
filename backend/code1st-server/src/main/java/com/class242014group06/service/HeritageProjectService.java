@@ -9,13 +9,15 @@ public interface HeritageProjectService {
 
     /**
      * 创建项目
+     * @return 警告信息（如日期超出时段范围），无警告时返回null
      */
-    void create(Long inheritorId, HeritageProjectDTO dto);
+    String create(Long inheritorId, HeritageProjectDTO dto);
 
     /**
      * 更新项目
+     * @return 警告信息（如日期超出时段范围），无警告时返回null
      */
-    void update(Long projectId, Long inheritorId, HeritageProjectDTO dto);
+    String update(Long projectId, Long inheritorId, HeritageProjectDTO dto);
 
     /**
      * 删除项目

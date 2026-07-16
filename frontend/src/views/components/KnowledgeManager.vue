@@ -92,7 +92,7 @@ async function togglePublish(article: KnowledgeArticleVO) {
 <template>
   <section class="tab-content">
     <div class="section-header">
-      <h2>知识库管理</h2>
+      <h2>非遗资讯管理</h2>
       <button class="btn-primary" @click="openCreate">+ 写文章</button>
     </div>
 

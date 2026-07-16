@@ -8,6 +8,7 @@ import lombok.NoArgsConstructor;
 import java.io.Serializable;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 
 /**
  * 可预约时段实体
@@ -28,8 +29,17 @@ public class AppointmentSlot implements Serializable {
     /** 日期 */
     private LocalDate slotDate;
 
-    /** 时段，如 上午 9:00-11:00 */
-    private String timeSlot;
+    /** 开始时间 */
+    private LocalTime startTime;
+
+    /** 结束时间 */
+    private LocalTime endTime;
+
+    /** 重复类型：NONE-不重复, WEEKLY-每周, MONTHLY-每月 */
+    private String recurrenceType;
+
+    /** 重复截止日期 */
+    private LocalDate recurrenceEndDate;
 
     /** 该时段最大可预约人数 */
     private Integer maxPeople;

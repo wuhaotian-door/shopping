@@ -1,13 +1,13 @@
 import request from './request'
-import type { Result, AppointmentSlot } from '@/types/api'
+import type { Result, AppointmentSlot, AppointmentSlotDTO, SlotDateRange } from '@/types/api'
 
 /** 新增可预约时段 */
-export function createSlot(data: AppointmentSlot): Promise<Result<string>> {
+export function createSlot(data: AppointmentSlotDTO): Promise<Result<string>> {
   return request.post('/slot', data)
 }
 
 /** 更新时段 */
-export function updateSlot(id: number, data: AppointmentSlot): Promise<Result<string>> {
+export function updateSlot(id: number, data: AppointmentSlotDTO): Promise<Result<string>> {
   return request.put(`/slot/${id}`, data)
 }
 
@@ -24,4 +24,9 @@ export function listMySlots(): Promise<Result<AppointmentSlot[]>> {
 /** 查询传承人的可用时段（公开） */
 export function getAvailableSlots(inheritorId: number, date: string): Promise<Result<AppointmentSlot[]>> {
   return request.get('/slot/available', { params: { inheritorId, date } })
+}
+
+/** 获取时段覆盖的日期范围 */
+export function getSlotRange(): Promise<Result<SlotDateRange>> {
+  return request.get('/slot/range')
 }

@@ -33,7 +33,10 @@ public class HeritageProjectController {
     public Result<String> create(@RequestBody HeritageProjectDTO dto) {
         Long inheritorId = BaseContext.getCurrentId();
         log.info("创建非遗项目，inheritorId：{}", inheritorId);
-        projectService.create(inheritorId, dto);
+        String warning = projectService.create(inheritorId, dto);
+        if (warning != null) {
+            return Result.success(warning);
+        }
         return Result.success("项目创建成功");
     }
 
@@ -45,7 +48,10 @@ public class HeritageProjectController {
     public Result<String> update(@PathVariable Long id, @RequestBody HeritageProjectDTO dto) {
         Long inheritorId = BaseContext.getCurrentId();
         log.info("更新非遗项目，id：{}，inheritorId：{}", id, inheritorId);
-        projectService.update(id, inheritorId, dto);
+        String warning = projectService.update(id, inheritorId, dto);
+        if (warning != null) {
+            return Result.success(warning);
+        }
         return Result.success("项目更新成功");
     }
 
@@ -94,5 +100,17 @@ public class HeritageProjectController {
         log.info("公开查询所有已上架项目");
         List<HeritageProjectVO> list = projectService.listPublished();
         return Result.success(list);
+    }
+
+    /**
+     * 校验项目日期是否在时段范围内
+     */
+    @GetMapping("/validate-dates")
+    @ApiOperation("校验项目日期是否在时段范围内")
+    public Result<String> validateDates(@RequestParam String startDate, @RequestParam String endDate) {
+        Long inheritorId = BaseContext.getCurrentId();
+        log.info("校验项目日期，inheritorId：{}，startDate：{}，endDate：{}", inheritorId, startDate, endDate);
+        // 这里返回简单的提示，前端可根据 /slot/range 自行校验
+        return Result.success(null);
     }
 }

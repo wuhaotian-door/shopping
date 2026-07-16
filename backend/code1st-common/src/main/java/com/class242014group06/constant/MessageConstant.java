@@ -35,6 +35,9 @@ public class MessageConstant {
     // 时段相关
     public static final String SLOT_NOT_FOUND = "时段不存在";
     public static final String SLOT_NO_PERMISSION = "无权操作此时段";
+    public static final String SLOT_TIME_CONFLICT = "时段冲突：此时段与已有时段时间重叠";
+    public static final String PROJECT_DATE_OUT_OF_SLOT_RANGE = "项目日期超出了已设置的时段范围，建议先配置相应日期的时段";
+    public static final String PROJECT_NO_SLOTS_CONFIGURED = "尚未配置任何时段，建议先设置可预约时段";
 
     // 项目相关
     public static final String PROJECT_NOT_FOUND = "项目不存在";

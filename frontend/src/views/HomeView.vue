@@ -4,8 +4,7 @@ import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { listPublicArticles } from '@/api/knowledge'
 import { listPublicProfiles } from '@/api/profile'
-import { listPublicProducts } from '@/api/culturalProduct'
-import type { KnowledgeArticleVO, InheritorProfileVO, CulturalProductVO } from '@/types/api'
+import type { KnowledgeArticleVO, InheritorProfileVO } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -14,7 +13,6 @@ onMounted(() => {
   document.title = '码上非遗——感受非遗魅力'
   loadArticles()
   loadMasters()
-  loadProducts()
 })
 
 // 登录状态和角色
@@ -71,15 +69,6 @@ async function loadMasters() {
   try {
     const res = await listPublicProfiles()
     masterList.value = res.data || []
-  } catch { /* keep empty */ }
-}
-
-// ------- 文创产品（从API加载） -------
-const productList = ref<CulturalProductVO[]>([])
-async function loadProducts() {
-  try {
-    const res = await listPublicProducts()
-    productList.value = res.data || []
   } catch { /* keep empty */ }
 }
 
@@ -221,22 +210,8 @@ function handleLogout() {
     </div>
   </section>
 
-  <!-- ==================== 底部文创 + AI ==================== -->
+  <!-- ==================== 底部 AI ==================== -->
   <section class="bottom-section" id="products">
-    <div>
-      <h2 class="section-title">文创商品推荐</h2>
-      <div v-for="product in productList" :key="product.id" class="product-card">
-        <div class="product-image">
-          <div class="img-placeholder-sm">文创</div>
-        </div>
-        <div class="product-info">
-          <h3>{{ product.productName }}</h3>
-          <p>{{ product.detailBrief || '' }}</p>
-          <div class="product-price" v-if="product.price">¥{{ product.price }}</div>
-        </div>
-      </div>
-    </div>
-
     <div id="ai">
       <h2 class="section-title">AI 非遗小百科</h2>
       <div class="ai-chat-box">
@@ -728,58 +703,13 @@ function handleLogout() {
   background: #a8162b;
 }
 
-/* ==================== 底部文创 + AI ==================== */
+/* ==================== 底部 AI ==================== */
 .bottom-section {
   padding: 40px 5%;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 32px;
   background-color: #fff;
-}
-.product-card {
-  display: flex;
-  gap: 16px;
-  background-color: #fff5f7;
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 16px;
-  transition: 0.2s;
-}
-.product-card:hover {
-  background-color: #ffe9ec;
-}
-.product-image {
-  width: 80px;
-  height: 80px;
-  flex-shrink: 0;
-  border-radius: 8px;
-  overflow: hidden;
-}
-.img-placeholder-sm {
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(135deg, #e8647a, #f0a0b0);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 12px;
-}
-.product-info h3 {
-  font-size: 16px;
-  color: #222;
-  margin-bottom: 6px;
-}
-.product-info p {
-  font-size: 13px;
-  color: #666;
-  line-height: 1.6;
-}
-.product-price {
-  margin-top: 6px;
-  font-size: 16px;
-  color: #c41e3a;
-  font-weight: bold;
 }
 .ai-chat-box {
   background-color: #fff5f7;
