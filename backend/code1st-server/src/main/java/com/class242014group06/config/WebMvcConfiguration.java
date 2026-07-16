@@ -75,7 +75,6 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                         "/admin/inheritor/profile/public",
                         "/admin/knowledge/public",
                         "/admin/project/public",
-                        "/admin/cultural-product/public",
                         "/admin/slot/available"
                 );
     }

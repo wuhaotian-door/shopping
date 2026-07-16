@@ -30,3 +30,8 @@ export function listMyProjects(): Promise<Result<HeritageProjectVO[]>> {
 export function listPublicProjects(): Promise<Result<HeritageProjectVO[]>> {
   return request.get('/project/public')
 }
+
+/** 校验项目日期是否在时段范围内 */
+export function validateProjectDates(startDate: string, endDate: string): Promise<Result<string>> {
+  return request.get('/project/validate-dates', { params: { startDate, endDate } })
+}

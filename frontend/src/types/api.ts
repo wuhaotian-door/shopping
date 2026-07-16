@@ -203,34 +203,6 @@ export interface HeritageProjectDTO {
   status?: number
 }
 
-// ==================== 文创产品 ====================
-
-export interface CulturalProductVO {
-  id: number
-  inheritorId: number
-  inheritorName: string
-  productName: string
-  category: string
-  detailBrief: string
-  description: string
-  price: number
-  coverUrl: string
-  stock: number
-  status: number
-  createTime: string
-}
-
-export interface CulturalProductDTO {
-  productName: string
-  category?: string
-  detailBrief?: string
-  description?: string
-  price?: number
-  coverUrl?: string
-  stock?: number
-  status?: number
-}
-
 // ==================== 商城商品 ====================
 
 export interface ProductVO {
@@ -280,10 +252,28 @@ export interface AppointmentSlot {
   id: number
   inheritorId: number
   slotDate: string
-  timeSlot: string
+  startTime: string       // "HH:mm"
+  endTime: string         // "HH:mm"
+  recurrenceType: string  // 'NONE' | 'WEEKLY' | 'MONTHLY'
+  recurrenceEndDate?: string
   maxPeople: number
   bookedCount: number
   status: number
   createTime?: string
   updateTime?: string
+}
+
+export interface AppointmentSlotDTO {
+  slotDate: string
+  startTime: string
+  endTime: string
+  recurrenceType: string
+  recurrenceEndDate?: string
+  maxPeople: number
+  status: number
+}
+
+export interface SlotDateRange {
+  minDate?: string
+  maxDate?: string
 }

@@ -7,7 +7,10 @@
         update appointment_slot
         <set>
             <if test="slotDate != null">slot_date = #{slotDate},</if>
-            <if test="timeSlot != null">time_slot = #{timeSlot},</if>
+            <if test="startTime != null">start_time = #{startTime},</if>
+            <if test="endTime != null">end_time = #{endTime},</if>
+            <if test="recurrenceType != null">recurrence_type = #{recurrenceType},</if>
+            <if test="recurrenceEndDate != null">recurrence_end_date = #{recurrenceEndDate},</if>
             <if test="maxPeople != null">max_people = #{maxPeople},</if>
             <if test="bookedCount != null">booked_count = #{bookedCount},</if>
             <if test="status != null">status = #{status},</if>
@@ -15,5 +18,19 @@
         </set>
         where id = #{id}
     </update>
+
+    <!-- 冲突检测：查询指定日期内与目标时间段重叠的已有记录 -->
+    <select id="getOverlappingSlots" resultType="AppointmentSlot">
+        select * from appointment_slot
+        where inheritor_id = #{inheritorId}
+          and slot_date = #{slotDate}
+          and status = 1
+          <if test="excludeId != null">
+              and id != #{excludeId}
+          </if>
+          and start_time &lt; #{endTime}
+          and end_time &gt; #{startTime}
+        order by start_time
+    </select>
 
 </mapper>

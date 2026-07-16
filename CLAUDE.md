@@ -38,7 +38,7 @@ The backend is a Maven parent POM with three child modules:
 | Module | Purpose |
 |--------|---------|
 | `code1st-common` | Shared utilities: constants (`MessageConstant`, `RoleConstant`, `StatusConstant`), exceptions (`BaseException` + subclasses), enums (`OperationType`), Jackson config, JWT utilities (`JwtUtil`, `JwtProperties`), `BaseContext` ThreadLocal holder |
-| `code1st-pojo` | Data objects only: entities (`User`, `Inheritor`, `Admin`, `Product`, `ProductOrder`, `CulturalProduct`, `HeritageProject`, `KnowledgeArticle`, `InheritorProfile`, `AppointmentSlot`, `Employee`), DTOs, VOs. No logic |
+| `code1st-pojo` | Data objects only: entities (`User`, `Inheritor`, `Admin`, `Product`, `ProductOrder`, `HeritageProject`, `KnowledgeArticle`, `InheritorProfile`, `AppointmentSlot`, `Employee`), DTOs, VOs. No logic |
 | `code1st-server` | Spring Boot application: controllers, services, mappers, interceptors, aspects, config, handlers. Entry point: `code1stApplication.java` with `@MapperScan("com.class242014group06.mapper")` |
 
 ### Three-Role Authentication System
@@ -71,22 +71,23 @@ Interceptor exclude paths (no auth required):
 - `/admin/auth/login`, `/admin/auth/register`, `/admin/auth/register/inheritor`
 - `/admin/employee/login`, `/admin/employee/register`, `/admin/employee/register/inheritor` (legacy)
 - `/admin/inheritor/profile/public`, `/admin/knowledge/public`, `/admin/project/public`
-- `/admin/cultural-product/public`, `/admin/slot/available`
+- `/admin/slot/available`
 
-### Two Parallel Product Systems
+### Product System
 
-**Important**: There are TWO separate product systems — do not confuse them:
+**Important**: There is a single product system for the e-commerce shop:
 
-| | Product (商城商品) | CulturalProduct (文创产品) |
-|---|---|---|
-| **Backend controller** | `ProductController` at `/admin/product` | `CulturalProductController` at `/admin/cultural-product` |
-| **Database table** | `product` + `product_order` | `cultural_product` |
-| **Frontend API** | `src/api/product.ts` | `src/api/culturalProduct.ts` |
-| **API functions** | `listProducts`, `getProductById`, `addProduct`, `listMyProducts`, `submitProductOrder`, etc. | `listPublicProducts`, `listMyProducts`, `createProduct`, `updateProduct`, `deleteProduct`, `toggleProductStatus` |
-| **Used by** | `StoreView.vue` and user shops | `HomeView.vue` and `ProductManager.vue` |
+| | Product (商城商品) |
+|---|---|
+| **Backend controller** | `ProductController` at `/admin/product` |
+| **Database table** | `product` + `product_order` |
+| **Frontend API** | `src/api/product.ts` |
+| **API functions** | `listProducts`, `getProductById`, `addProduct`, `listMyProducts`, `submitProductOrder`, etc. |
+| **Used by** | `StoreView.vue` and user shops |
 
 `ProductController` handles the e-commerce flow: browsing, ordering, order management (ship/complete/cancel).
-`CulturalProductController` handles inheritor-managed cultural products: CRUD, public listing of published items.
+
+Note: The `cultural_product` table and all related `CulturalProduct` classes/interfaces have been removed.
 
 ### Controller → Service → Mapper Pattern
 
@@ -95,7 +96,6 @@ Mappers use a mix of **XML files** (in `resources/mapper/*.xml`) for complex que
 Existing mappers:
 - `UserMapper`, `InheritorMapper`, `AdminMapper` (auth/user management)
 - `ProductMapper`, `ProductOrderMapper` (shop e-commerce)
-- `CulturalProductMapper` (cultural products)
 - `HeritageProjectMapper`, `KnowledgeArticleMapper`, `InheritorProfileMapper`, `AppointmentSlotMapper` (content/features)
 - `OrderMapper`, `EmployeeMapper` (legacy appointment + legacy employee)
 
@@ -103,7 +103,7 @@ Existing mappers:
 
 - **Router** (`src/router/index.ts`): Route guards check `requiresAuth`, `requiresAdmin`, `requiresInheritor` meta flags against `authStore`
 - **Auth store** (`src/stores/auth.ts`): Pinia store, token/user persisted in localStorage under `code1st_token` / `code1st_user` keys
-- **API layer** (`src/api/`): Each domain has its own file (`auth.ts`, `product.ts`, `culturalProduct.ts`, `order.ts`, etc.). All share an Axios instance from `request.ts` with `baseURL: '/admin'`
+- **API layer** (`src/api/`): Each domain has its own file (`auth.ts`, `product.ts`, `order.ts`, etc.). All share an Axios instance from `request.ts` with `baseURL: '/admin'`
 - **Request interceptor**: Attaches `token` header from authStore. Response interceptor: `code === 0` treated as business error, HTTP 401 redirects to `/login`
 - **Types** (`src/types/api.ts`): Shared TypeScript interfaces for all DTOs, VOs, and `Result<T>` wrapper
 

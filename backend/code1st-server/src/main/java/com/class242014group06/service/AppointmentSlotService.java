@@ -1,20 +1,22 @@
 package com.class242014group06.service;
 
-import com.class242014group06.entity.AppointmentSlot;
+import com.class242014group06.dto.AppointmentSlotDTO;
+import com.class242014group06.vo.AppointmentSlotVO;
 
 import java.util.List;
+import java.util.Map;
 
 public interface AppointmentSlotService {
 
     /**
-     * 新增可预约时段
+     * 创建时段
      */
-    void create(Long inheritorId, AppointmentSlot slot);
+    void create(Long inheritorId, AppointmentSlotDTO dto);
 
     /**
      * 更新时段
      */
-    void update(Long slotId, Long inheritorId, AppointmentSlot slot);
+    void update(Long slotId, Long inheritorId, AppointmentSlotDTO dto);
 
     /**
      * 删除时段
@@ -22,12 +24,18 @@ public interface AppointmentSlotService {
     void delete(Long slotId, Long inheritorId);
 
     /**
-     * 查询自己的时段列表
+     * 查看自己的时段列表
      */
-    List<AppointmentSlot> listByInheritor(Long inheritorId);
+    List<AppointmentSlotVO> listByInheritor(Long inheritorId);
 
     /**
-     * 查询传承人某日期的可用时段（供用户预约时选择）
+     * 查询传承人某日期的可用时段（公开）
      */
-    List<AppointmentSlot> getAvailableSlots(Long inheritorId, String date);
+    List<AppointmentSlotVO> getAvailableSlots(Long inheritorId, String date);
+
+    /**
+     * 获取时段覆盖的日期范围（用于项目校验）
+     * @return Map with "minDate" and "maxDate" keys (LocalDate values), or null if no slots
+     */
+    Map<String, Object> getSlotDateRange(Long inheritorId);
 }

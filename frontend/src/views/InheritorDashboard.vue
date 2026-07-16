@@ -28,7 +28,7 @@ const activeTab = ref<TabKey>('orders')
 const tabs: { key: TabKey; label: string }[] = [
   { key: 'orders', label: '预约订单' },
   { key: 'slots', label: '时段管理' },
-  { key: 'knowledge', label: '知识库' },
+  { key: 'knowledge', label: '非遗资讯' },
   { key: 'projects', label: '非遗项目' },
   { key: 'products', label: '商品设置' },
   { key: 'productOrders', label: '订单管理' },
@@ -124,7 +124,7 @@ function onTabSwitch(key: TabKey) {
       <!-- 时段管理 — 设置工坊可参观时段 -->
       <SlotManager v-if="activeTab === 'slots'" />
 
-      <!-- 知识库 — 文章管理 -->
+      <!-- 非遗资讯 — 文章管理 -->
       <KnowledgeManager v-if="activeTab === 'knowledge'" />
 
       <!-- 非遗项目 — 项目管理 -->

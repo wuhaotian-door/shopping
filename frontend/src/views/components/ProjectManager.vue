@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { listMyProjects, createProject, updateProject, deleteProject, toggleProjectStatus } from '@/api/project'
-import type { HeritageProjectVO, HeritageProjectDTO } from '@/types/api'
+import { getSlotRange } from '@/api/slot'
+import type { HeritageProjectVO, HeritageProjectDTO, SlotDateRange } from '@/types/api'
 
 const projects = ref<HeritageProjectVO[]>([])
 const loading = ref(false)
@@ -22,8 +23,9 @@ const form = ref<HeritageProjectDTO>({
 })
 
 const submitMsg = ref('')
+const slotRange = ref<SlotDateRange | null>(null)
 
-onMounted(() => { loadProjects() })
+onMounted(() => { loadProjects(); loadSlotRange() })
 
 async function loadProjects() {
   loading.value = true
@@ -31,6 +33,17 @@ async function loadProjects() {
     const res = await listMyProjects()
     projects.value = res.data
   } catch { /* ignore */ } finally { loading.value = false }
+}
+
+async function loadSlotRange() {
+  try {
+    const res = await getSlotRange()
+    if (res.data && res.data.minDate) {
+      slotRange.value = res.data
+    } else {
+      slotRange.value = null
+    }
+  } catch { slotRange.value = null }
 }
 
 function openCreate() {
@@ -56,17 +69,63 @@ function openEdit(project: HeritageProjectVO) {
   submitMsg.value = ''
 }
 
+/**
+ * 检查项目日期是否在时段范围内
+ * @returns true if valid (no warning or user confirmed), false if user cancelled
+ */
+function checkDateRange(): boolean {
+  if (!form.value.startDate || !form.value.endDate) return true
+
+  if (!slotRange.value || !slotRange.value.minDate) {
+    return confirm('尚未配置任何可预约时段。建议先设置可预约时段后再发布项目。\n\n是否仍要继续保存？')
+  }
+
+  const start = form.value.startDate
+  const end = form.value.endDate
+  const slotMin = slotRange.value.minDate!
+  const slotMax = slotRange.value.maxDate!
+
+  const warnings: string[] = []
+  if (start < slotMin) {
+    warnings.push(`项目开始日期（${start}）早于最早时段（${slotMin}）`)
+  }
+  if (end > slotMax) {
+    warnings.push(`项目结束日期（${end}）晚于最晚时段（${slotMax}）`)
+  }
+
+  if (warnings.length > 0) {
+    const msg = warnings.join('\n')
+    return confirm(`${msg}\n\n项目日期超出了已设置的时段范围，建议先配置相应日期的时段。\n是否仍要继续保存？`)
+  }
+
+  return true
+}
+
 async function handleSave() {
   if (!form.value.title) { submitMsg.value = '请填写项目标题'; return }
+
+  // 校验日期范围
+  if (!checkDateRange()) return
+
   try {
+    let res
     if (editingId.value) {
-      await updateProject(editingId.value, form.value)
+      res = await updateProject(editingId.value, form.value)
     } else {
-      await createProject(form.value)
+      res = await createProject(form.value)
     }
     showEditor.value = false
     await loadProjects()
-  } catch { submitMsg.value = '保存失败' }
+
+    // 检查后端返回的警告信息
+    const data = res.data
+    if (data && data !== '项目创建成功' && data !== '项目更新成功') {
+      alert(data)
+    }
+  } catch (err: any) {
+    const msg = err?.response?.data?.msg || err?.message || '保存失败'
+    submitMsg.value = msg
+  }
 }
 
 async function handleDelete(id: number) {
@@ -84,7 +143,13 @@ async function handleToggle(project: HeritageProjectVO) {
   <section class="tab-content">
     <div class="section-header">
       <h2>非遗项目管理</h2>
-      <button class="btn-primary" @click="openCreate">+ 发布项目</button>
+      <div class="header-right">
+        <span v-if="slotRange?.minDate" class="slot-range-info">
+          时段覆盖：{{ slotRange.minDate }} ~ {{ slotRange.maxDate }}
+        </span>
+        <span v-else class="slot-range-warn">尚未配置时段</span>
+        <button class="btn-primary" @click="openCreate">+ 发布项目</button>
+      </div>
     </div>
 
     <div v-if="showEditor" class="editor-card">
@@ -178,8 +243,11 @@ async function handleToggle(project: HeritageProjectVO) {
 
 <style scoped>
 .tab-content { }
-.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
 .section-header h2 { font-size: 22px; color: #c41e3a; padding-left: 14px; border-left: 4px solid #c41e3a; }
+.header-right { display: flex; align-items: center; gap: 16px; }
+.slot-range-info { font-size: 13px; color: #28a745; background: #d4edda; padding: 4px 12px; border-radius: 12px; }
+.slot-range-warn { font-size: 13px; color: #856404; background: #fff3cd; padding: 4px 12px; border-radius: 12px; }
 .table-wrap { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
 .order-table { width: 100%; border-collapse: collapse; }
 .order-table th, .order-table td { padding: 14px 16px; text-align: left; font-size: 14px; }
