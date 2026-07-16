@@ -43,6 +43,13 @@ async function loadProducts() {
   }
 }
 
+/** 图片加载失败时回退到占位符 */
+const failedImages = ref(new Set<number>())
+
+function onImgError(productId: number) {
+  failedImages.value.add(productId)
+}
+
 async function filterByCategory(cat: string) {
   activeCategory.value = cat
   if (cat === '全部' || cat === '') {
@@ -238,7 +245,14 @@ async function loadMyOrders() {
         <div v-if="cart.length === 0" class="cart-empty">购物车是空的</div>
         <div v-for="(item, index) in cart" :key="item.product.id" class="cart-item">
           <div class="cart-item-img">
-            <div class="img-placeholder-sm">{{ item.product.category }}</div>
+            <img
+              v-if="item.product.imageUrl && !failedImages.has(item.product.id)"
+              :src="item.product.imageUrl"
+              :alt="item.product.name"
+              class="cart-img-real"
+              @error="onImgError(item.product.id)"
+            />
+            <div v-if="!item.product.imageUrl || failedImages.has(item.product.id)" class="img-placeholder-sm">{{ item.product.category }}</div>
           </div>
           <div class="cart-item-info">
             <div class="cart-item-name">{{ item.product.name }}</div>
@@ -398,7 +412,14 @@ async function loadMyOrders() {
       <div v-else class="product-grid">
         <div v-for="product in productList" :key="product.id" class="product-card">
           <div class="product-img">
-            <div class="img-placeholder-product">{{ product.category }}</div>
+            <img
+              v-if="product.imageUrl && !failedImages.has(product.id)"
+              :src="product.imageUrl"
+              :alt="product.name"
+              class="product-img-real"
+              @error="onImgError(product.id)"
+            />
+            <div v-if="!product.imageUrl || failedImages.has(product.id)" class="img-placeholder-product">{{ product.category }}</div>
           </div>
           <div class="product-body">
             <div class="product-category-tag">{{ product.category }}</div>
@@ -632,6 +653,11 @@ async function loadMyOrders() {
   justify-content: center;
   color: #fff;
   font-size: 11px;
+}
+.cart-img-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .cart-item-info { flex: 1; min-width: 0; }
 .cart-item-name {
@@ -979,6 +1005,16 @@ async function loadMyOrders() {
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
+}
+.product-img-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
+}
+.product-card:hover .product-img-real {
+  transform: scale(1.05);
 }
 .img-placeholder-product {
   width: 80px;

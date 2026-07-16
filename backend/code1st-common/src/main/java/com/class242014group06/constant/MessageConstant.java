@@ -55,4 +55,9 @@ public class MessageConstant {
     public static final String ARTICLE_NOT_FOUND = "文章不存在";
     public static final String ARTICLE_NO_PERMISSION = "无权操作此文章";
 
+    // 找回密码相关
+    public static final String VERIFICATION_CODE_NOT_SENT = "请先获取验证码";
+    public static final String VERIFICATION_CODE_EXPIRED = "验证码已过期，请重新获取";
+    public static final String VERIFICATION_CODE_ERROR = "验证码错误";
+
 }

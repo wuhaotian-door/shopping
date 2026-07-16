@@ -10,6 +10,7 @@
             <if test="username != null">username = #{username},</if>
             <if test="password != null">password = #{password},</if>
             <if test="phone != null">phone = #{phone},</if>
+            <if test="email != null">email = #{email},</if>
             <if test="sex != null">sex = #{sex},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="updateUser != null">update_user = #{updateUser},</if>

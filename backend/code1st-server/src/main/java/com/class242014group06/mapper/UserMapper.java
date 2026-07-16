@@ -6,6 +6,7 @@ import com.class242014group06.enumeration.OperationType;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -19,8 +20,8 @@ public interface UserMapper {
     User getByUsername(String username);
 
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into user (name, username, password, phone, sex, create_time, update_time, create_user, update_user, status) " +
-            "values (#{name},#{username},#{password},#{phone},#{sex},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
+    @Insert("insert into user (name, username, password, phone, email, sex, create_time, update_time, create_user, update_user, status) " +
+            "values (#{name},#{username},#{password},#{phone},#{email},#{sex},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
     void insert(User user);
 
     @Select("select * from user where id = #{id}")
@@ -28,6 +29,9 @@ public interface UserMapper {
 
     @AutoFill(value = OperationType.UPDATE)
     void update(User user);
+
+    @Update("update user set password = #{password}, update_time = #{updateTime} where id = #{id}")
+    void updatePassword(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("password") String password, @org.apache.ibatis.annotations.Param("updateTime") java.time.LocalDateTime updateTime);
 
     @Select("select * from user order by create_time desc")
     List<User> listAll();
