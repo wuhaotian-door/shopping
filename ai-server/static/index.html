@@ -151,7 +151,35 @@
     font-size: 12px;
     color: var(--muted);
     margin-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
   }
+
+  /* ---- Mode Toggle ---- */
+  .toggle {
+    font-size: 12px;
+    padding: 3px 10px;
+    border-radius: 12px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    background: var(--card);
+    color: var(--muted);
+    transition: all 0.2s;
+    font-family: inherit;
+  }
+  .toggle.on  { background: var(--primary); color: #fff; border-color: var(--primary); }
+  .toggle.off { background: var(--card); color: var(--muted); }
+
+  /* ---- Streaming cursor ---- */
+  .bubble.streaming { border-right: none; }
+  .cursor {
+    display: inline;
+    animation: blink 0.8s infinite;
+    color: var(--primary);
+  }
+  @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
 </style>
 </head>
 <body>
@@ -181,7 +209,10 @@
       />
       <button id="sendBtn" onclick="send()">发送</button>
     </div>
-    <p class="hint">支持: 非遗项目介绍 · 技艺历史 · 传承人故事 · 传统文化知识</p>
+    <p class="hint">
+      <button id="modeToggle" class="toggle on">⚡ 流式</button>
+      <span>支持: 非遗项目介绍 · 技艺历史 · 传承人故事 · 传统文化知识</span>
+    </p>
   </footer>
 </div>
 
@@ -189,6 +220,15 @@
 const chat = document.getElementById('chat');
 const input = document.getElementById('question');
 const btn   = document.getElementById('sendBtn');
+const modeToggle = document.getElementById('modeToggle');
+
+let useStream = true;  // 默认流式（打字机）
+
+modeToggle.addEventListener('click', () => {
+  useStream = !useStream;
+  modeToggle.textContent = useStream ? '⚡ 流式' : '📦 一次性';
+  modeToggle.className = useStream ? 'toggle on' : 'toggle off';
+});
 
 input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
 
@@ -196,14 +236,26 @@ async function send() {
   const question = input.value.trim();
   if (!question) return;
 
-  // 显示用户消息
+  // 用户消息
   addBubble(question, 'user');
   input.value = '';
-
-  // 显示加载态
-  const loading = addBubble('正在思考…', 'ai loading');
   btn.disabled = true;
 
+  if (useStream) {
+    await sendStream(question);
+  } else {
+    await sendNormal(question);
+  }
+
+  btn.disabled = false;
+  input.focus();
+}
+
+// =============================================
+// Day 1: 普通请求 — 等全部完成一次性渲染
+// =============================================
+async function sendNormal(question) {
+  const loading = addBubble('▊ 思考中…', 'ai loading');
   try {
     const res = await fetch('/ai/chat', {
       method: 'POST',
@@ -216,9 +268,62 @@ async function send() {
   } catch (err) {
     loading.remove();
     addBubble('请求失败，请确认服务已启动。', 'ai');
-  } finally {
-    btn.disabled = false;
-    input.focus();
+  }
+}
+
+// =============================================
+// Day 3: 流式请求 — 逐 token 打字机效果
+// =============================================
+async function sendStream(question) {
+  // 创建一个空 bubble，边收 token 边往里填字
+  const bubble = addBubble('', 'ai streaming');
+  bubble.innerHTML = '<span class="cursor">▊</span>';
+
+  try {
+    const res = await fetch('/ai/chat/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+
+    // 读取 SSE 流
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';   // 最后一个可能不完整，保留
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);  // 去掉 "data: " 前缀
+
+        if (payload === '[DONE]') {
+          // 流结束，去掉光标
+          const cursor = bubble.querySelector('.cursor');
+          if (cursor) cursor.remove();
+          bubble.classList.remove('streaming');
+          return;
+        }
+
+        try {
+          const { token } = JSON.parse(payload);
+          // 在光标前插入新 token
+          const cursor = bubble.querySelector('.cursor');
+          cursor.insertAdjacentText('beforebegin', token);
+        } catch (e) { /* 忽略解析错误 */ }
+      }
+    }
+  } catch (err) {
+    const cursor = bubble.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    bubble.classList.remove('streaming');
+    bubble.textContent += ' [连接中断]';
   }
 }
 
