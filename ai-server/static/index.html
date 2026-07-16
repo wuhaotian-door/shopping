@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>码上非遗 — AI 问答</title>
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --card: #fff;
+    --primary: #8b4513;
+    --primary-light: #a0522d;
+    --accent: #d4a574;
+    --text: #3e2723;
+    --muted: #8d6e63;
+    --bubble-user: #8b4513;
+    --bubble-ai: #fff8f0;
+    --border: #e0d5c7;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+  }
+
+  .container {
+    width: 100%;
+    max-width: 800px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    box-shadow: 0 0 40px rgba(139,69,19,0.08);
+  }
+
+  /* ---- Header ---- */
+  header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: linear-gradient(135deg, #faf6f0, #fff);
+  }
+  header .icon {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    border-radius: 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px; color: #fff;
+  }
+  header h1 { font-size: 20px; font-weight: 600; }
+  header p  { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+  /* ---- Chat area ---- */
+  .chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .chat:empty::after {
+    content: "✨ 问我任何关于非遗的问题\n如：什么是景泰蓝？蜀绣有哪些针法？";
+    white-space: pre-wrap;
+    text-align: center;
+    color: var(--muted);
+    margin: auto;
+    font-size: 14px;
+    line-height: 1.8;
+  }
+
+  /* ---- Bubbles ---- */
+  .bubble {
+    max-width: 80%;
+    padding: 12px 18px;
+    border-radius: 18px;
+    line-height: 1.7;
+    font-size: 15px;
+    animation: fadeIn 0.3s ease;
+  }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } }
+
+  .bubble.user {
+    align-self: flex-end;
+    background: var(--bubble-user);
+    color: #fff;
+    border-bottom-right-radius: 4px;
+  }
+  .bubble.ai {
+    align-self: flex-start;
+    background: var(--bubble-ai);
+    border: 1px solid var(--border);
+    border-bottom-left-radius: 4px;
+  }
+  .bubble.ai.loading {
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  /* ---- Input area ---- */
+  footer {
+    padding: 16px 24px 24px;
+    border-top: 1px solid var(--border);
+    background: #fafaf8;
+  }
+  .input-row {
+    display: flex;
+    gap: 10px;
+  }
+  .input-row input {
+    flex: 1;
+    padding: 12px 18px;
+    border: 1.5px solid var(--border);
+    border-radius: 24px;
+    font-size: 15px;
+    outline: none;
+    transition: border-color 0.2s;
+    background: var(--card);
+    font-family: inherit;
+  }
+  .input-row input:focus { border-color: var(--accent); }
+
+  .input-row button {
+    padding: 12px 24px;
+    background: linear-gradient(135deg, var(--primary), var(--primary-light));
+    color: #fff;
+    border: none;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .input-row button:hover { opacity: 0.9; }
+  .input-row button:active { transform: scale(0.97); }
+  .input-row button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  footer .hint {
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+    margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Header -->
+  <header>
+    <div class="icon">🏛️</div>
+    <div>
+      <h1>码上非遗 · AI 问答</h1>
+      <p>基于 LangChain + DeepSeek 的非遗知识助手</p>
+    </div>
+  </header>
+
+  <!-- Chat messages -->
+  <div class="chat" id="chat"></div>
+
+  <!-- Input -->
+  <footer>
+    <div class="input-row">
+      <input
+        id="question"
+        type="text"
+        placeholder="输入你想了解的非遗问题…"
+        autocomplete="off"
+        autofocus
+      />
+      <button id="sendBtn" onclick="send()">发送</button>
+    </div>
+    <p class="hint">支持: 非遗项目介绍 · 技艺历史 · 传承人故事 · 传统文化知识</p>
+  </footer>
+</div>
+
+<script>
+const chat = document.getElementById('chat');
+const input = document.getElementById('question');
+const btn   = document.getElementById('sendBtn');
+
+input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
+
+async function send() {
+  const question = input.value.trim();
+  if (!question) return;
+
+  // 显示用户消息
+  addBubble(question, 'user');
+  input.value = '';
+
+  // 显示加载态
+  const loading = addBubble('正在思考…', 'ai loading');
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/ai/chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    loading.remove();
+    addBubble(data.answer, 'ai');
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败，请确认服务已启动。', 'ai');
+  } finally {
+    btn.disabled = false;
+    input.focus();
+  }
+}
+
+function addBubble(text, className) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + className;
+  div.textContent = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+  return div;
+}
+</script>
+
+</body>
+</html>
