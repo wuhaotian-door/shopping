@@ -174,6 +174,7 @@
   .toggle.enhanced { background: #d4a574; color: #fff; border-color: #d4a574; }
   .toggle.rag { background: #2e7d32; color: #fff; border-color: #2e7d32; }
   .toggle.agent { background: #1565c0; color: #fff; border-color: #1565c0; }
+  .toggle.graph { background: #6a1b9a; color: #fff; border-color: #6a1b9a; }
 
   /* ---- Streaming cursor ---- */
   .bubble.streaming { border-right: none; }
@@ -335,6 +336,7 @@ const MODES = {
   enhanced: { label: '🧠 增强',    cls: 'toggle enhanced' },
   rag:      { label: '📚 RAG',     cls: 'toggle rag' },
   agent:    { label: '🔧 Agent',   cls: 'toggle agent' },
+  graph:    { label: '🕸 Graph',   cls: 'toggle graph' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -356,7 +358,9 @@ async function send() {
   input.value = '';
   btn.disabled = true;
 
-  if (mode === 'agent') {
+  if (mode === 'graph') {
+    await sendGraphStream(question);
+  } else if (mode === 'agent') {
     await sendAgent(question);
   } else if (mode === 'rag') {
     await sendRagStream(question);
@@ -501,6 +505,85 @@ function addBubble(text, className) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+// =============================================
+// Level 3: LangGraph Agent — 状态图流式（展示每一步执行过程）
+// =============================================
+async function sendGraphStream(question) {
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ai streaming';
+  bubble.style.maxWidth = '90%';
+  bubble.innerHTML = '<span class="cursor">▊</span>';
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+
+  // 工具状态指示器
+  let toolIndicator = null;
+
+  try {
+    const res = await fetch('/ai/agent/graph/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, thread_id: 'frontend' }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+        if (payload === '[DONE]') {
+          const cursor = bubble.querySelector('.cursor');
+          if (cursor) cursor.remove();
+          if (toolIndicator) toolIndicator.remove();
+          bubble.classList.remove('streaming');
+          return;
+        }
+
+        try {
+          const event = JSON.parse(payload);
+
+          if (event.type === 'token') {
+            // 打字机文字
+            const cursor = bubble.querySelector('.cursor');
+            if (cursor) cursor.insertAdjacentText('beforebegin', event.content);
+          }
+          else if (event.type === 'tool_start') {
+            // 工具开始执行
+            if (toolIndicator) toolIndicator.remove();
+            toolIndicator = document.createElement('div');
+            toolIndicator.className = 'tool-call';
+            toolIndicator.innerHTML = `<span class="tc-name">⚙ 正在调用 ${escapeHtml(event.name)}…</span>`;
+            chat.appendChild(toolIndicator);
+            chat.scrollTop = chat.scrollHeight;
+          }
+          else if (event.type === 'tool_end') {
+            // 工具执行完成
+            if (toolIndicator) {
+              toolIndicator.innerHTML = `<span class="tc-name">✅ ${escapeHtml(event.name)} 完成</span>`;
+            }
+          }
+        } catch (e) { /* ignore */ }
+      }
+    }
+  } catch (err) {
+    const cursor = bubble.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    bubble.classList.remove('streaming');
+    if (toolIndicator) toolIndicator.remove();
+    bubble.textContent += ' [连接中断]';
+  }
 }
 
 // =============================================

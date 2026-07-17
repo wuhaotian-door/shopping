@@ -16,6 +16,8 @@ API 端点:
   POST /ai/rag/stream  — RAG 流式问答
   POST /ai/knowledge/reload — 重建知识库
   POST /ai/agent       — Agent 工具调用（LLM 自主决定查资料还是列举）
+  POST /ai/agent/graph — LangGraph ReAct Agent（状态图 + 对话记忆）
+  POST /ai/agent/graph/stream — LangGraph 流式（展示每步执行状态）
 """
 
 from typing import Any, Dict, List
@@ -28,6 +30,7 @@ from pydantic import BaseModel
 from chain import ask, ask_batch, ask_enhanced, ask_stream
 from rag import build_knowledge_base, rag_ask, rag_ask_stream
 from tools import agent_chat
+from agent_graph import graph_ask, graph_ask_stream
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -188,3 +191,46 @@ async def ai_agent(req: ChatRequest):
     }
     """
     return agent_chat(req.question)
+
+
+# ============================================================
+# Level 3: LangGraph Agent 端点
+# ============================================================
+
+class ThreadRequest(BaseModel):
+    question: str
+    thread_id: str = "default"
+
+
+@app.post("/ai/agent/graph")
+async def ai_agent_graph(req: ThreadRequest):
+    """LangGraph ReAct Agent — 状态图 + 对话记忆
+
+    thread_id 相同的请求共享对话历史:
+      POST {"question": "紫砂壶怎么制作的？", "thread_id": "abc"}
+      POST {"question": "刚才提到的步骤能详细说说吗？", "thread_id": "abc"}
+      → Agent 记得上一轮说过什么
+    """
+    return graph_ask(req.question, req.thread_id)
+
+
+@app.post("/ai/agent/graph/stream")
+async def ai_agent_graph_stream(req: ThreadRequest):
+    """LangGraph 流式 — 输出每一步执行状态
+
+    SSE 事件类型:
+      {"type":"token","content":"..."}      → 打字机文字
+      {"type":"tool_start","name":"...","input":{...}} → 工具开始
+      {"type":"tool_end","name":"...","output":"..."}  → 工具完成
+    """
+
+    async def generate():
+        async for event in graph_ask_stream(req.question, req.thread_id):
+            yield f"data: {__import__('json').dumps(event, ensure_ascii=False)}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
