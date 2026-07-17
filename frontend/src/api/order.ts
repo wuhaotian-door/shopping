@@ -40,3 +40,13 @@ export function listAllOrders(): Promise<Result<OrderVO[]>> {
 export function cancelOrder(id: number): Promise<Result<string>> {
   return request.put(`/order/${id}/cancel`)
 }
+
+/** 管理员修改预约订单状态 */
+export function adminUpdateOrderStatus(id: number, status: number): Promise<Result<string>> {
+  return request.put(`/order/${id}/admin/status`, null, { params: { status } })
+}
+
+/** 管理员修改预约订单日期和时段 */
+export function adminUpdateOrderFields(id: number, appointmentDate?: string, timeSlot?: string): Promise<Result<string>> {
+  return request.put(`/order/${id}/admin/fields`, null, { params: { appointmentDate, timeSlot } })
+}

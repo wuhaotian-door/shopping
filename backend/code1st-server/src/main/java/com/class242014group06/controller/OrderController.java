@@ -117,4 +117,28 @@ public class OrderController {
         orderService.cancelByAdmin(id);
         return Result.success("订单已取消");
     }
+
+    /**
+     * 管理员修改订单状态
+     */
+    @PutMapping("/{id}/admin/status")
+    @ApiOperation("管理员修改订单状态")
+    public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        log.info("管理员修改订单状态，orderId：{}，status：{}", id, status);
+        orderService.updateStatusByAdmin(id, status);
+        return Result.success("状态已更新");
+    }
+
+    /**
+     * 管理员修改预约订单日期和时段
+     */
+    @PutMapping("/{id}/admin/fields")
+    @ApiOperation("管理员修改预约订单日期和时段")
+    public Result<String> updateFieldsByAdmin(@PathVariable Long id,
+            @RequestParam(required = false) String appointmentDate,
+            @RequestParam(required = false) String timeSlot) {
+        log.info("管理员修改预约订单，id：{}，date：{}，slot：{}", id, appointmentDate, timeSlot);
+        orderService.updateFieldsByAdmin(id, appointmentDate, timeSlot);
+        return Result.success("订单已更新");
+    }
 }

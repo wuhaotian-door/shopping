@@ -102,6 +102,27 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     }
 
     @Override
+    public List<HeritageProjectVO> listAll() {
+        List<HeritageProject> projects = projectMapper.listAll();
+        return projects.stream()
+                .map(p -> {
+                    Inheritor inheritor = inheritorMapper.getById(p.getInheritorId());
+                    String inheritorName = inheritor != null ? inheritor.getName() : "";
+                    return toVO(p, inheritorName);
+                })
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public void deleteByAdmin(Long id) {
+        HeritageProject existing = projectMapper.getById(id);
+        if (existing == null) {
+            throw new BaseException(MessageConstant.PROJECT_NOT_FOUND);
+        }
+        projectMapper.deleteById(id);
+    }
+
+    @Override
     public List<HeritageProjectVO> listPublished() {
         List<HeritageProject> projects = projectMapper.listPublished();
         return projects.stream()

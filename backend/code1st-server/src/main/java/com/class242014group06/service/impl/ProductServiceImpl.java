@@ -99,6 +99,17 @@ public class ProductServiceImpl implements ProductService {
         return products.stream().map(this::toVO).collect(Collectors.toList());
     }
 
+    @Override
+    public void deleteByAdmin(Long id) {
+        productMapper.deleteById(id);
+    }
+
+    @Override
+    public void toggleByAdmin(Long id, Integer status) {
+        Product product = Product.builder().id(id).status(status).build();
+        productMapper.update(product);
+    }
+
     private ProductVO toVO(Product product) {
         return ProductVO.builder()
                 .id(product.getId())

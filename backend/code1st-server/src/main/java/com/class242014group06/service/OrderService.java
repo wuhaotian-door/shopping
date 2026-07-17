@@ -60,4 +60,6 @@ public interface OrderService {
      * @param orderId 订单ID
      */
     void cancelByAdmin(Long orderId);
+    void updateStatusByAdmin(Long orderId, Integer status);
+    void updateFieldsByAdmin(Long orderId, String appointmentDate, String timeSlot);
 }

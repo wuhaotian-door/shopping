@@ -130,6 +130,32 @@ public class OrderServiceImpl implements OrderService {
      * 管理员取消订单
      */
     @Override
+    public void updateStatusByAdmin(Long orderId, Integer status) {
+        OrderAppointment order = orderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        OrderAppointment update = OrderAppointment.builder().id(orderId).status(status).build();
+        orderMapper.update(update);
+    }
+
+    @Override
+    public void updateFieldsByAdmin(Long orderId, String appointmentDate, String timeSlot) {
+        OrderAppointment order = orderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
+        }
+        OrderAppointment.OrderAppointmentBuilder builder = OrderAppointment.builder().id(orderId);
+        if (appointmentDate != null && !appointmentDate.isEmpty()) {
+            builder.appointmentDate(java.time.LocalDate.parse(appointmentDate));
+        }
+        if (timeSlot != null && !timeSlot.isEmpty()) {
+            builder.timeSlot(timeSlot);
+        }
+        orderMapper.update(builder.build());
+    }
+
+    @Override
     public void cancelByAdmin(Long orderId) {
         OrderAppointment order = orderMapper.getById(orderId);
         if (order == null) {

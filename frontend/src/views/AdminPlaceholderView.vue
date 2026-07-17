@@ -6,9 +6,12 @@ import {
   adminCreate, getPendingList, approveInheritor, rejectInheritor,
   listAllUsers, searchUsers, updateUserStatus, getDashboardStats,
 } from '@/api/auth'
-import { listAllOrders, cancelOrder as cancelOrderApi } from '@/api/order'
+import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, adminUpdateOrderFields } from '@/api/order'
+import { listAllArticles, adminDeleteArticle } from '@/api/knowledge'
+import { listProducts as listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress } from '@/api/product'
+import { listAllProjects, adminDeleteProject } from '@/api/project'
 import ChatPanel from './components/ChatPanel.vue'
-import type { PendingUser, UserInfo, DashboardStats, OrderVO } from '@/types/api'
+import type { PendingUser, UserInfo, DashboardStats, OrderVO, KnowledgeArticleVO, ProductVO, ProductOrderVO, HeritageProjectVO } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -19,7 +22,7 @@ onMounted(() => {
 })
 
 // ==================== 侧边栏菜单 ====================
-type MenuKey = 'dashboard' | 'users' | 'pending' | 'news' | 'orders' | 'messages' | 'settings'
+type MenuKey = 'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'settings'
 const activeMenu = ref<MenuKey>('dashboard')
 
 const menuItems: { key: MenuKey; label: string; icon: string }[] = [
@@ -27,6 +30,8 @@ const menuItems: { key: MenuKey; label: string; icon: string }[] = [
   { key: 'users', label: '用户管理', icon: '👥' },
   { key: 'pending', label: '审核管理', icon: '✅' },
   { key: 'news', label: '资讯管理', icon: '📰' },
+  { key: 'products', label: '商品管理', icon: '🛍️' },
+  { key: 'projects', label: '项目管理', icon: '📋' },
   { key: 'orders', label: '订单管理', icon: '🛒' },
   { key: 'messages', label: '消息管理', icon: '💬' },
   { key: 'settings', label: '系统设置', icon: '⚙️' },
@@ -37,6 +42,9 @@ function switchMenu(key: MenuKey) {
   if (key === 'dashboard') loadDashboard()
   else if (key === 'users') loadUsers()
   else if (key === 'pending') loadPendingList()
+  else if (key === 'news') loadArticles()
+  else if (key === 'products') loadProducts()
+  else if (key === 'projects') loadProjects()
   else if (key === 'orders') loadOrders()
 }
 
@@ -138,12 +146,95 @@ async function handleReject(id: number) {
   finally { pendingActionLoading.value = {} }
 }
 
-// ==================== 4. 资讯管理（占位） ====================
-// 当前资讯为 mock 数据，后续接入后端 API
+// ==================== 4. 资讯管理 ====================
+const articles = ref<KnowledgeArticleVO[]>([])
+const articleLoading = ref(false)
 
-// ==================== 5. 订单管理 ====================
+async function loadArticles() {
+  articleLoading.value = true
+  try { const res = await listAllArticles(); articles.value = res.data } catch { articles.value = [] }
+  finally { articleLoading.value = false }
+}
+
+async function handleDeleteArticle(id: number) {
+  if (!confirm('确定删除该文章吗？')) return
+  try { await adminDeleteArticle(id); articles.value = articles.value.filter(a => a.id !== id) }
+  catch { alert('删除失败') }
+}
+
+const articleStatusLabel = (s: number) => s === 1 ? '已发布' : '草稿'
+const articleStatusClass = (s: number) => s === 1 ? 's-enabled' : 's-disabled'
+
+// ==================== 5. 商品管理 ====================
+const products = ref<ProductVO[]>([])
+const productLoading = ref(false)
+
+async function loadProducts() {
+  productLoading.value = true
+  try { const res = await listAllProducts(); products.value = res.data } catch { products.value = [] }
+  finally { productLoading.value = false }
+}
+
+async function handleDeleteProduct(id: number) {
+  if (!confirm('确定删除该商品吗？')) return
+  try { await adminDeleteProduct(id); products.value = products.value.filter(p => p.id !== id) }
+  catch (e: unknown) { alert(e instanceof Error ? e.message : '删除失败') }
+}
+
+async function handleToggleProduct(product: ProductVO) {
+  const newStatus = product.status === 1 ? 0 : 1
+  try {
+    await adminToggleProduct(product.id, newStatus)
+    product.status = newStatus
+  } catch { alert('操作失败') }
+}
+
+// ---------- 搜索 ----------
+const newsKeyword = ref('')
+const productKeyword = ref('')
+const projectKeyword = ref('')
+const orderKeyword = ref('')
+const prodOrderKeyword = ref('')
+
+const filteredArticles = computed(() =>
+  !newsKeyword.value ? articles.value : articles.value.filter(a =>
+    a.title.includes(newsKeyword.value) || (a.authorName || '').includes(newsKeyword.value) || (a.category || '').includes(newsKeyword.value)))
+const filteredProducts = computed(() =>
+  !productKeyword.value ? products.value : products.value.filter(p =>
+    p.name.includes(productKeyword.value) || (p.category || '').includes(productKeyword.value) || (p.inheritorName || '').includes(productKeyword.value)))
+const filteredProjects = computed(() =>
+  !projectKeyword.value ? projects.value : projects.value.filter(p =>
+    p.title.includes(projectKeyword.value) || (p.category || '').includes(projectKeyword.value) || (p.inheritorName || '').includes(projectKeyword.value)))
+const filteredOrders = computed(() =>
+  !orderKeyword.value ? orderList.value : orderList.value.filter(o =>
+    o.userName.includes(orderKeyword.value) || o.phone.includes(orderKeyword.value) || String(o.id).includes(orderKeyword.value)))
+const filteredProdOrders = computed(() =>
+  !prodOrderKeyword.value ? productOrderList.value : productOrderList.value.filter(o =>
+    o.userName.includes(prodOrderKeyword.value) || o.productName.includes(prodOrderKeyword.value) || String(o.id).includes(prodOrderKeyword.value)))
+
+// ==================== 6. 项目管理 ====================
+const projects = ref<HeritageProjectVO[]>([])
+const projectLoading = ref(false)
+
+async function loadProjects() {
+  projectLoading.value = true
+  try { const res = await listAllProjects(); projects.value = res.data } catch { projects.value = [] }
+  finally { projectLoading.value = false }
+}
+
+async function handleDeleteProject(id: number) {
+  if (!confirm('确定删除该项目吗？')) return
+  try { await adminDeleteProject(id); projects.value = projects.value.filter(p => p.id !== id) }
+  catch { alert('删除失败') }
+}
+
+const projectStatusLabel = (s: number) => s === 1 ? '上架' : '下架'
+
+// ==================== 7. 订单管理 ====================
 const orderList = ref<OrderVO[]>([])
+const productOrderList = ref<ProductOrderVO[]>([])
 const orderLoading = ref(false)
+const orderTab = ref<'appointment' | 'product'>('appointment')
 
 const orderStatusMap: Record<number, { text: string; cls: string }> = {
   0: { text: '待确认', cls: 'os-pending' },
@@ -152,12 +243,20 @@ const orderStatusMap: Record<number, { text: string; cls: string }> = {
   3: { text: '已取消', cls: 'os-cancelled' },
 }
 
+const prodOrderStatusMap: Record<number, { text: string; cls: string }> = {
+  0: { text: '待发货', cls: 'os-pending' },
+  1: { text: '已发货', cls: 'os-confirmed' },
+  2: { text: '已完成', cls: 'os-completed' },
+  3: { text: '已取消', cls: 'os-cancelled' },
+}
+
 async function loadOrders() {
   orderLoading.value = true
   try {
-    const res = await listAllOrders()
-    orderList.value = res.data
-  } catch { orderList.value = [] }
+    const [appRes, prodRes] = await Promise.all([listAllOrders(), listAllProductOrders()])
+    orderList.value = appRes.data
+    productOrderList.value = prodRes.data
+  } catch { orderList.value = []; productOrderList.value = [] }
   finally { orderLoading.value = false }
 }
 
@@ -169,7 +268,53 @@ async function handleCancelOrder(id: number) {
   } catch { alert('操作失败') }
 }
 
-// ==================== 6. 系统设置 ====================
+async function handleUpdateOrderStatus(order: OrderVO, newStatus: number) {
+  try {
+    await adminUpdateOrderStatus(order.id, newStatus)
+    order.status = newStatus as OrderVO['status']
+  } catch { alert('操作失败') }
+}
+
+async function handleUpdateProdOrderStatus(order: ProductOrderVO, newStatus: number) {
+  try {
+    await adminUpdateProductOrderStatus(order.id, newStatus)
+    order.status = newStatus
+  } catch { alert('操作失败') }
+}
+
+// ---------- 预约订单字段编辑 ----------
+const editingAppFields = ref<Record<number, string>>({}) // 'date' | 'timeSlot'
+
+function startEditAppField(orderId: number, field: string) {
+  editingAppFields.value = { [orderId]: field }
+}
+function cancelEditAppField() {
+  editingAppFields.value = {}
+}
+async function saveAppField(order: OrderVO, field: string, value: string) {
+  editingAppFields.value = {}
+  if (field === 'appointmentDate') order.appointmentDate = value
+  else if (field === 'timeSlot') order.timeSlot = value
+  try {
+    await adminUpdateOrderFields(order.id,
+      field === 'appointmentDate' ? value : undefined,
+      field === 'timeSlot' ? value : undefined)
+  } catch { alert('保存失败'); loadOrders() }
+}
+
+// ---------- 商品订单地址编辑 ----------
+const editingProdAddr = ref<number>(0) // order id being edited
+
+function startEditProdAddr(orderId: number) { editingProdAddr.value = orderId }
+function cancelEditProdAddr() { editingProdAddr.value = 0 }
+async function saveProdAddr(order: ProductOrderVO, value: string) {
+  editingProdAddr.value = 0
+  order.address = value
+  try { await adminUpdateProductOrderAddress(order.id, value) }
+  catch { alert('保存失败'); loadOrders() }
+}
+
+// ==================== 8. 系统设置 ====================
 const adminForm = reactive({ username: '', name: '', phone: '', sex: '', idNumber: '' })
 const adminMsg = ref('')
 const adminMsgType = ref<'success' | 'error'>('success')
@@ -343,20 +488,20 @@ function onQuickCardMouseLeave(e: MouseEvent) {
             <div class="quick-actions">
               <h3>快捷操作</h3>
               <div class="quick-grid">
-                <div class="quick-card" @click="switchMenu('pending')">
+                <div class="quick-card" @click="switchMenu('pending')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
                   <span class="quick-icon">✅</span>
                   <span>审核传承人申请</span>
                   <span v-if="stats.pendingCount > 0" class="quick-badge">{{ stats.pendingCount }}</span>
                 </div>
-                <div class="quick-card" @click="switchMenu('users')">
+                <div class="quick-card" @click="switchMenu('users')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
                   <span class="quick-icon">👥</span>
                   <span>管理用户</span>
                 </div>
-                <div class="quick-card" @click="switchMenu('orders')">
+                <div class="quick-card" @click="switchMenu('orders')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
                   <span class="quick-icon">🛒</span>
                   <span>查看订单</span>
                 </div>
-                <div class="quick-card" @click="switchMenu('settings')">
+                <div class="quick-card" @click="switchMenu('settings')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
                   <span class="quick-icon">⚙️</span>
                   <span>添加管理员</span>
                 </div>
@@ -471,66 +616,233 @@ function onQuickCardMouseLeave(e: MouseEvent) {
         <!-- ===== 4. 资讯管理 ===== -->
         <section v-if="activeMenu === 'news'" class="panel">
           <div class="panel-toolbar">
-            <button class="btn-primary">+ 新建资讯</button>
+            <div class="search-box">
+              <input v-model="newsKeyword" type="text" placeholder="搜索标题/作者/分类..." />
+              <button v-if="newsKeyword" class="btn-clear" @click="newsKeyword = ''">清空</button>
+            </div>
           </div>
-          <div class="empty-text" style="padding: 60px">
-            <p style="font-size: 48px; margin-bottom: 12px">📰</p>
-            <p>资讯管理功能即将上线</p>
-            <p style="font-size: 13px; color: #bbb; margin-top: 8px">当前首页资讯为静态展示数据，后续将接入后台 CMS 系统</p>
-          </div>
-        </section>
-
-        <!-- ===== 5. 订单管理 ===== -->
-        <section v-if="activeMenu === 'orders'" class="panel">
-          <div v-if="orderLoading" class="loading-text">加载中...</div>
+          <div v-if="articleLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
             <table>
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>用户</th>
-                  <th>电话</th>
-                  <th>预约日期</th>
-                  <th>时段</th>
-                  <th>人数</th>
-                  <th>传承人ID</th>
+                  <th>标题</th>
+                  <th>分类</th>
+                  <th>作者</th>
                   <th>状态</th>
-                  <th>提交时间</th>
+                  <th>浏览量</th>
+                  <th>发布时间</th>
                   <th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="o in orderList" :key="o.id">
-                  <td>{{ o.id }}</td>
-                  <td>{{ o.userName }}</td>
-                  <td>{{ o.phone }}</td>
-                  <td>{{ o.appointmentDate }}</td>
-                  <td>{{ o.timeSlot }}</td>
-                  <td>{{ o.peopleCount }}人</td>
-                  <td>{{ o.inheritorId || '-' }}</td>
-                  <td><span class="status-dot" :class="orderStatusMap[o.status]?.cls">{{ orderStatusMap[o.status]?.text }}</span></td>
-                  <td>{{ o.createTime?.slice(0, 10) }}</td>
+                <tr v-for="a in filteredArticles" :key="a.id">
+                  <td>{{ a.id }}</td>
+                  <td class="ellipsis-cell">{{ a.title }}</td>
+                  <td>{{ a.category || '-' }}</td>
+                  <td>{{ a.authorName || '-' }}</td>
+                  <td><span class="status-dot" :class="articleStatusClass(a.status)">{{ articleStatusLabel(a.status) }}</span></td>
+                  <td>{{ a.viewCount }}</td>
+                  <td>{{ a.createTime?.slice(0, 10) }}</td>
                   <td>
-                    <button
-                      v-if="o.status !== 3 && o.status !== 2"
-                      class="btn-sm btn-danger"
-                      @click="handleCancelOrder(o.id)"
-                    >取消</button>
-                    <span v-else class="no-op">—</span>
+                    <button class="btn-sm btn-danger" @click="handleDeleteArticle(a.id)">删除</button>
                   </td>
                 </tr>
               </tbody>
             </table>
-            <div v-if="orderList.length === 0" class="empty-text">暂无订单数据</div>
+            <div v-if="filteredArticles.length === 0 && !articleLoading" class="empty-text">{{ newsKeyword ? '无匹配结果' : '暂无资讯' }}</div>
           </div>
         </section>
 
-        <!-- ===== 6. 消息管理 ===== -->
+        <!-- ===== 5. 商品管理 ===== -->
+        <section v-if="activeMenu === 'products'" class="panel">
+          <div class="panel-toolbar">
+            <div class="search-box">
+              <input v-model="productKeyword" type="text" placeholder="搜索名称/分类/传承人..." />
+              <button v-if="productKeyword" class="btn-clear" @click="productKeyword = ''">清空</button>
+            </div>
+          </div>
+          <div v-if="productLoading" class="loading-text">加载中...</div>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>商品名称</th>
+                  <th>分类</th>
+                  <th>价格</th>
+                  <th>库存</th>
+                  <th>传承人</th>
+                  <th>状态</th>
+                  <th>上架时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in filteredProducts" :key="p.id">
+                  <td>{{ p.id }}</td>
+                  <td class="ellipsis-cell">{{ p.name }}</td>
+                  <td>{{ p.category || '-' }}</td>
+                  <td>¥{{ p.price }}</td>
+                  <td>{{ p.stock }}</td>
+                  <td>{{ p.inheritorName || '-' }}</td>
+                  <td><span class="status-dot" :class="p.status === 1 ? 's-enabled' : 's-disabled'">{{ p.status === 1 ? '上架' : '下架' }}</span></td>
+                  <td>{{ p.createTime?.slice(0, 10) }}</td>
+                  <td class="action-col">
+                    <button class="btn-sm" :class="p.status === 1 ? 'btn-danger' : 'btn-success'" @click="handleToggleProduct(p)">{{ p.status === 1 ? '下架' : '上架' }}</button>
+                    <button class="btn-sm btn-danger" @click="handleDeleteProduct(p.id)">删除</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredProducts.length === 0 && !productLoading" class="empty-text">{{ productKeyword ? '无匹配结果' : '暂无商品' }}</div>
+          </div>
+        </section>
+
+        <!-- ===== 6. 项目管理 ===== -->
+        <section v-if="activeMenu === 'projects'" class="panel">
+          <div class="panel-toolbar">
+            <div class="search-box">
+              <input v-model="projectKeyword" type="text" placeholder="搜索名称/分类/传承人..." />
+              <button v-if="projectKeyword" class="btn-clear" @click="projectKeyword = ''">清空</button>
+            </div>
+          </div>
+          <div v-if="projectLoading" class="loading-text">加载中...</div>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>项目名称</th>
+                  <th>分类</th>
+                  <th>传承人</th>
+                  <th>地点</th>
+                  <th>人数(当前/上限)</th>
+                  <th>状态</th>
+                  <th>创建时间</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="p in filteredProjects" :key="p.id">
+                  <td>{{ p.id }}</td>
+                  <td class="ellipsis-cell">{{ p.title }}</td>
+                  <td>{{ p.category || '-' }}</td>
+                  <td>{{ p.inheritorName || '-' }}</td>
+                  <td>{{ p.location || '-' }}</td>
+                  <td>{{ p.currentPeople }}/{{ p.maxPeople }}</td>
+                  <td><span class="status-dot" :class="p.status === 1 ? 's-enabled' : 's-disabled'">{{ projectStatusLabel(p.status) }}</span></td>
+                  <td>{{ p.createTime?.slice(0, 10) }}</td>
+                  <td>
+                    <button class="btn-sm btn-danger" @click="handleDeleteProject(p.id)">删除</button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredProjects.length === 0 && !projectLoading" class="empty-text">{{ projectKeyword ? '无匹配结果' : '暂无项目' }}</div>
+          </div>
+        </section>
+
+        <!-- ===== 7. 订单管理 ===== -->
+        <section v-if="activeMenu === 'orders'" class="panel">
+          <div class="panel-toolbar">
+            <div class="tab-switch">
+              <button :class="{ active: orderTab === 'appointment' }" @click="orderTab = 'appointment'">预约订单</button>
+              <button :class="{ active: orderTab === 'product' }" @click="orderTab = 'product'">商城订单</button>
+            </div>
+            <div class="search-box">
+              <input v-if="orderTab === 'appointment'" v-model="orderKeyword" type="text" placeholder="搜索ID/用户/电话..." />
+              <input v-else v-model="prodOrderKeyword" type="text" placeholder="搜索ID/用户/商品..." />
+              <button v-if="(orderTab === 'appointment' && orderKeyword) || (orderTab === 'product' && prodOrderKeyword)" class="btn-clear" @click="orderKeyword = ''; prodOrderKeyword = ''">清空</button>
+            </div>
+          </div>
+          <div v-if="orderLoading" class="loading-text">加载中...</div>
+          <!-- 预约订单表 -->
+          <div v-else-if="orderTab === 'appointment'" class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>用户</th><th>电话</th><th>预约日期</th><th>时段</th>
+                  <th>人数</th><th>传承人ID</th><th>状态</th><th>提交时间</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="o in filteredOrders" :key="o.id">
+                  <td>{{ o.id }}</td><td>{{ o.userName }}</td><td>{{ o.phone }}</td>
+                  <td class="editable-cell" @click="startEditAppField(o.id, 'appointmentDate')">
+                    <template v-if="editingAppFields[o.id] === 'appointmentDate'">
+                      <input type="date" :value="o.appointmentDate"
+                        @blur="saveAppField(o, 'appointmentDate', ($event.target as HTMLInputElement).value)"
+                        @keyup.enter="saveAppField(o, 'appointmentDate', ($event.target as HTMLInputElement).value)"
+                        @keyup.escape="cancelEditAppField()" autofocus />
+                    </template>
+                    <template v-else>{{ o.appointmentDate }}</template>
+                  </td>
+                  <td class="editable-cell" @click="startEditAppField(o.id, 'timeSlot')">
+                    <template v-if="editingAppFields[o.id] === 'timeSlot'">
+                      <input type="text" :value="o.timeSlot"
+                        @blur="saveAppField(o, 'timeSlot', ($event.target as HTMLInputElement).value)"
+                        @keyup.enter="saveAppField(o, 'timeSlot', ($event.target as HTMLInputElement).value)"
+                        @keyup.escape="cancelEditAppField()" autofocus />
+                    </template>
+                    <template v-else>{{ o.timeSlot }}</template>
+                  </td>
+                  <td>{{ o.peopleCount }}人</td><td>{{ o.inheritorId || '-' }}</td>
+                  <td>
+                    <select class="status-select" :class="orderStatusMap[o.status]?.cls" :value="o.status" @change="handleUpdateOrderStatus(o, Number(($event.target as HTMLSelectElement).value))">
+                      <option v-for="(v, k) in orderStatusMap" :key="k" :value="Number(k)">{{ v.text }}</option>
+                    </select>
+                  </td>
+                  <td>{{ o.createTime?.slice(0, 10) }}</td>
+                  <td><button v-if="o.status !== 3 && o.status !== 2" class="btn-sm btn-danger" @click="handleCancelOrder(o.id)">取消</button><span v-else class="no-op">—</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredOrders.length === 0 && !orderLoading" class="empty-text">{{ orderKeyword ? '无匹配结果' : '暂无预约订单' }}</div>
+          </div>
+          <!-- 商城订单表 -->
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>用户</th><th>电话</th><th>地址</th><th>商品</th>
+                  <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="o in filteredProdOrders" :key="o.id">
+                  <td>{{ o.id }}</td><td>{{ o.userName }}</td><td>{{ o.phone }}</td>
+                  <td class="editable-cell ellipsis-cell" @click="startEditProdAddr(o.id)">
+                    <template v-if="editingProdAddr === o.id">
+                      <input type="text" :value="o.address || ''" placeholder="输入地址"
+                        @blur="saveProdAddr(o, ($event.target as HTMLInputElement).value)"
+                        @keyup.enter="saveProdAddr(o, ($event.target as HTMLInputElement).value)"
+                        @keyup.escape="cancelEditProdAddr()" autofocus />
+                    </template>
+                    <template v-else>{{ o.address || '点击编辑' }}</template>
+                  </td>
+                  <td class="ellipsis-cell">{{ o.productName }}</td>
+                  <td>¥{{ o.price }}</td><td>{{ o.quantity }}</td><td>¥{{ o.totalAmount }}</td>
+                  <td>
+                    <select class="status-select" :class="prodOrderStatusMap[o.status]?.cls" :value="o.status" @change="handleUpdateProdOrderStatus(o, Number(($event.target as HTMLSelectElement).value))">
+                      <option v-for="(v, k) in prodOrderStatusMap" :key="k" :value="Number(k)">{{ v.text }}</option>
+                    </select>
+                  </td>
+                  <td>{{ o.createTime?.slice(0, 10) }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="filteredProdOrders.length === 0 && !orderLoading" class="empty-text">{{ prodOrderKeyword ? '无匹配结果' : '暂无商城订单' }}</div>
+          </div>
+        </section>
+
+        <!-- ===== 8. 消息管理 ===== -->
         <section v-if="activeMenu === 'messages'" class="panel" style="padding: 0; background: transparent; box-shadow: none;">
           <ChatPanel />
         </section>
 
-        <!-- ===== 7. 系统设置 ===== -->
+        <!-- ===== 9. 系统设置 ===== -->
         <section v-if="activeMenu === 'settings'" class="panel">
           <div class="settings-card">
             <h3>创建新管理员</h3>
@@ -838,6 +1150,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
   gap: 16px;
 }
 .quick-card {
+  --qx: 0px;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -964,6 +1277,35 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 .btn-danger:hover:not(:disabled) { background: #c0392b; }
 .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
 .no-op { color: #ccc; }
+.ellipsis-cell { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* 订单类型切换 */
+.tab-switch { display: flex; gap: 0; }
+.tab-switch button {
+  padding: 8px 20px; font-size: 13px; border: 1px solid #ddd; background: #fff;
+  cursor: pointer; transition: 0.2s; color: #666;
+}
+.tab-switch button:first-child { border-radius: 6px 0 0 6px; }
+.tab-switch button:last-child { border-radius: 0 6px 6px 0; }
+.tab-switch button.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+
+/* 订单状态选择器 */
+.status-select {
+  padding: 3px 8px; border-radius: 4px; font-size: 12px; font-weight: 600; border: 1px solid #ddd;
+  cursor: pointer; outline: none;
+}
+.status-select.os-pending { background: #fff3cd; color: #856404; border-color: #ffc107; }
+.status-select.os-confirmed { background: #d4edda; color: #155724; border-color: #28a745; }
+.status-select.os-completed { background: #e2e3e5; color: #383d41; border-color: #6c757d; }
+.status-select.os-cancelled { background: #f8d7da; color: #721c24; border-color: #dc3545; }
+
+/* 可编辑单元格 */
+.editable-cell { cursor: pointer; transition: background 0.15s; border-radius: 3px; }
+.editable-cell:hover { background: #fff3cd; }
+.editable-cell input {
+  width: 100%; padding: 4px 6px; border: 1px solid #c41e3a; border-radius: 4px;
+  font-size: 13px; outline: none; box-sizing: border-box;
+}
 
 /* ==================== 状态文本 ==================== */
 .loading-text { text-align: center; padding: 48px; color: #999; font-size: 14px; }

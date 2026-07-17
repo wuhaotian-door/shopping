@@ -35,3 +35,13 @@ export function listPublicProjects(): Promise<Result<HeritageProjectVO[]>> {
 export function validateProjectDates(startDate: string, endDate: string): Promise<Result<string>> {
   return request.get('/project/validate-dates', { params: { startDate, endDate } })
 }
+
+/** 管理员查询所有项目 */
+export function listAllProjects(): Promise<Result<HeritageProjectVO[]>> {
+  return request.get('/project/all')
+}
+
+/** 管理员删除任意项目 */
+export function adminDeleteProject(id: number): Promise<Result<string>> {
+  return request.delete(`/project/${id}/admin`)
+}

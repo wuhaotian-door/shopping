@@ -30,11 +30,15 @@ request.interceptors.response.use(
     return data
   },
   (error) => {
-    // HTTP 401 跳转登录
+    // HTTP 401：清除登录状态，仅在需要登录的页面才跳转
     if (error.response?.status === 401) {
       const authStore = useAuthStore()
       authStore.logout()
-      router.push('/login')
+      const route = router.currentRoute.value
+      const needsAuth = route.meta.requiresAdmin || route.meta.requiresInheritor || route.meta.requiresAuth === true
+      if (needsAuth) {
+        router.push('/login')
+      }
     }
     return Promise.reject(error)
   },

@@ -31,4 +31,14 @@ public interface KnowledgeArticleService {
      * 查询所有已发布文章（首页展示）
      */
     List<KnowledgeArticleVO> listPublished();
+
+    /**
+     * 管理员查询所有文章（含未发布）
+     */
+    List<KnowledgeArticleVO> listAll();
+
+    /**
+     * 管理员删除任意文章
+     */
+    void deleteByAdmin(Long id);
 }

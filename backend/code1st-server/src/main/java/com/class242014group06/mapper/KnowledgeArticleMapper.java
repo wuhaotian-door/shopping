@@ -50,4 +50,10 @@ public interface KnowledgeArticleMapper {
      */
     @Delete("delete from knowledge_article where id = #{id}")
     void deleteById(Long id);
+
+    /**
+     * 查询所有文章（管理员用）
+     */
+    @Select("select * from knowledge_article order by create_time desc")
+    List<KnowledgeArticle> listAll();
 }
