@@ -1,18 +1,7 @@
 """
-Level 1 Day 1 + Day 3 — LCEL 链: invoke / stream / batch
+Level 1 LCEL 全技能 — chain.py
 
-学习要点:
-  Day 1:
-  - ChatPromptTemplate.from_messages() 构建提示词
-  - ChatOpenAI 配置模型参数（model, temperature, max_tokens）
-  - StrOutputParser 字符串输出解析
-  - LCEL pipe `|` 运算符串联各组件
-  - .invoke() 同步调用
-
-  Day 3:
-  - .stream() 流式输出（打字机效果，逐 token 返回）
-  - .batch()  批量并发处理（多输入同时调用）
-  - stream vs batch vs invoke 各自适用场景
+Day 1: invoke | Day 3: stream + batch | Day 6: Parallel + Passthrough + Lambda | Day 7: tenacity retry
 """
 
 import os
@@ -23,8 +12,22 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
 from langchain_openai import ChatOpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
 
 load_dotenv()
+
+# ============================================================
+# Day 7: tenacity 重试配置
+# ============================================================
+# stop_after_attempt(3) → 最多试 3 次（1 次正常 + 2 次重试）
+# wait_exponential(min=1, max=30) → 重试间隔指数增长: 1s → 2s → 4s → ... 封顶 30s
+# reraise=True → 全部失败后抛出原始异常，而不是 RetryError
+
+RETRY = retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=30),
+    reraise=True,
+)
 
 # ============================================================
 # 模型 & 链（不变的部分）
@@ -52,8 +55,9 @@ chain = prompt | model | parser
 # Day 1: invoke — 等全部完成后一次性返回
 # ============================================================
 
+@RETRY
 def ask(question: str) -> str:
-    """invoke: 同步调用，等模型生成完再返回完整结果"""
+    """invoke: 同步调用，失败自动重试最多 3 次"""
     return chain.invoke({"question": question})
 
 
@@ -62,18 +66,20 @@ def ask(question: str) -> str:
 # ============================================================
 
 def ask_stream(question: str) -> Iterator[str]:
-    """stream: 流式输出，每生成一个 token 就 yield 出去
+    """stream: 流式输出，失败自动重试整个流
 
-    适用场景:
-      - 聊天机器人（打字机效果，用户不用等）
-      - 长文生成（边生成边阅读）
-      - 需要实时展示进度的场景
-
-    与 invoke 对比:
-      invoke: 快但用户干等 → 适合后台/批量
-      stream: 首 token 快 → 适合前端交互
+    注意: 流式重试只能重试"建立连接"阶段的失败。
+    一旦开始接收 token 后中断，只能整体重来。
     """
-    for chunk in chain.stream({"question": question}):
+
+    @RETRY
+    def _start_stream():
+        # 返回一个 eagr 的 stream iterator
+        # 如果 API 调用本身失败，retry 会捕获并重试
+        return chain.stream({"question": question})
+
+    stream = _start_stream()
+    for chunk in stream:
         yield chunk
 
 
@@ -81,18 +87,9 @@ def ask_stream(question: str) -> Iterator[str]:
 # Day 3 关键点 2: batch — 多个问题并发处理
 # ============================================================
 
+@RETRY
 def ask_batch(questions: List[str]) -> List[str]:
-    """batch: 批量并发调用，多个输入一起处理
-
-    适用场景:
-      - 批量翻译/摘要/分类
-      - 对多篇文章做同样操作
-      - 离线批处理任务
-
-    与循环 invoke 对比:
-      for q in questions: ask(q)       # 串行，慢
-      ask_batch(questions)             # 并发，快
-    """
+    """batch: 批量并发调用，失败自动重试"""
     inputs = [{"question": q} for q in questions]
     return chain.batch(inputs)
 
@@ -188,6 +185,7 @@ enhanced_chain_structured = enhanced_chain | RunnableLambda(lambda data: {
 })
 
 
+@RETRY
 def ask_enhanced(question: str) -> Dict[str, Any]:
-    """增强问答: 一次请求，并发获取答案 + 关键词 + 推荐"""
+    """增强问答: 并发获取答案+关键词+推荐，失败自动重试"""
     return enhanced_chain_structured.invoke({"question": question})
