@@ -6,6 +6,7 @@ import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
 import com.class242014group06.dto.EmployeeRegisterDTO;
+import com.class242014group06.dto.ChangePasswordDTO;
 import com.class242014group06.dto.ForgotPasswordDTO;
 import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.dto.ResetPasswordDTO;
@@ -17,6 +18,7 @@ import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.properties.JwtProperties;
 import com.class242014group06.result.Result;
+import com.class242014group06.service.AdminService;
 import com.class242014group06.service.AuthService;
 import com.class242014group06.service.InheritorService;
 import com.class242014group06.utils.JwtUtil;
@@ -44,6 +46,8 @@ public class AuthController {
     private AuthService authService;
     @Autowired
     private InheritorService inheritorService;
+    @Autowired
+    private AdminService adminService;
     @Autowired
     private JwtProperties jwtProperties;
     @Autowired
@@ -163,6 +167,22 @@ public class AuthController {
         log.info("驳回传承人申请：{}", id);
         inheritorService.reject(id);
         return Result.success("已驳回");
+    }
+
+    /**
+     * 修改密码（登录后调用）
+     */
+    @PutMapping("/change-password")
+    @ApiOperation("修改密码")
+    public Result<String> changePassword(@RequestBody ChangePasswordDTO dto) {
+        Long userId = BaseContext.getCurrentId();
+        String role = BaseContext.getCurrentRole();
+        log.info("修改密码：userId={}, role={}", userId, role);
+        if (!RoleConstant.ADMIN.equals(role)) {
+            return Result.error("仅管理员支持此操作");
+        }
+        adminService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());
+        return Result.success("密码修改成功");
     }
 
     /**

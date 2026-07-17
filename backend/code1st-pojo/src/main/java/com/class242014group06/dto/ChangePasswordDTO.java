@@ -6,18 +6,16 @@ import lombok.Data;
 
 import java.io.Serializable;
 
-/**
- * 修改密码请求（已登录用户）
- */
 @Data
 @ApiModel(description = "修改密码请求")
 public class ChangePasswordDTO implements Serializable {
 
-    private static final long serialVersionUID = 1L;
-
-    @ApiModelProperty(value = "邮箱验证码", required = true)
+    @ApiModelProperty("验证码（忘记密码场景使用）")
     private String code;
 
-    @ApiModelProperty(value = "新密码（至少6位）", required = true)
+    @ApiModelProperty("旧密码（已登录改密码场景使用）")
+    private String oldPassword;
+
+    @ApiModelProperty("新密码")
     private String newPassword;
 }
