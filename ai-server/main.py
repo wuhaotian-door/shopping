@@ -12,6 +12,9 @@ API 端点:
   POST /ai/chat/stream— 非遗知识问答（SSE 流式，打字机效果）
   POST /ai/batch      — 批量并发问答
   POST /ai/chat/v2    — 增强问答（答案 + 关键词 + 推荐，RunnableParallel）
+  POST /ai/rag         — RAG 检索增强问答（答案 + 来源引用）
+  POST /ai/rag/stream  — RAG 流式问答
+  POST /ai/knowledge/reload — 重建知识库
 """
 
 from typing import Any, Dict, List
@@ -22,6 +25,7 @@ from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
 from chain import ask, ask_batch, ask_enhanced, ask_stream
+from rag import build_knowledge_base, rag_ask, rag_ask_stream
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -117,17 +121,49 @@ async def ai_batch(req: BatchRequest):
 
 @app.post("/ai/chat/v2")
 async def ai_chat_v2(req: ChatRequest) -> Dict[str, Any]:
-    """Day 6: enhanced chain — RunnableParallel 并发获取答案+关键词+推荐
-
-    响应示例:
-    {
-      "question": "什么是景泰蓝？",
-      "answer":   "景泰蓝，学名铜胎掐丝珐琅...",
-      "keywords": ["景泰蓝", "珐琅", "掐丝", "北京"],
-      "suggests": [
-        {"name": "景泰蓝制作技艺", "desc": "北京市特产的..."},
-        ...
-      ]
-    }
-    """
+    """Day 6: enhanced chain — RunnableParallel 并发获取答案+关键词+推荐"""
     return ask_enhanced(req.question)
+
+
+# ============================================================
+# Level 2: RAG 端点
+# ============================================================
+
+@app.post("/ai/rag")
+async def ai_rag(req: ChatRequest):
+    """RAG 检索增强问答 — 先查知识库，再基于文档回答
+
+    响应:
+      {
+        "question": "紫砂壶是什么？",
+        "answer":   "紫砂壶是宜兴特产的手工陶土茶壶...",
+        "sources":  [
+          {"content": "紫砂壶起源于明代...", "source": "紫砂壶.md"},
+          ...
+        ]
+      }
+    """
+    return rag_ask(req.question)
+
+
+@app.post("/ai/rag/stream")
+async def ai_rag_stream(req: ChatRequest):
+    """RAG 流式问答 — SSE 逐 token 返回"""
+
+    def generate():
+        for token in rag_ask_stream(req.question):
+            yield f"data: {{\"token\": {__import__('json').dumps(token)}}}\n\n"
+        yield "data: [DONE]\n\n"
+
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@app.post("/ai/knowledge/reload")
+async def ai_knowledge_reload():
+    """重建知识库 — 新增/修改文档后调用此接口"""
+    build_knowledge_base()
+    return {"message": "知识库重建完成"}

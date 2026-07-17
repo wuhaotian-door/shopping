@@ -172,6 +172,7 @@
   .toggle.on  { background: var(--primary); color: #fff; border-color: var(--primary); }
   .toggle.off { background: var(--card); color: var(--muted); }
   .toggle.enhanced { background: #d4a574; color: #fff; border-color: #d4a574; }
+  .toggle.rag { background: #2e7d32; color: #fff; border-color: #2e7d32; }
 
   /* ---- Streaming cursor ---- */
   .bubble.streaming { border-right: none; }
@@ -223,6 +224,37 @@
     margin-top: 8px;
     margin-bottom: 2px;
   }
+
+  /* ---- RAG sources ---- */
+  .sources-row {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .source-card {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #f0f7ee;
+    border: 1px solid #c8e6c9;
+    color: #555;
+    line-height: 1.5;
+    max-height: 60px;
+    overflow: hidden;
+    position: relative;
+  }
+  .source-card::after {
+    content: '';
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 20px;
+    background: linear-gradient(transparent, #f0f7ee);
+  }
+  .source-card .src-label {
+    font-size: 10px;
+    color: #2e7d32;
+    font-weight: 600;
+  }
 </style>
 </head>
 <body>
@@ -272,6 +304,7 @@ const MODES = {
   stream:   { label: '⚡ 流式',    cls: 'toggle on' },
   normal:   { label: '📦 一次性',  cls: 'toggle off' },
   enhanced: { label: '🧠 增强',    cls: 'toggle enhanced' },
+  rag:      { label: '📚 RAG',     cls: 'toggle rag' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -293,7 +326,9 @@ async function send() {
   input.value = '';
   btn.disabled = true;
 
-  if (mode === 'enhanced') {
+  if (mode === 'rag') {
+    await sendRagStream(question);
+  } else if (mode === 'enhanced') {
     await sendEnhanced(question);
   } else if (mode === 'stream') {
     await sendStream(question);
@@ -434,6 +469,87 @@ function addBubble(text, className) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+// =============================================
+// Level 2: RAG — 先查资料再回答（流式 + 来源引用）
+// =============================================
+async function sendRagStream(question) {
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ai streaming';
+  bubble.style.maxWidth = '90%';
+  bubble.innerHTML = '<div class="rag-answer"><span class="cursor">▊</span></div>';
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+
+  const answerDiv = bubble.querySelector('.rag-answer');
+
+  try {
+    const res = await fetch('/ai/rag/stream', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6);
+
+        if (payload === '[DONE]') {
+          const cursor = bubble.querySelector('.cursor');
+          if (cursor) cursor.remove();
+          bubble.classList.remove('streaming');
+          // 答案完成后，查一次来源展示
+          fetchSources(question, bubble);
+          return;
+        }
+
+        try {
+          const { token } = JSON.parse(payload);
+          const cursor = bubble.querySelector('.cursor');
+          if (cursor) cursor.insertAdjacentText('beforebegin', token);
+        } catch (e) { /* ignore */ }
+      }
+    }
+  } catch (err) {
+    const cursor = bubble.querySelector('.cursor');
+    if (cursor) cursor.remove();
+    bubble.classList.remove('streaming');
+    answerDiv.textContent += ' [连接中断]';
+  }
+}
+
+async function fetchSources(question, bubble) {
+  try {
+    const res = await fetch('/ai/rag', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+
+    if (data.sources && data.sources.length > 0) {
+      let html = '<div class="section-label">📖 参考来源</div><div class="sources-row">';
+      for (const src of data.sources) {
+        const fname = (src.source || '未知').replace(/\\/g, '/').split('/').pop();
+        html += `<div class="source-card"><span class="src-label">${escapeHtml(fname)}</span> ${escapeHtml(src.content)}</div>`;
+      }
+      html += '</div>';
+      bubble.innerHTML += html;
+    }
+  } catch (e) { /* 静默失败 */ }
 }
 
 function escapeHtml(str) {
