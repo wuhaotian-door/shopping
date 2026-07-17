@@ -41,4 +41,9 @@ public interface KnowledgeArticleService {
      * 管理员删除任意文章
      */
     void deleteByAdmin(Long id);
+
+    /**
+     * 根据ID查询文章（公开）
+     */
+    KnowledgeArticleVO getById(Long id);
 }

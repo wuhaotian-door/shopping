@@ -35,3 +35,8 @@ export function listAllArticles(): Promise<Result<KnowledgeArticleVO[]>> {
 export function adminDeleteArticle(id: number): Promise<Result<string>> {
   return request.delete(`/knowledge/${id}/admin`)
 }
+
+/** 查询单篇文章详情（公开） */
+export function getArticleById(id: number): Promise<Result<KnowledgeArticleVO>> {
+  return request.get(`/knowledge/public/${id}`)
+}

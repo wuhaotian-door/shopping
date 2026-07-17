@@ -7,6 +7,7 @@ import com.class242014group06.entity.Product;
 import com.class242014group06.exception.OrderBusinessException;
 import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.ProductMapper;
+import com.class242014group06.service.ProductReviewService;
 import com.class242014group06.service.ProductService;
 import com.class242014group06.vo.ProductVO;
 import org.springframework.beans.BeanUtils;
@@ -24,6 +25,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private InheritorMapper inheritorMapper;
+
+    @Autowired
+    private ProductReviewService reviewService;
 
     @Override
     public void add(Long inheritorId, ProductSubmitDTO dto) {
@@ -75,13 +79,13 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public List<ProductVO> listAll() {
         List<Product> products = productMapper.listAll();
-        return products.stream().map(this::toVO).collect(Collectors.toList());
+        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
     }
 
     @Override
     public List<ProductVO> listByCategory(String category) {
         List<Product> products = productMapper.listByCategory(category);
-        return products.stream().map(this::toVO).collect(Collectors.toList());
+        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
     }
 
     @Override
@@ -90,13 +94,13 @@ public class ProductServiceImpl implements ProductService {
         if (product == null) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
         }
-        return toVO(product);
+        return enrichWithRating(toVO(product));
     }
 
     @Override
     public List<ProductVO> listByInheritor(Long inheritorId) {
         List<Product> products = productMapper.listByInheritor(inheritorId);
-        return products.stream().map(this::toVO).collect(Collectors.toList());
+        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
     }
 
     @Override
@@ -124,5 +128,20 @@ public class ProductServiceImpl implements ProductService {
                 .status(product.getStatus())
                 .createTime(product.getCreateTime())
                 .build();
+    }
+
+    /** 填充评分信息 */
+    private ProductVO enrichWithRating(ProductVO vo) {
+        try {
+            Double avg = reviewService.getAvgRating(vo.getId());
+            Long count = reviewService.countByProductId(vo.getId());
+            vo.setAvgRating(avg != null ? Math.round(avg * 10.0) / 10.0 : 0.0);
+            vo.setReviewCount(count != null ? count : 0L);
+        } catch (Exception e) {
+            // 评分查询失败不影响主流程
+            vo.setAvgRating(0.0);
+            vo.setReviewCount(0L);
+        }
+        return vo;
     }
 }

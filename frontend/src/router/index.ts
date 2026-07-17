@@ -58,6 +58,36 @@ const router = createRouter({
       component: () => import('@/views/ChatView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/profile',
+      name: 'UserProfile',
+      component: () => import('@/views/UserProfileView.vue'),
+      meta: { requiresAuth: true },
+    },
+    {
+      path: '/inheritors',
+      name: 'InheritorList',
+      component: () => import('@/views/InheritorListView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/product/:id',
+      name: 'ProductDetail',
+      component: () => import('@/views/ProductDetailView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/news',
+      name: 'NewsList',
+      component: () => import('@/views/NewsListView.vue'),
+      meta: { requiresAuth: false },
+    },
+    {
+      path: '/news/:id',
+      name: 'ArticleDetail',
+      component: () => import('@/views/ArticleDetailView.vue'),
+      meta: { requiresAuth: false },
+    },
   ],
 })
 

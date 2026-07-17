@@ -29,7 +29,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理SQL异常
+     * 处理SQL唯一约束冲突
      * @param ex
      * @return
      */
@@ -47,5 +47,12 @@ public class GlobalExceptionHandler {
         }
     }
 
-
+    /**
+     * 兜底异常处理 — 防止未预期的异常直接返回 500
+     */
+    @ExceptionHandler(Exception.class)
+    public Result exceptionHandler(Exception ex) {
+        log.error("未预期的异常：", ex);
+        return Result.error("请求失败: " + ex.getMessage());
+    }
 }

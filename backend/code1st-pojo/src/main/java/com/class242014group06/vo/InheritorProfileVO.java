@@ -21,7 +21,7 @@ public class InheritorProfileVO implements Serializable {
     /** 关联employee表ID */
     private Long employeeId;
 
-    /** 姓名（来自employee表） */
+    /** 姓名（来自inheritor表） */
     private String name;
 
     /** 手机号 */
@@ -29,6 +29,9 @@ public class InheritorProfileVO implements Serializable {
 
     /** 性别 */
     private String sex;
+
+    /** 所属地区（来自inheritor表，如"江苏省苏州市"） */
+    private String region;
 
     /** 荣誉称号 */
     private String honorTitle;

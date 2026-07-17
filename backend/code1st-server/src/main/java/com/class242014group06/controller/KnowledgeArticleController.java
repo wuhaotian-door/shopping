@@ -104,4 +104,15 @@ public class KnowledgeArticleController {
         List<KnowledgeArticleVO> list = articleService.listPublished();
         return Result.success(list);
     }
+
+    /**
+     * 公开接口：根据ID查询单篇文章详情
+     */
+    @GetMapping("/public/{id}")
+    @ApiOperation("查询文章详情（公开）")
+    public Result<KnowledgeArticleVO> getArticleDetail(@PathVariable Long id) {
+        log.info("公开查询文章详情，id：{}", id);
+        KnowledgeArticleVO article = articleService.getById(id);
+        return Result.success(article);
+    }
 }

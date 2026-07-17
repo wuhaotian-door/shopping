@@ -204,8 +204,8 @@ async function loadMyOrders() {
 
     <nav class="nav-links">
       <a class="nav-item" @click="router.push('/')">首页</a>
-      <a class="nav-item" @click="router.push('/')">非遗资讯</a>
-      <a class="nav-item" @click="router.push('/')">传承人</a>
+      <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
+      <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
       <a class="nav-item active" @click="router.push('/store')">文创周边</a>
       <a class="nav-item" @click="router.push('/')">智能问答</a>
       <template v-if="isInheritor">
@@ -411,7 +411,7 @@ async function loadMyOrders() {
         暂无文创商品，敬请期待
       </div>
       <div v-else class="product-grid">
-        <div v-for="product in productList" :key="product.id" class="product-card">
+        <div v-for="product in productList" :key="product.id" class="product-card" @click="router.push(`/product/${product.id}`)">
           <div class="product-img">
             <img
               v-if="product.imageUrl && !failedImages.has(product.id)"
@@ -435,7 +435,7 @@ async function loadMyOrders() {
             <button
               class="btn-add-cart"
               :disabled="product.stock === 0"
-              @click="addToCart(product)"
+              @click.stop="addToCart(product)"
             >
               {{ product.stock === 0 ? '已售罄' : '加入购物车' }}
             </button>
@@ -1006,6 +1006,7 @@ async function loadMyOrders() {
   transition: 0.3s;
   display: flex;
   flex-direction: column;
+  cursor: pointer;
 }
 .product-card:hover {
   transform: translateY(-4px);
