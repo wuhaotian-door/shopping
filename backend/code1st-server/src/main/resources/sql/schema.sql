@@ -384,3 +384,87 @@ CREATE TABLE appointment_slot (
     INDEX idx_inheritor_date_time (inheritor_id, slot_date, start_time, end_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='可预约时段表';
 
+-- =====================================================
+-- 会话表 — 存储已登录角色间的一对一或群组会话
+-- =====================================================
+DROP TABLE IF EXISTS chat_message;
+DROP TABLE IF EXISTS chat_participant;
+DROP TABLE IF EXISTS chat_conversation;
+
+CREATE TABLE chat_conversation (
+    id                BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '会话ID',
+    conversation_type VARCHAR(20)  NOT NULL DEFAULT 'PRIVATE' COMMENT '会话类型: PRIVATE-一对一, GROUP-群组',
+    title             VARCHAR(200) COMMENT '会话标题（群组时使用）',
+    last_message      VARCHAR(500) COMMENT '最后一条消息预览',
+    last_message_time DATETIME     COMMENT '最后消息时间',
+    created_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at        DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话表';
+
+CREATE TABLE chat_participant (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    conversation_id BIGINT       NOT NULL COMMENT '会话ID',
+    user_id         BIGINT       NOT NULL COMMENT '参与者ID',
+    user_role       VARCHAR(20)  NOT NULL COMMENT '参与者角色: USER/INHERITOR/ADMIN',
+    user_name       VARCHAR(50)  COMMENT '参与者姓名（冗余，方便展示）',
+    joined_at       DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '加入时间',
+    UNIQUE KEY uk_conv_user (conversation_id, user_id, user_role),
+    INDEX idx_user (user_id, user_role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='会话参与者表';
+
+CREATE TABLE chat_message (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    conversation_id BIGINT       NOT NULL COMMENT '会话ID',
+    sender_id       BIGINT       NOT NULL COMMENT '发送者ID',
+    sender_role     VARCHAR(20)  NOT NULL COMMENT '发送者角色: USER/INHERITOR/ADMIN',
+    sender_name     VARCHAR(50)  COMMENT '发送者姓名（冗余，方便展示）',
+    content         TEXT         NOT NULL COMMENT '消息内容',
+    message_type    VARCHAR(20)  NOT NULL DEFAULT 'TEXT' COMMENT '消息类型: TEXT/IMAGE',
+    is_read         TINYINT      NOT NULL DEFAULT 0 COMMENT '是否已读: 0-未读 1-已读',
+    created_at      DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '发送时间',
+    INDEX idx_conversation (conversation_id, created_at),
+    INDEX idx_unread (conversation_id, is_read)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='聊天消息表';
+
+-- =====================================================
+-- 好友关系表 — 用户之间的好友申请与关系管理
+-- =====================================================
+DROP TABLE IF EXISTS friend_relation;
+
+CREATE TABLE friend_relation (
+    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    user_id      BIGINT       NOT NULL COMMENT '发起方用户ID',
+    friend_id    BIGINT       NOT NULL COMMENT '接收方用户ID',
+    status       TINYINT      NOT NULL DEFAULT 0 COMMENT '状态: 0-待接受, 1-已接受, 2-已拒绝',
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    UNIQUE KEY uk_friend (user_id, friend_id),
+    INDEX idx_user (user_id),
+    INDEX idx_friend (friend_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='好友关系表';
+
+-- =====================================================
+-- RAG AI 对话会话表 — 存储用户与AI助手的对话记录
+-- =====================================================
+DROP TABLE IF EXISTS rag_chat_message;
+DROP TABLE IF EXISTS rag_chat_session;
+
+CREATE TABLE rag_chat_session (
+    id             BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '会话ID',
+    user_id        BIGINT       NOT NULL COMMENT '用户ID',
+    user_role      VARCHAR(20)  NOT NULL COMMENT '用户角色: USER/INHERITOR/ADMIN',
+    session_title  VARCHAR(200) COMMENT '会话标题',
+    created_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at     DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    INDEX idx_user (user_id, user_role)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话会话表';
+
+CREATE TABLE rag_chat_message (
+    id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    session_id   BIGINT       NOT NULL COMMENT '会话ID',
+    role         VARCHAR(20)  NOT NULL COMMENT '角色: USER/AI',
+    content      TEXT         NOT NULL COMMENT '消息内容',
+    created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_session (session_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
+

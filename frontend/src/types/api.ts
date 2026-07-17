@@ -290,3 +290,48 @@ export interface SlotDateRange {
   minDate?: string
   maxDate?: string
 }
+
+// ==================== 聊天系统 ====================
+
+export interface ConversationVO {
+  conversationId: number
+  otherUserId: number
+  otherUserRole: string
+  otherUserName: string
+  otherName: string
+  lastMessage: string
+  lastMessageTime: string
+  unreadCount: number
+}
+
+export interface ChatMessageVO {
+  id: number
+  conversationId: number
+  senderId: number
+  senderRole: string
+  senderName: string
+  content: string
+  messageType: string
+  isRead: number
+  createdAt: string
+  mine: boolean
+}
+
+export interface ChatSendDTO {
+  conversationId?: number
+  receiverId?: number
+  receiverRole?: string
+  content: string
+}
+
+// ==================== 好友系统 ====================
+
+export interface FriendVO {
+  relationId: number
+  userId: number
+  userName: string
+  name: string
+  role: string
+  status: number
+  createdAt: string
+}

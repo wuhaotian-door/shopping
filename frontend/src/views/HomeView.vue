@@ -105,6 +105,7 @@ function handleLogout() {
           {{ isInheritor ? '非遗传承人' : '用户' }}
         </span>
         <span class="user-name">{{ userName }}</span>
+        <button class="header-chat-btn" @click="router.push('/chat')">💬 消息</button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -320,6 +321,19 @@ function handleLogout() {
 }
 .logout-btn:hover {
   background: rgba(255,255,255,0.3);
+}
+.header-chat-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.header-chat-btn:hover {
+  background: rgba(255,255,255,0.35);
 }
 .login-top-btn {
   padding: 8px 22px;
