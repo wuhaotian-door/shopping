@@ -25,3 +25,13 @@ export function listMyArticles(): Promise<Result<KnowledgeArticleVO[]>> {
 export function listPublicArticles(): Promise<Result<KnowledgeArticleVO[]>> {
   return request.get('/knowledge/public')
 }
+
+/** 管理员查询所有文章 */
+export function listAllArticles(): Promise<Result<KnowledgeArticleVO[]>> {
+  return request.get('/knowledge/all')
+}
+
+/** 管理员删除任意文章 */
+export function adminDeleteArticle(id: number): Promise<Result<string>> {
+  return request.delete(`/knowledge/${id}/admin`)
+}

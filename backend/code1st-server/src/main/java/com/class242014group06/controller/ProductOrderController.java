@@ -97,6 +97,38 @@ public class ProductOrderController {
     }
 
     /**
+     * 管理员查看所有商品订单
+     */
+    @GetMapping("/all")
+    @ApiOperation("管理员查看所有商品订单")
+    public Result<List<ProductOrderVO>> listAll() {
+        log.info("管理员查看所有商品订单");
+        return Result.success(productOrderService.listAll());
+    }
+
+    /**
+     * 管理员修改商品订单状态
+     */
+    @PutMapping("/{id}/admin/status")
+    @ApiOperation("管理员修改商品订单状态")
+    public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        log.info("管理员修改商品订单状态，orderId：{}，status：{}", id, status);
+        productOrderService.updateStatusByAdmin(id, status);
+        return Result.success("状态已更新");
+    }
+
+    /**
+     * 管理员修改商品订单收货地址
+     */
+    @PutMapping("/{id}/admin/address")
+    @ApiOperation("管理员修改商品订单收货地址")
+    public Result<String> updateAddressByAdmin(@PathVariable Long id, @RequestParam String address) {
+        log.info("管理员修改商品订单地址，orderId：{}，address：{}", id, address);
+        productOrderService.updateAddressByAdmin(id, address);
+        return Result.success("地址已更新");
+    }
+
+    /**
      * 取消订单
      */
     @PutMapping("/{id}/cancel")

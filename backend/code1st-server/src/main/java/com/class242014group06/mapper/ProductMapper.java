@@ -3,6 +3,7 @@ package com.class242014group06.mapper;
 import com.class242014group06.annotation.AutoFill;
 import com.class242014group06.entity.Product;
 import com.class242014group06.enumeration.OperationType;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -51,4 +52,7 @@ public interface ProductMapper {
      */
     @Select("select * from product where inheritor_id = #{inheritorId} order by create_time desc")
     List<Product> listByInheritor(Long inheritorId);
+
+    @Delete("delete from product where id = #{id}")
+    void deleteById(Long id);
 }

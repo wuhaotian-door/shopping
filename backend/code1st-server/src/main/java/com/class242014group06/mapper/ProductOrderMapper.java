@@ -45,4 +45,7 @@ public interface ProductOrderMapper {
      */
     @Select("select * from product_order where inheritor_id = #{inheritorId} order by create_time desc")
     List<ProductOrder> listByInheritorId(Long inheritorId);
+
+    @Select("select * from product_order order by create_time desc")
+    List<ProductOrder> listAll();
 }

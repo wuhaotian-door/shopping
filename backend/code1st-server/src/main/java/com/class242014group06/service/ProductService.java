@@ -41,4 +41,6 @@ public interface ProductService {
      * 查询传承人自己的所有商品
      */
     List<ProductVO> listByInheritor(Long inheritorId);
+    void deleteByAdmin(Long id);
+    void toggleByAdmin(Long id, Integer status);
 }

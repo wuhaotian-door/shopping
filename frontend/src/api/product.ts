@@ -88,3 +88,28 @@ export function completeProductOrder(id: number): Promise<Result<string>> {
 export function cancelProductOrder(id: number): Promise<Result<string>> {
   return request.put(`/product-order/${id}/cancel`)
 }
+
+/** 管理员查看所有商品订单 */
+export function listAllProductOrders(): Promise<Result<ProductOrderVO[]>> {
+  return request.get('/product-order/all')
+}
+
+/** 管理员删除任意商品 */
+export function adminDeleteProduct(id: number): Promise<Result<string>> {
+  return request.delete(`/product/${id}/admin`)
+}
+
+/** 管理员切换商品上下架 */
+export function adminToggleProduct(id: number, status: number): Promise<Result<string>> {
+  return request.put(`/product/${id}/admin/toggle`, null, { params: { status } })
+}
+
+/** 管理员修改商品订单状态 */
+export function adminUpdateProductOrderStatus(id: number, status: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/admin/status`, null, { params: { status } })
+}
+
+/** 管理员修改商品订单收货地址 */
+export function adminUpdateProductOrderAddress(id: number, address: string): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/admin/address`, null, { params: { address } })
+}

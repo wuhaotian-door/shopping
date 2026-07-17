@@ -107,6 +107,28 @@ public class ProductController {
     }
 
     /**
+     * 管理员删除任意商品
+     */
+    @DeleteMapping("/{id}/admin")
+    @ApiOperation("管理员删除商品")
+    public Result<String> deleteByAdmin(@PathVariable Long id) {
+        log.info("管理员删除商品，id：{}", id);
+        productService.deleteByAdmin(id);
+        return Result.success("商品已删除");
+    }
+
+    /**
+     * 管理员切换商品上下架
+     */
+    @PutMapping("/{id}/admin/toggle")
+    @ApiOperation("管理员切换商品上下架")
+    public Result<String> toggleByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        log.info("管理员切换商品状态，id：{}，status：{}", id, status);
+        productService.toggleByAdmin(id, status);
+        return Result.success(status == 1 ? "商品已上架" : "商品已下架");
+    }
+
+    /**
      * 传承人查看自己的商品列表
      */
     @GetMapping("/my")

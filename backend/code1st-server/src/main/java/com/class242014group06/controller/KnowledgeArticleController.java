@@ -74,6 +74,27 @@ public class KnowledgeArticleController {
     }
 
     /**
+     * 管理员查询所有文章（包括未发布）
+     */
+    @GetMapping("/all")
+    @ApiOperation("管理员查询所有文章")
+    public Result<List<KnowledgeArticleVO>> listAll() {
+        log.info("管理员查询所有文章");
+        return Result.success(articleService.listAll());
+    }
+
+    /**
+     * 管理员删除任意文章
+     */
+    @DeleteMapping("/{id}/admin")
+    @ApiOperation("管理员删除文章")
+    public Result<String> deleteByAdmin(@PathVariable Long id) {
+        log.info("管理员删除文章，id：{}", id);
+        articleService.deleteByAdmin(id);
+        return Result.success("文章已删除");
+    }
+
+    /**
      * 公开接口：查询所有已发布文章（首页展示）
      */
     @GetMapping("/public")

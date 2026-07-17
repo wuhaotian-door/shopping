@@ -10,9 +10,13 @@ onMounted(async () => {
 
   await authStore.initAuth()
 
-  // 如果之前有 token 但校验后失效了（后端重启），强制跳转登录页
+  // token 失效时（如后端重启），仅在需要登录的页面才跳转
   if (hadToken && !authStore.token) {
-    router.push('/login')
+    const route = router.currentRoute.value
+    const needsAuth = route.meta.requiresAdmin || route.meta.requiresInheritor || route.meta.requiresAuth === true
+    if (needsAuth) {
+      router.push('/login')
+    }
   }
 })
 </script>

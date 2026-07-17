@@ -92,6 +92,27 @@ public class HeritageProjectController {
     }
 
     /**
+     * 管理员查询所有项目（含未上架）
+     */
+    @GetMapping("/all")
+    @ApiOperation("管理员查询所有项目")
+    public Result<List<HeritageProjectVO>> listAll() {
+        log.info("管理员查询所有项目");
+        return Result.success(projectService.listAll());
+    }
+
+    /**
+     * 管理员删除任意项目
+     */
+    @DeleteMapping("/{id}/admin")
+    @ApiOperation("管理员删除项目")
+    public Result<String> deleteByAdmin(@PathVariable Long id) {
+        log.info("管理员删除项目，id：{}", id);
+        projectService.deleteByAdmin(id);
+        return Result.success("项目已删除");
+    }
+
+    /**
      * 公开接口：查询所有已上架项目
      */
     @GetMapping("/public")

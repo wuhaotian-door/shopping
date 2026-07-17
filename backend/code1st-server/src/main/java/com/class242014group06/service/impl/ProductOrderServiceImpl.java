@@ -145,6 +145,32 @@ public class ProductOrderServiceImpl implements ProductOrderService {
         }
     }
 
+    @Override
+    public void updateAddressByAdmin(Long orderId, String address) {
+        ProductOrder order = productOrderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
+        }
+        ProductOrder update = ProductOrder.builder().id(orderId).address(address).build();
+        productOrderMapper.update(update);
+    }
+
+    @Override
+    public void updateStatusByAdmin(Long orderId, Integer status) {
+        ProductOrder order = productOrderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
+        }
+        ProductOrder update = ProductOrder.builder().id(orderId).status(status).build();
+        productOrderMapper.update(update);
+    }
+
+    @Override
+    public List<ProductOrderVO> listAll() {
+        List<ProductOrder> orders = productOrderMapper.listAll();
+        return orders.stream().map(this::toVO).collect(Collectors.toList());
+    }
+
     private ProductOrderVO toVO(ProductOrder order) {
         return ProductOrderVO.builder()
                 .id(order.getId())

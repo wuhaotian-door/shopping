@@ -50,4 +50,7 @@ public interface HeritageProjectMapper {
      */
     @Delete("delete from heritage_project where id = #{id}")
     void deleteById(Long id);
+
+    @Select("select * from heritage_project order by create_time desc")
+    List<HeritageProject> listAll();
 }

@@ -38,4 +38,6 @@ public interface HeritageProjectService {
      * 查询所有已上架项目（首页展示）
      */
     List<HeritageProjectVO> listPublished();
+    List<HeritageProjectVO> listAll();
+    void deleteByAdmin(Long id);
 }

@@ -36,4 +36,7 @@ public interface ProductOrderService {
      * 取消订单（用户取消 或 传承人取消）
      */
     void cancel(Long orderId, Long userId);
+    List<ProductOrderVO> listAll();
+    void updateStatusByAdmin(Long orderId, Integer status);
+    void updateAddressByAdmin(Long orderId, String address);
 }
