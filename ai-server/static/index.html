@@ -173,6 +173,7 @@
   .toggle.off { background: var(--card); color: var(--muted); }
   .toggle.enhanced { background: #d4a574; color: #fff; border-color: #d4a574; }
   .toggle.rag { background: #2e7d32; color: #fff; border-color: #2e7d32; }
+  .toggle.agent { background: #1565c0; color: #fff; border-color: #1565c0; }
 
   /* ---- Streaming cursor ---- */
   .bubble.streaming { border-right: none; }
@@ -255,6 +256,34 @@
     color: #2e7d32;
     font-weight: 600;
   }
+
+  /* ---- Agent tool calls ---- */
+  .tool-calls-row {
+    margin-top: 8px;
+  }
+  .tool-call {
+    font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 8px;
+    background: #e3f0fd;
+    border: 1px solid #bbdefb;
+    margin-top: 4px;
+  }
+  .tool-call .tc-name {
+    font-weight: 600;
+    color: #1565c0;
+  }
+  .tool-call .tc-args {
+    color: #777;
+    font-size: 11px;
+  }
+  .tool-call .tc-result {
+    color: #555;
+    font-size: 11px;
+    margin-top: 2px;
+    max-height: 80px;
+    overflow: hidden;
+  }
 </style>
 </head>
 <body>
@@ -305,6 +334,7 @@ const MODES = {
   normal:   { label: '📦 一次性',  cls: 'toggle off' },
   enhanced: { label: '🧠 增强',    cls: 'toggle enhanced' },
   rag:      { label: '📚 RAG',     cls: 'toggle rag' },
+  agent:    { label: '🔧 Agent',   cls: 'toggle agent' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -326,7 +356,9 @@ async function send() {
   input.value = '';
   btn.disabled = true;
 
-  if (mode === 'rag') {
+  if (mode === 'agent') {
+    await sendAgent(question);
+  } else if (mode === 'rag') {
     await sendRagStream(question);
   } else if (mode === 'enhanced') {
     await sendEnhanced(question);
@@ -469,6 +501,47 @@ function addBubble(text, className) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+// =============================================
+// Level 2: Agent Tool Calling — LLM 自主决定调用工具
+// =============================================
+async function sendAgent(question) {
+  const loading = addBubble('▊ LLM 正在决策…', 'ai loading');
+  try {
+    const res = await fetch('/ai/agent', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ai';
+    bubble.style.maxWidth = '90%';
+
+    let html = '<div>' + escapeHtml(data.answer) + '</div>';
+
+    // 展示工具调用记录 — 让用户看到 LLM 的"思考过程"
+    if (data.tool_calls && data.tool_calls.length > 0) {
+      html += '<div class="section-label">🔧 工具调用记录</div><div class="tool-calls-row">';
+      for (const tc of data.tool_calls) {
+        html += `<div class="tool-call">
+          <div class="tc-name">⚙ ${escapeHtml(tc.tool)}</div>
+          <div class="tc-args">参数: ${escapeHtml(JSON.stringify(tc.args))}</div>
+        </div>`;
+      }
+      html += '</div>';
+    }
+
+    bubble.innerHTML = html;
+    chat.appendChild(bubble);
+    chat.scrollTop = chat.scrollHeight;
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败，请确认服务已启动。', 'ai');
+  }
 }
 
 // =============================================

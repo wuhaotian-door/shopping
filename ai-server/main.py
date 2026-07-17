@@ -15,6 +15,7 @@ API 端点:
   POST /ai/rag         — RAG 检索增强问答（答案 + 来源引用）
   POST /ai/rag/stream  — RAG 流式问答
   POST /ai/knowledge/reload — 重建知识库
+  POST /ai/agent       — Agent 工具调用（LLM 自主决定查资料还是列举）
 """
 
 from typing import Any, Dict, List
@@ -26,6 +27,7 @@ from pydantic import BaseModel
 
 from chain import ask, ask_batch, ask_enhanced, ask_stream
 from rag import build_knowledge_base, rag_ask, rag_ask_stream
+from tools import agent_chat
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -167,3 +169,22 @@ async def ai_knowledge_reload():
     """重建知识库 — 新增/修改文档后调用此接口"""
     build_knowledge_base()
     return {"message": "知识库重建完成"}
+
+
+@app.post("/ai/agent")
+async def ai_agent(req: ChatRequest):
+    """Tool Calling Agent — LLM 自主决定调用哪个工具
+
+    与 /ai/rag 的区别:
+      RAG:  始终执行"检索 → 生成"流程（你替 LLM 做了决策）
+      Agent: LLM 自己判断要不要调工具、调哪个工具
+
+    响应示例:
+    {
+      "answer": "知识库中有以下文档...",
+      "tool_calls": [
+        {"tool": "list_documents", "args": {}, "result": "..."}
+      ]
+    }
+    """
+    return agent_chat(req.question)
