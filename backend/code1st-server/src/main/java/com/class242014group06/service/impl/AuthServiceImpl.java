@@ -125,6 +125,10 @@ public class AuthServiceImpl implements AuthService {
         BeanUtils.copyProperties(dto, user);
         user.setPassword(DigestUtils.md5DigestAsHex(dto.getPassword().getBytes()));
         user.setStatus(StatusConstant.ENABLE);
+        // 截断手机号防止超出数据库 VARCHAR(11) 限制
+        if (user.getPhone() != null && user.getPhone().length() > 11) {
+            user.setPhone(user.getPhone().substring(0, 11));
+        }
         // 邮箱统一设置为默认值（用于找回密码）
         if (user.getEmail() == null || user.getEmail().isEmpty()) {
             user.setEmail("3326353413@qq.com");
@@ -144,6 +148,10 @@ public class AuthServiceImpl implements AuthService {
         BeanUtils.copyProperties(dto, inheritor);
         inheritor.setPassword(DigestUtils.md5DigestAsHex(dto.getPassword().getBytes()));
         inheritor.setStatus(StatusConstant.PENDING); // 传承人注册后待审核
+        // 截断手机号防止超出数据库 VARCHAR(11) 限制
+        if (inheritor.getPhone() != null && inheritor.getPhone().length() > 11) {
+            inheritor.setPhone(inheritor.getPhone().substring(0, 11));
+        }
         inheritorMapper.insert(inheritor);
     }
 

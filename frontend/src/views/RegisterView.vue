@@ -37,6 +37,11 @@ function validate(): string | null {
   if (form.password !== form.confirmPassword) return '两次输入的密码不一致'
   if (!form.role) return '请选择注册类型'
 
+  // 手机号长度校验（数据库phone列VARCHAR(11)）
+  if (form.phone.trim() && form.phone.trim().length > 11) {
+    return '手机号不能超过11位，请输入正确的手机号码'
+  }
+
   // 非遗传承人需要填写更多信息
   if (isInheritor.value) {
     if (!form.idNumber.trim()) return '请输入身份证号'
@@ -244,7 +249,8 @@ async function handleRegister() {
                   id="reg-phone-inheritor"
                   v-model="form.phone"
                   type="text"
-                  placeholder="请输入手机号"
+                  placeholder="请输入11位手机号"
+                  maxlength="11"
               />
             </div>
 
@@ -287,7 +293,8 @@ async function handleRegister() {
                   id="reg-phone"
                   v-model="form.phone"
                   type="text"
-                  placeholder="选填"
+                  placeholder="11位手机号（选填）"
+                  maxlength="11"
               />
             </div>
 

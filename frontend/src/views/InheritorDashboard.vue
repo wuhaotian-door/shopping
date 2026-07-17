@@ -7,8 +7,8 @@ import SlotManager from './components/SlotManager.vue'
 import KnowledgeManager from './components/KnowledgeManager.vue'
 import ProjectManager from './components/ProjectManager.vue'
 import ProductManager from './components/ProductManager.vue'
-import ConsultationPanel from './components/ConsultationPanel.vue'
 import InheritorProfile from './components/InheritorProfile.vue'
+import ChatPanel from './components/ChatPanel.vue'
 import { listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder } from '@/api/product'
 import type { ProductOrderVO } from '@/types/api'
 
@@ -191,8 +191,8 @@ function onTabSwitch(key: TabKey) {
         </div>
       </section>
 
-      <!-- 咨询消息 -->
-      <ConsultationPanel v-if="activeTab === 'consultation'" />
+      <!-- 咨询消息 — 实时会话聊天 -->
+      <ChatPanel v-if="activeTab === 'consultation'" />
 
       <!-- 入驻管理 -->
       <InheritorProfile v-if="activeTab === 'profile'" />

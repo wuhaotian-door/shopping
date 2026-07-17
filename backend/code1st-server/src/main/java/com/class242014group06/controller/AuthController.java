@@ -2,13 +2,19 @@ package com.class242014group06.controller;
 
 import com.class242014group06.constant.JwtClaimsConstant;
 import com.class242014group06.constant.RoleConstant;
+import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
 import com.class242014group06.dto.EmployeeRegisterDTO;
 import com.class242014group06.dto.ForgotPasswordDTO;
 import com.class242014group06.dto.InheritorRegisterDTO;
 import com.class242014group06.dto.ResetPasswordDTO;
+import com.class242014group06.entity.Admin;
 import com.class242014group06.entity.Inheritor;
+import com.class242014group06.entity.User;
+import com.class242014group06.mapper.AdminMapper;
+import com.class242014group06.mapper.InheritorMapper;
+import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.properties.JwtProperties;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.AuthService;
@@ -40,6 +46,12 @@ public class AuthController {
     private InheritorService inheritorService;
     @Autowired
     private JwtProperties jwtProperties;
+    @Autowired
+    private AdminMapper adminMapper;
+    @Autowired
+    private InheritorMapper inheritorMapper;
+    @Autowired
+    private UserMapper userMapper;
 
     /**
      * 统一登录（自动判断管理员 → 传承人 → 普通用户）
@@ -69,6 +81,33 @@ public class AuthController {
     @ApiOperation("登出")
     public Result<String> logout() {
         return Result.success();
+    }
+
+    /**
+     * 校验当前 token 是否有效（用于前端启动时验证登录状态）
+     */
+    @GetMapping("/me")
+    @ApiOperation("获取当前登录用户信息")
+    public Result<EmployeeLoginVO> me() {
+        Long userId = BaseContext.getCurrentId();
+        String role = BaseContext.getCurrentRole();
+        // 根据角色查找用户名
+        String name = "";
+        String username = "";
+        if (RoleConstant.ADMIN.equals(role)) {
+            Admin admin = adminMapper.getById(userId);
+            if (admin != null) { name = admin.getName(); username = admin.getUsername(); }
+        } else if (RoleConstant.INHERITOR.equals(role)) {
+            Inheritor inheritor = inheritorMapper.getById(userId);
+            if (inheritor != null) { name = inheritor.getName(); username = inheritor.getUsername(); }
+        } else {
+            User user = userMapper.getById(userId);
+            if (user != null) { name = user.getName(); username = user.getUsername(); }
+        }
+        log.info("token校验通过：userId={}, role={}, name={}", userId, role, name);
+        EmployeeLoginVO vo = EmployeeLoginVO.builder()
+                .id(userId).userName(username).name(name).role(role).build();
+        return Result.success(vo);
     }
 
     /**

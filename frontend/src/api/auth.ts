@@ -1,6 +1,11 @@
 import request from './request'
 import type { Result, LoginRequest, LoginResponse, AdminCreateRequest, RegisterRequest, InheritorRegisterRequest, PendingUser, UserInfo, DashboardStats, ForgotPasswordRequest, ResetPasswordRequest } from '@/types/api'
 
+/** 校验当前 token 是否有效（启动时调用） */
+export function checkAuth(): Promise<Result<LoginResponse>> {
+  return request.get('/auth/me')
+}
+
 /** 登录 */
 export function login(data: LoginRequest): Promise<Result<LoginResponse>> {
   return request.post('/auth/login', data)

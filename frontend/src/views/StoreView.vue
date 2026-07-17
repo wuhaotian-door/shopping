@@ -226,6 +226,7 @@ async function loadMyOrders() {
           <span v-if="cart.length > 0" class="cart-badge">{{ cart.length }}</span>
         </button>
         <button class="my-orders-btn" @click="loadMyOrders">我的订单</button>
+        <button class="chat-btn" @click="router.push('/chat')">💬 消息</button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -560,6 +561,17 @@ async function loadMyOrders() {
   transition: 0.2s;
 }
 .my-orders-btn:hover { background: rgba(255,255,255,0.3); }
+.chat-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.chat-btn:hover { background: rgba(255,255,255,0.35); }
 .logout-btn {
   padding: 6px 14px;
   font-size: 12px;
