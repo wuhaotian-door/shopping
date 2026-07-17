@@ -171,6 +171,7 @@
   }
   .toggle.on  { background: var(--primary); color: #fff; border-color: var(--primary); }
   .toggle.off { background: var(--card); color: var(--muted); }
+  .toggle.enhanced { background: #d4a574; color: #fff; border-color: #d4a574; }
 
   /* ---- Streaming cursor ---- */
   .bubble.streaming { border-right: none; }
@@ -180,6 +181,48 @@
     color: var(--primary);
   }
   @keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }
+
+  /* ---- Enhanced response: keywords ---- */
+  .keywords-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 10px;
+  }
+  .keywords-row .tag {
+    font-size: 12px;
+    padding: 2px 10px;
+    border-radius: 10px;
+    background: #fef3e4;
+    color: #a0522d;
+    border: 1px solid #f0d8b0;
+  }
+
+  /* ---- Enhanced response: suggests ---- */
+  .suggests-row {
+    margin-top: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .suggests-row .card {
+    font-size: 13px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: #fdfaf5;
+    border: 1px solid var(--border);
+    line-height: 1.5;
+  }
+  .suggests-row .card strong { color: var(--primary); }
+
+  .section-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 8px;
+    margin-bottom: 2px;
+  }
 </style>
 </head>
 <body>
@@ -222,12 +265,22 @@ const input = document.getElementById('question');
 const btn   = document.getElementById('sendBtn');
 const modeToggle = document.getElementById('modeToggle');
 
-let useStream = true;  // 默认流式（打字机）
+// 三种模式: 'stream' | 'normal' | 'enhanced'
+let mode = 'stream';
+
+const MODES = {
+  stream:   { label: '⚡ 流式',    cls: 'toggle on' },
+  normal:   { label: '📦 一次性',  cls: 'toggle off' },
+  enhanced: { label: '🧠 增强',    cls: 'toggle enhanced' },
+};
 
 modeToggle.addEventListener('click', () => {
-  useStream = !useStream;
-  modeToggle.textContent = useStream ? '⚡ 流式' : '📦 一次性';
-  modeToggle.className = useStream ? 'toggle on' : 'toggle off';
+  const keys = Object.keys(MODES);
+  const idx = keys.indexOf(mode);
+  mode = keys[(idx + 1) % keys.length];
+  const m = MODES[mode];
+  modeToggle.textContent = m.label;
+  modeToggle.className = m.cls;
 });
 
 input.addEventListener('keydown', e => { if (e.key === 'Enter') send(); });
@@ -236,12 +289,13 @@ async function send() {
   const question = input.value.trim();
   if (!question) return;
 
-  // 用户消息
   addBubble(question, 'user');
   input.value = '';
   btn.disabled = true;
 
-  if (useStream) {
+  if (mode === 'enhanced') {
+    await sendEnhanced(question);
+  } else if (mode === 'stream') {
     await sendStream(question);
   } else {
     await sendNormal(question);
@@ -252,7 +306,7 @@ async function send() {
 }
 
 // =============================================
-// Day 1: 普通请求 — 等全部完成一次性渲染
+// Day 1: 普通请求
 // =============================================
 async function sendNormal(question) {
   const loading = addBubble('▊ 思考中…', 'ai loading');
@@ -272,10 +326,9 @@ async function sendNormal(question) {
 }
 
 // =============================================
-// Day 3: 流式请求 — 逐 token 打字机效果
+// Day 3: 流式请求
 // =============================================
 async function sendStream(question) {
-  // 创建一个空 bubble，边收 token 边往里填字
   const bubble = addBubble('', 'ai streaming');
   bubble.innerHTML = '<span class="cursor">▊</span>';
 
@@ -286,7 +339,6 @@ async function sendStream(question) {
       body: JSON.stringify({ question }),
     });
 
-    // 读取 SSE 流
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -297,14 +349,13 @@ async function sendStream(question) {
 
       buffer += decoder.decode(value, { stream: true });
       const lines = buffer.split('\n');
-      buffer = lines.pop() || '';   // 最后一个可能不完整，保留
+      buffer = lines.pop() || '';
 
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
-        const payload = line.slice(6);  // 去掉 "data: " 前缀
+        const payload = line.slice(6);
 
         if (payload === '[DONE]') {
-          // 流结束，去掉光标
           const cursor = bubble.querySelector('.cursor');
           if (cursor) cursor.remove();
           bubble.classList.remove('streaming');
@@ -313,10 +364,9 @@ async function sendStream(question) {
 
         try {
           const { token } = JSON.parse(payload);
-          // 在光标前插入新 token
           const cursor = bubble.querySelector('.cursor');
           cursor.insertAdjacentText('beforebegin', token);
-        } catch (e) { /* 忽略解析错误 */ }
+        } catch (e) { /* ignore */ }
       }
     }
   } catch (err) {
@@ -327,6 +377,56 @@ async function sendStream(question) {
   }
 }
 
+// =============================================
+// Day 6: 增强模式 — RunnableParallel 一次获取答案+关键词+推荐
+// =============================================
+async function sendEnhanced(question) {
+  const loading = addBubble('▊ 正在查资料、提取关键词、找相关推荐…', 'ai loading');
+  try {
+    const res = await fetch('/ai/chat/v2', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    // 构建增强气泡: 答案 + 关键词标签 + 推荐卡片
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ai';
+    bubble.style.maxWidth = '90%';
+
+    let html = '<div>' + escapeHtml(data.answer) + '</div>';
+
+    // 关键词标签
+    if (data.keywords && data.keywords.length > 0) {
+      html += '<div class="section-label">🏷️ 关键词</div>';
+      html += '<div class="keywords-row">';
+      for (const kw of data.keywords) {
+        html += '<span class="tag">' + escapeHtml(kw) + '</span>';
+      }
+      html += '</div>';
+    }
+
+    // 推荐项目
+    if (data.suggests && data.suggests.length > 0) {
+      html += '<div class="section-label">📌 相关非遗项目</div>';
+      html += '<div class="suggests-row">';
+      for (const s of data.suggests) {
+        html += '<div class="card"><strong>' + escapeHtml(s.name) + '</strong> — ' + escapeHtml(s.desc) + '</div>';
+      }
+      html += '</div>';
+    }
+
+    bubble.innerHTML = html;
+    chat.appendChild(bubble);
+    chat.scrollTop = chat.scrollHeight;
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败，请确认服务已启动。', 'ai');
+  }
+}
+
 function addBubble(text, className) {
   const div = document.createElement('div');
   div.className = 'bubble ' + className;
@@ -334,6 +434,12 @@ function addBubble(text, className) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+function escapeHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
 }
 </script>
 

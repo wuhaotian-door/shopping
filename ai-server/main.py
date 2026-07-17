@@ -11,16 +11,17 @@ API 端点:
   POST /ai/chat       — 非遗知识问答（一次性返回）
   POST /ai/chat/stream— 非遗知识问答（SSE 流式，打字机效果）
   POST /ai/batch      — 批量并发问答
+  POST /ai/chat/v2    — 增强问答（答案 + 关键词 + 推荐，RunnableParallel）
 """
 
-from typing import List
+from typing import Any, Dict, List
 
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
-from chain import ask, ask_batch, ask_stream
+from chain import ask, ask_batch, ask_enhanced, ask_stream
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -112,3 +113,21 @@ async def ai_batch(req: BatchRequest):
         for q, a in zip(req.questions, answers)
     ]
     return BatchResponse(results=results)
+
+
+@app.post("/ai/chat/v2")
+async def ai_chat_v2(req: ChatRequest) -> Dict[str, Any]:
+    """Day 6: enhanced chain — RunnableParallel 并发获取答案+关键词+推荐
+
+    响应示例:
+    {
+      "question": "什么是景泰蓝？",
+      "answer":   "景泰蓝，学名铜胎掐丝珐琅...",
+      "keywords": ["景泰蓝", "珐琅", "掐丝", "北京"],
+      "suggests": [
+        {"name": "景泰蓝制作技艺", "desc": "北京市特产的..."},
+        ...
+      ]
+    }
+    """
+    return ask_enhanced(req.question)
