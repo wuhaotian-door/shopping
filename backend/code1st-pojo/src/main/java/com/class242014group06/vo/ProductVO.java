@@ -49,4 +49,10 @@ public class ProductVO implements Serializable {
 
     /** 创建时间 */
     private LocalDateTime createTime;
+
+    /** 综合评分（平均值） */
+    private Double avgRating;
+
+    /** 评价数量 */
+    private Long reviewCount;
 }

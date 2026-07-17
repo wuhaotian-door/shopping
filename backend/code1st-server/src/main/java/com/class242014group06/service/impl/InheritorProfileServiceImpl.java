@@ -1,6 +1,7 @@
 package com.class242014group06.service.impl;
 
 import com.class242014group06.constant.MessageConstant;
+import com.class242014group06.constant.StatusConstant;
 import com.class242014group06.dto.InheritorProfileDTO;
 import com.class242014group06.entity.Inheritor;
 import com.class242014group06.entity.InheritorProfile;
@@ -55,13 +56,12 @@ public class InheritorProfileServiceImpl implements InheritorProfileService {
 
     @Override
     public List<InheritorProfileVO> listAllWithEmployee() {
-        List<InheritorProfile> profiles = profileMapper.listAll();
+        // 从 inheritor 表查出所有已审核通过的传承人
+        List<Inheritor> inheritors = inheritorMapper.getByStatus(StatusConstant.ENABLE);
         List<InheritorProfileVO> result = new ArrayList<>();
-        for (InheritorProfile profile : profiles) {
-            Inheritor inheritor = inheritorMapper.getById(profile.getEmployeeId());
-            if (inheritor != null) {
-                result.add(buildVO(inheritor, profile));
-            }
+        for (Inheritor inheritor : inheritors) {
+            InheritorProfile profile = profileMapper.getByEmployeeId(inheritor.getId());
+            result.add(buildVO(inheritor, profile));
         }
         return result;
     }
@@ -71,7 +71,8 @@ public class InheritorProfileServiceImpl implements InheritorProfileService {
                 .employeeId(inheritor.getId())
                 .name(inheritor.getName())
                 .phone(inheritor.getPhone())
-                .sex(inheritor.getSex());
+                .sex(inheritor.getSex())
+                .region(inheritor.getRegion());
 
         if (profile != null) {
             builder.id(profile.getId())

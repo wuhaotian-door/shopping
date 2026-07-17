@@ -36,32 +36,17 @@ function nextSlide() {
   currentSlide.value = (currentSlide.value + 1) % slides.length
 }
 
-// ------- 资讯筛选 -------
-const activeFilter = ref('')
-const filters = ['剪纸', '刺绣', '陶艺', '竹编', '校园活动', '传承人专访']
-const currentPage = ref(1)
-
-function filterNews(type: string) {
-  activeFilter.value = type
-  currentPage.value = 1
-}
-function goPage(page: number) {
-  if (page < 1) return
-  currentPage.value = page
-}
-
 // ------- 知识库文章（从API加载） -------
 const newsList = ref<KnowledgeArticleVO[]>([])
-const filteredNews = computed(() => {
-  if (!activeFilter.value) return newsList.value
-  return newsList.value.filter(a => a.category === activeFilter.value)
-})
 async function loadArticles() {
   try {
     const res = await listPublicArticles()
     newsList.value = res.data || []
   } catch { /* keep empty */ }
 }
+
+/** 首页仅展示前5篇资讯 */
+const topNews = computed(() => newsList.value.slice(0, 5))
 
 // ------- 传承人列表（从API加载） -------
 const masterList = ref<InheritorProfileVO[]>([])
@@ -70,6 +55,14 @@ async function loadMasters() {
     const res = await listPublicProfiles()
     masterList.value = res.data || []
   } catch { /* keep empty */ }
+}
+
+/** 首页仅展示前5位传承人 */
+const topMasters = computed(() => masterList.value.slice(0, 5))
+
+/** 拆分擅长技艺字符串为数组 */
+function splitCrafts(craftTypes: string): string[] {
+  return craftTypes ? craftTypes.split(/[,，]/).filter(Boolean) : []
 }
 
 function handleLogout() {
@@ -85,8 +78,8 @@ function handleLogout() {
 
     <nav class="nav-links">
       <a class="nav-item active" href="#">首页</a>
-      <a class="nav-item" href="#news">非遗资讯</a>
-      <a class="nav-item" href="#masters">传承人</a>
+      <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
+      <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
       <a class="nav-item" @click="router.push('/store')">文创周边</a>
       <a class="nav-item" href="#ai">智能问答</a>
 
@@ -105,6 +98,7 @@ function handleLogout() {
           {{ isInheritor ? '非遗传承人' : '用户' }}
         </span>
         <span class="user-name">{{ userName }}</span>
+        <button v-if="!isInheritor" class="header-profile-btn" @click="router.push('/profile')">👤 个人中心</button>
         <button class="header-chat-btn" @click="router.push('/chat')">💬 消息</button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
@@ -146,30 +140,8 @@ function handleLogout() {
   <!-- ==================== 非遗资讯区域 ==================== -->
   <section class="news-section" id="news">
     <h2 class="section-main-title">非遗资讯中心</h2>
-    <div class="news-wrap">
-      <!-- 左侧筛选栏 -->
-      <aside class="news-filter-sidebar">
-        <h3>分类筛选</h3>
-        <div class="filter-tag-list">
-          <div class="filter-tag" :class="{ active: activeFilter === '' }" @click="filterNews('')">全部资讯</div>
-          <div v-for="f in filters" :key="f" class="filter-tag" :class="{ active: activeFilter === f }" @click="filterNews(f)">{{ f }}</div>
-        </div>
-        <h3 style="margin-top: 24px">发布时间</h3>
-        <div class="filter-tag-list">
-          <div class="filter-tag">近一周</div>
-          <div class="filter-tag">近一月</div>
-          <div class="filter-tag">今年</div>
-        </div>
-        <h3 style="margin-top: 24px">排序方式</h3>
-        <div class="filter-tag-list">
-          <div class="filter-tag active">最新发布</div>
-          <div class="filter-tag">浏览量最高</div>
-        </div>
-      </aside>
-
-      <!-- 右侧资讯列表 -->
-      <div class="news-card-list">
-        <div v-for="news in filteredNews" :key="news.id" class="news-card">
+    <div class="news-card-list">
+        <div v-for="news in topNews" :key="news.id" class="news-card" @click="router.push(`/news/${news.id}`)">
           <div class="news-card-img">
             <div class="img-placeholder">{{ news.category || '非遗' }}</div>
           </div>
@@ -182,32 +154,44 @@ function handleLogout() {
             </div>
           </div>
         </div>
-        <div v-if="filteredNews.length === 0" class="empty-state">{{ activeFilter ? '该分类暂无资讯' : '暂无资讯内容' }}</div>
-        <div class="news-page-bar">
-          <span @click="goPage(currentPage - 1)">上一页</span>
-          <span class="active">{{ currentPage }}</span>
-          <span @click="goPage(currentPage + 1)">下一页</span>
+        <div v-if="newsList.length === 0" class="empty-state">暂无资讯内容</div>
+        <div v-if="newsList.length > 5" class="view-all-wrap" style="text-align:center;margin-top:20px">
+          <button class="view-all-btn" @click="router.push('/news')">查看更多资讯 →</button>
         </div>
       </div>
-    </div>
   </section>
 
   <!-- ==================== 传承人区域 ==================== -->
   <section class="master-full-section" id="masters">
     <h2 class="section-title">入驻非遗传承人</h2>
     <div class="master-card-grid">
-      <div v-for="master in masterList" :key="master.employeeId" class="master-card">
+      <div v-for="master in topMasters" :key="master.employeeId" class="master-card">
         <div class="master-card-top">
-          <div class="master-avatar-big"></div>
+          <div class="master-avatar-big">
+            <span class="master-avatar-initial">{{ (master.name || '传')[0] }}</span>
+          </div>
+          <div class="master-region-tag" v-if="master.region || master.address">
+            📍 {{ master.region || master.address }}
+          </div>
         </div>
         <div class="master-card-body">
           <h3>{{ master.name }}</h3>
           <p class="master-tech">{{ master.honorTitle || '非遗传承人' }}</p>
-          <p class="master-intro">{{ master.selfIntro?.slice(0, 80) || '' }}</p>
+          <!-- 擅长技艺标签 -->
+          <div class="master-craft-tags" v-if="splitCrafts(master.craftTypes).length > 0">
+            <span v-for="craft in splitCrafts(master.craftTypes).slice(0, 3)" :key="craft" class="master-craft-tag">{{ craft }}</span>
+            <span v-if="splitCrafts(master.craftTypes).length > 3" class="master-craft-more">+{{ splitCrafts(master.craftTypes).length - 3 }}</span>
+          </div>
+          <p class="master-intro">{{ master.selfIntro?.slice(0, 80) || '暂无简介' }}</p>
           <a href="#" class="master-book-btn">预约工坊</a>
         </div>
       </div>
       <div v-if="masterList.length === 0" class="empty-state" style="grid-column:1/-1">暂无入驻传承人</div>
+    </div>
+    <div v-if="masterList.length > 5" class="view-all-wrap">
+      <button class="view-all-btn" @click="router.push('/inheritors')">
+        查看全部 {{ masterList.length }} 位传承人 →
+      </button>
     </div>
   </section>
 
@@ -333,6 +317,19 @@ function handleLogout() {
   transition: 0.2s;
 }
 .header-chat-btn:hover {
+  background: rgba(255,255,255,0.35);
+}
+.header-profile-btn {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(255,255,255,0.2);
+  border: 1px solid rgba(255,255,255,0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: 0.2s;
+}
+.header-profile-btn:hover {
   background: rgba(255,255,255,0.35);
 }
 .login-top-btn {
@@ -491,45 +488,6 @@ function handleLogout() {
   transform: translateX(-50%);
   bottom: -10px;
 }
-.news-wrap {
-  display: grid;
-  grid-template-columns: 240px 1fr;
-  gap: 30px;
-}
-.news-filter-sidebar {
-  background: #fff5f7;
-  border-radius: 10px;
-  padding: 24px;
-}
-.news-filter-sidebar h3 {
-  color: #c41e3a;
-  margin-bottom: 16px;
-  font-size: 16px;
-  border-left: 4px solid #c41e3a;
-  padding-left: 10px;
-}
-.filter-tag-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-}
-.filter-tag {
-  padding: 6px 14px;
-  border: 1px solid #e8647a;
-  border-radius: 20px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: 0.2s;
-  user-select: none;
-}
-.filter-tag.active {
-  background: #c41e3a;
-  color: #fff;
-  border-color: #c41e3a;
-}
-.filter-tag:hover:not(.active) {
-  background: #ffe9ec;
-}
 .news-card-list {
   display: flex;
   flex-direction: column;
@@ -542,6 +500,7 @@ function handleLogout() {
   border-radius: 10px;
   overflow: hidden;
   transition: 0.3s;
+  cursor: pointer;
   cursor: pointer;
 }
 .news-card:hover {
@@ -602,28 +561,6 @@ function handleLogout() {
   color: #999;
   font-size: 14px;
 }
-.news-page-bar {
-  display: flex;
-  justify-content: center;
-  gap: 8px;
-  margin-top: 10px;
-}
-.news-page-bar span {
-  padding: 6px 14px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: 0.2s;
-}
-.news-page-bar span.active {
-  background: #c41e3a;
-  color: #fff;
-  border-color: #c41e3a;
-}
-.news-page-bar span:hover:not(.active) {
-  background: #fef0f2;
-}
 
 /* ==================== 传承人区域 ==================== */
 .master-full-section {
@@ -667,8 +604,10 @@ function handleLogout() {
   height: 180px;
   background: linear-gradient(135deg, #ffe9ec, #fef0f2);
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   position: relative;
 }
 .master-avatar-big {
@@ -677,6 +616,23 @@ function handleLogout() {
   border-radius: 50%;
   background: linear-gradient(135deg, #e8647a, #c41e3a);
   border: 4px solid #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.master-avatar-initial {
+  font-size: 42px;
+  color: #fff;
+  font-weight: 700;
+  user-select: none;
+}
+.master-region-tag {
+  font-size: 12px;
+  color: #c41e3a;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 2px 12px;
+  border-radius: 10px;
+  font-weight: 500;
 }
 .master-card-body {
   padding: 20px;
@@ -690,7 +646,32 @@ function handleLogout() {
 .master-tech {
   color: #c41e3a;
   font-size: 14px;
+  margin-bottom: 10px;
+}
+.master-craft-tags {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  flex-wrap: wrap;
   margin-bottom: 12px;
+}
+.master-craft-tag {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #fff5f7;
+  color: #c41e3a;
+  border: 1px solid #f0c0c8;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+.master-craft-more {
+  display: inline-block;
+  padding: 3px 10px;
+  background: #f5f5f5;
+  color: #999;
+  border-radius: 12px;
+  font-size: 12px;
 }
 .master-intro {
   font-size: 13px;
@@ -715,6 +696,27 @@ function handleLogout() {
 }
 .master-book-btn:hover {
   background: #a8162b;
+}
+
+.view-all-wrap {
+  text-align: center;
+  margin-top: 32px;
+}
+.view-all-btn {
+  display: inline-block;
+  padding: 12px 36px;
+  background: transparent;
+  color: #c41e3a;
+  border: 2px solid #c41e3a;
+  border-radius: 24px;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.25s;
+}
+.view-all-btn:hover {
+  background: #c41e3a;
+  color: #fff;
 }
 
 /* ==================== 底部 AI ==================== */
@@ -772,7 +774,6 @@ function handleLogout() {
 @media (max-width: 992px) {
   .banner { height: 360px; }
   .banner-center-text h2 { font-size: 40px; }
-  .news-wrap { grid-template-columns: 1fr; }
   .bottom-section { grid-template-columns: 1fr; }
   .nav-links { gap: 12px; }
 }

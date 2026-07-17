@@ -76,8 +76,11 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                         "/admin/auth/forgot-password/reset",
                         "/admin/inheritor/profile/public",
                         "/admin/knowledge/public",
+                        "/admin/knowledge/public/**",
+                        "/admin/article-comment/public/**",
                         "/admin/project/public",
-                        "/admin/slot/available"
+                        "/admin/slot/available",
+                        "/admin/product-review/public/**"
                 );
     }
     /**

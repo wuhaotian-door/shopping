@@ -147,6 +147,7 @@ export interface InheritorProfileVO {
   name: string
   phone: string
   sex: string
+  region: string
   honorTitle: string
   selfIntro: string
   craftTypes: string
@@ -234,6 +235,25 @@ export interface ProductVO {
   inheritorName: string
   status: number
   createTime: string
+  avgRating: number
+  reviewCount: number
+}
+
+// ==================== 商品评价 ====================
+
+export interface ProductReviewVO {
+  id: number
+  productId: number
+  userId: number
+  userName: string
+  rating: number
+  content: string
+  createTime: string
+}
+
+export interface ProductReviewDTO {
+  rating: number
+  content: string
 }
 
 // ==================== 商品订单 ====================
@@ -328,6 +348,30 @@ export interface ChatSendDTO {
   content: string
 }
 
+// ==================== 普通用户个人资料 ====================
+
+export interface UserProfileVO {
+  id: number
+  name: string
+  username: string
+  phone: string
+  email: string
+  sex: string
+}
+
+export interface UserProfileDTO {
+  username?: string
+  name?: string
+  phone?: string
+  email?: string
+  sex?: string
+}
+
+export interface ChangePasswordDTO {
+  code: string
+  newPassword: string
+}
+
 // ==================== 好友系统 ====================
 
 export interface FriendVO {
@@ -338,4 +382,19 @@ export interface FriendVO {
   role: string
   status: number
   createdAt: string
+}
+
+// ==================== 文章评论 ====================
+
+export interface ArticleCommentVO {
+  id: number
+  articleId: number
+  userId: number
+  userName: string
+  content: string
+  createTime: string
+}
+
+export interface ArticleCommentDTO {
+  content: string
 }

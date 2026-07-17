@@ -224,6 +224,23 @@ CREATE INDEX idx_po_inheritor_id   ON product_order(inheritor_id);
 CREATE INDEX idx_po_status         ON product_order(status);
 
 -- =====================================================
+-- 商品评价表
+-- =====================================================
+DROP TABLE IF EXISTS `product_review`;
+CREATE TABLE `product_review` (
+    `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
+    `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
+    `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
+    `rating`      INT          NOT NULL COMMENT '评分 1-5',
+    `content`     TEXT         NOT NULL COMMENT '评价内容',
+    `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_pr_product_id` (`product_id`),
+    INDEX `idx_pr_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
+
+-- =====================================================
 -- 文创商品测试数据
 -- 传承人ID对应: 1=李秀英(苏州) 2=张德明(宜兴) 3=王师傅(安吉) 4=陈巧云(成都)
 --              5=刘建国(景德镇) 6=赵玉兰(开封) 7=孙大师(泉州) 8=周小燕(大理)
@@ -335,6 +352,66 @@ CREATE TABLE knowledge_article (
     INDEX idx_category (category),
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='非遗知识库文章表';
+
+-- =====================================================
+-- 非遗知识库测试数据
+-- 作者ID对应: 1=李秀英 2=张德明 3=王师傅 4=陈巧云
+-- =====================================================
+INSERT INTO knowledge_article (author_id, title, category, content, cover_url, status, view_count, create_time)
+VALUES
+    (1, '苏绣的千年传承：从闺阁到世界非遗', '刺绣',
+     '苏绣，中国四大名绣之首，发源于苏州吴县一带，已有两千余年历史。苏绣以"平、齐、细、密、匀、顺、和、光"八大特色著称，针法细腻，色彩清雅。\n\n早在春秋战国时期，苏州刺绣就已出现。明清两代，苏州成为全国丝织业中心，苏绣达到鼎盛，不仅宫廷刺绣选用苏绣，民间刺绣也极为发达。沈寿、杨守玉等刺绣大师将苏绣推向艺术高峰。\n\n2006年，苏绣被列入第一批国家级非物质文化遗产名录。如今，苏州镇湖、高新区等地仍是苏绣的主要传承地，新一代传承人正在将传统技艺与现代设计相融合，让苏绣走进年轻人的日常生活。',
+     'https://picsum.photos/seed/suxiu/400/300', 1, 1280, NOW()),
+
+    (2, '紫砂壶鉴赏入门：泥料、器型与工艺', '陶艺',
+     '紫砂壶产自江苏宜兴，以其独特的双气孔结构和优良的泡茶性能，被誉为"壶中之王"。对于初学者来说，鉴赏紫砂壶可以从三个维度入手。\n\n首先是泥料。紫砂泥分为紫泥、红泥、绿泥（本山绿泥）三大类，不同泥料烧成后呈现不同的色泽和质感。原矿泥料制成的好壶，色泽温润内敛，手感细腻。\n\n其次是器型。紫砂壶历经数百年发展，形成了光素器、筋纹器、花器三大类型。石瓢、仿古、西施、井栏等经典器型百看不厌。\n\n最后是工艺。一把好壶讲究"三点一线"（壶嘴、壶钮、壶把在一条直线）、口盖严密、出水流畅、断水干脆。手工拍打成型、明针功夫等传统工艺更显匠人精神。',
+     'https://picsum.photos/seed/zisha/400/300', 1, 960, NOW()),
+
+    (3, '安吉竹编：指尖上的绿色非遗', '竹编',
+     '浙江安吉，中国著名的竹乡，孕育了源远流长的竹编技艺。安吉竹编以当地优质毛竹为原料，经过选料、破篾、刮青、编织等数十道工序，将翠竹化为精美的工艺品和生活用品。\n\n传统安吉竹编工艺可分为细丝竹编和粗丝竹编，细丝竹编薄如蝉翼，可编织花鸟鱼虫等精细图案；粗丝竹编则坚固耐用，常用于制作篮筐、屏风等实用器物。\n\n如今，安吉竹编传承人将传统技艺与现代设计理念相结合，开发出了竹编灯饰、竹编包袋、竹编茶具等一系列文创产品，让古老的竹编技艺焕发出新的生机。',
+     'https://picsum.photos/seed/bamboo/400/300', 1, 850, NOW()),
+
+    (4, '蜀绣与蜀锦：巴蜀大地的丝织双绝', '刺绣',
+     '四川成都，古称蜀郡，是丝绸之路的重要节点。蜀绣与蜀锦并称"蜀中双绝"，各具特色，相得益彰。\n\n蜀绣以软缎和彩丝为主要原料，针法多达120余种，尤以"晕针"最具特色，能使色彩过渡自然柔和。蜀绣题材丰富，熊猫、芙蓉花、锦鲤等四川元素是其标志性图案。\n\n蜀锦则是一种提花织锦，历史悠久，可追溯至战国时期。蜀锦以经线起花、色彩艳丽著称，"寸锦寸金"，曾是古代皇室贡品。\n\n2006年，蜀绣被列入第一批国家级非物质文化遗产名录；2009年，蜀锦织造技艺入选联合国人类非物质文化遗产代表作名录。',
+     'https://picsum.photos/seed/shuxiu/400/300', 1, 1120, NOW()),
+
+    (1, '校园非遗教育：让传统技艺走进课堂', '校园活动',
+     '近年来，越来越多的高校将非物质文化遗产引入校园，开设非遗选修课、成立非遗社团、举办非遗文化节，让青年学子近距离感受传统技艺的魅力。\n\n在课程设置方面，剪纸、陶艺、刺绣、书法等非遗项目成为最受欢迎的选修课。学生们在学习技艺的同时，也加深了对传统文化的理解和认同。\n\n在社团活动方面，非遗社团通过举办手作体验、传承人讲座、非遗市集等活动，吸引了大量学生参与。一些学生还利用新媒体平台，拍摄短视频传播非遗知识，形成了线上线下相结合的非遗传播新生态。\n\n非遗进校园，不仅是技艺的传承，更是文化自信的培育。让年轻一代成为非遗的传承者、传播者和创新者，是非遗保护工作的重要方向。',
+     'https://picsum.photos/seed/campus/400/300', 1, 1560, NOW()),
+
+    (2, '景德镇陶瓷七十二道工序探秘', '陶艺',
+     '景德镇，享誉世界的"瓷都"，其手工制瓷技艺已有千年历史。从一抔瓷土到一件精美的瓷器，需要经过整整七十二道工序，道道讲究，环环相扣。\n\n主要工序包括：采石、粉碎、淘洗、炼泥、拉坯、利坯、晒坯、刻花、施釉、烧窑等。其中，拉坯是最考验功力的环节，陶工需要在旋转的辘轳上将泥团拉成理想的器型。施釉则决定了瓷器表面的光泽和色彩。\n\n入窑一色，出窑万彩。景德镇传统柴窑和现代气窑各有特色，窑变产生的意外之美往往令人惊叹。\n\n如今，景德镇吸引了来自世界各地的年轻陶艺家，他们在这里建立了自己的工作室，将现代审美融入传统工艺，让千年瓷都焕发出新的活力。',
+     'https://picsum.photos/seed/jingdezhen/400/300', 1, 780, NOW()),
+
+    (4, '剪纸艺术的南北流派与当代创新', '剪纸',
+     '中国剪纸艺术历史悠久，地域风格鲜明，大致可分为北方剪纸和南方剪纸两大流派。\n\n北方剪纸以陕西、河北、山东为代表，风格粗犷豪放、造型简练，多用大块面的阴刻手法，内容以人物、动物、吉祥图案为主。每逢春节，北方农家窗户上贴满红色窗花，喜庆热烈。\n\n南方剪纸以江苏、浙江、广东为代表，风格纤细秀丽、精巧繁复，善于运用阳刻和细线造型。扬州剪纸、乐清细纹刻纸、佛山铜凿剪纸等各具特色。\n\n在当代，剪纸艺术已从传统窗花拓展到装置艺术、服装设计、动画创作等领域。一些年轻艺术家用剪纸语言表达当代社会议题，让这一古老技艺展现出全新的艺术魅力。',
+     'https://picsum.photos/seed/jianzhi/400/300', 1, 690, NOW()),
+
+    (3, '竹文化在中国传统文化中的地位', '竹编',
+     '竹，在中国文化中有着独特而崇高的地位。它不仅是实用的建筑材料和生活器具的原料，更是一种文化符号和精神象征。\n\n在物质层面，竹子被广泛应用于建筑（竹楼、竹桥）、家具（竹椅、竹榻）、餐具（竹筷、竹篮）、文具（竹简、竹笔）等各个领域。浙江安吉、江西井冈山、四川宜宾等地都是著名的竹产区。\n\n在精神层面，竹与梅、兰、菊并称"四君子"，象征正直、谦逊、坚韧的品格。"宁可食无肉，不可居无竹"（苏轼）、"未出土时先有节，及凌云处尚虚心"等诗句表达了中国文人对竹的钟爱。\n\n如今，竹文化已成为中国传统文化的重要组成部分，竹编技艺作为非物质文化遗产，正在通过文创产品、体验工坊等形式走进现代生活。',
+     'https://picsum.photos/seed/zhubian/400/300', 1, 540, NOW()),
+
+    (1, '对话非遗传承人：我为什么坚守苏绣三十载', '传承人专访',
+     '本期专访我们邀请到了苏州刺绣传承人李秀英老师。李老师从事苏绣创作已有三十余年，作品多次获得国家级工艺美术大奖。\n\n问：是什么让您坚持苏绣这么多年？\n\n答：热爱。从小看着母亲和祖母在绣架前飞针走线，那种娴静的美深深印在了我的心里。苏绣不仅仅是一门手艺，更是一种生活态度。一针一线，需要耐心，需要专注，需要心静如水。\n\n问：苏绣传承面临哪些挑战？\n\n答：最大的挑战是人才断层。现在年轻人生活节奏快，很少有愿意花几年甚至十几年时间潜心学艺的。苏绣学习周期长，经济回报慢，这让很多年轻人望而却步。但我们也在努力改变，比如开设短期体验课，开发苏绣文创产品，让更多人先接触、再了解、最后爱上苏绣。\n\n问：您对苏绣的未来有什么期待？\n\n答：我希望苏绣不仅是博物馆里的展品，更能走进寻常百姓家。我们正在尝试将苏绣元素融入服装、包袋、家居用品，让传统技艺服务于现代生活。',
+     'https://picsum.photos/seed/interview/400/300', 1, 2100, NOW());
+
+
+-- =====================================================
+-- 文章评论表
+-- =====================================================
+DROP TABLE IF EXISTS article_comment;
+
+CREATE TABLE article_comment (
+    id          BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键',
+    article_id  BIGINT NOT NULL COMMENT '文章ID',
+    user_id     BIGINT NOT NULL COMMENT '评论用户ID',
+    user_name   VARCHAR(32) NOT NULL COMMENT '评论用户名',
+    content     TEXT NOT NULL COMMENT '评论内容',
+    create_time DATETIME DEFAULT NULL COMMENT '创建时间',
+    PRIMARY KEY (id),
+    INDEX idx_ac_article_id (article_id),
+    INDEX idx_ac_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章评论表';
 
 -- =====================================================
 -- 非遗项目表
@@ -469,4 +546,16 @@ CREATE TABLE rag_chat_message (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
-
+DROP TABLE IF EXISTS `product_review`;
+CREATE TABLE `product_review` (
+                                  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+                                  `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
+                                  `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
+                                  `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
+                                  `rating`      INT          NOT NULL COMMENT '评分 1-5',
+                                  `content`     TEXT         NOT NULL COMMENT '评价内容',
+                                  `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
+                                  PRIMARY KEY (`id`),
+                                  INDEX `idx_pr_product_id` (`product_id`),
+                                  INDEX `idx_pr_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';

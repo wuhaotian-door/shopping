@@ -96,6 +96,17 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     }
 
     @Override
+    public KnowledgeArticleVO getById(Long id) {
+        KnowledgeArticle article = articleMapper.getById(id);
+        if (article == null) {
+            throw new BaseException(MessageConstant.ARTICLE_NOT_FOUND);
+        }
+        Inheritor author = inheritorMapper.getById(article.getAuthorId());
+        String authorName = author != null ? author.getName() : "";
+        return toVO(article, authorName);
+    }
+
+    @Override
     public List<KnowledgeArticleVO> listPublished() {
         List<KnowledgeArticle> articles = articleMapper.listPublished();
         return articles.stream()
