@@ -35,6 +35,11 @@ public interface HeritageProjectService {
     List<HeritageProjectVO> listByInheritor(Long inheritorId);
 
     /**
+     * 按项目类型查询自己的项目列表
+     */
+    List<HeritageProjectVO> listByInheritor(Long inheritorId, Integer projectType);
+
+    /**
      * 查询所有已上架项目（首页展示）
      */
     List<HeritageProjectVO> listPublished();

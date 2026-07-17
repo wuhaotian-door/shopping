@@ -127,8 +127,18 @@ function onTabSwitch(key: TabKey) {
       <!-- 非遗资讯 — 文章管理 -->
       <KnowledgeManager v-if="activeTab === 'knowledge'" />
 
-      <!-- 非遗项目 — 项目管理 -->
-      <ProjectManager v-if="activeTab === 'projects'" />
+      <!-- 非遗项目 — 公益/非公益分栏 -->
+      <template v-if="activeTab === 'projects'">
+        <div class="split-panels">
+          <div class="split-panel split-panel-left">
+            <ProjectManager :projectType="0" />
+          </div>
+          <div class="split-divider"></div>
+          <div class="split-panel split-panel-right">
+            <ProjectManager :projectType="1" />
+          </div>
+        </div>
+      </template>
 
       <!-- 商品设置 — 从数据库读取传承人产品目录 -->
       <ProductManager v-if="activeTab === 'products'" />
@@ -468,10 +478,38 @@ function onTabSwitch(key: TabKey) {
   font-size: 14px;
 }
 
+/* ==================== 分栏布局（非遗项目） ==================== */
+.split-panels {
+  display: flex;
+  gap: 0;
+  min-height: 600px;
+}
+
+.split-panel {
+  flex: 1;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.split-divider {
+  width: 2px;
+  background: #e0e0e0;
+  margin: 0 16px;
+  flex-shrink: 0;
+}
+
 /* ==================== 响应式 ==================== */
 @media (max-width: 992px) {
   .nav-tabs { gap: 2px; }
   .nav-tab { padding: 8px 10px; font-size: 13px; }
+  .split-panels {
+    flex-direction: column;
+  }
+  .split-divider {
+    width: 100%;
+    height: 2px;
+    margin: 16px 0;
+  }
 }
 @media (max-width: 768px) {
   .page-header {

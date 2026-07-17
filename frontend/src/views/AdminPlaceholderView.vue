@@ -229,6 +229,7 @@ async function handleDeleteProject(id: number) {
 }
 
 const projectStatusLabel = (s: number) => s === 1 ? '上架' : '下架'
+const projectTypeLabel = (t: number) => t === 1 ? '非公益（盈利）' : '公益（非盈利）'
 
 // ==================== 7. 订单管理 ====================
 const orderList = ref<OrderVO[]>([])
@@ -716,9 +717,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <th>ID</th>
                   <th>项目名称</th>
                   <th>分类</th>
+                  <th>类型</th>
                   <th>传承人</th>
                   <th>地点</th>
                   <th>人数(当前/上限)</th>
+                  <th>价格</th>
                   <th>状态</th>
                   <th>创建时间</th>
                   <th>操作</th>
@@ -729,9 +732,13 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <td>{{ p.id }}</td>
                   <td class="ellipsis-cell">{{ p.title }}</td>
                   <td>{{ p.category || '-' }}</td>
+                  <td>
+                    <span class="status-dot" :class="p.projectType === 1 ? 's-pending' : 's-enabled'">{{ projectTypeLabel(p.projectType ?? 0) }}</span>
+                  </td>
                   <td>{{ p.inheritorName || '-' }}</td>
                   <td>{{ p.location || '-' }}</td>
                   <td>{{ p.currentPeople }}/{{ p.maxPeople }}</td>
+                  <td>{{ (p.projectType === 1 && p.price != null) ? '¥' + p.price.toFixed(2) : '-' }}</td>
                   <td><span class="status-dot" :class="p.status === 1 ? 's-enabled' : 's-disabled'">{{ projectStatusLabel(p.status) }}</span></td>
                   <td>{{ p.createTime?.slice(0, 10) }}</td>
                   <td>

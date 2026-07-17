@@ -201,6 +201,8 @@ export interface HeritageProjectVO {
   maxPeople: number
   currentPeople: number
   status: number
+  projectType: number  // 0-公益(非盈利), 1-非公益(盈利)
+  price?: number       // 价格（非公益项目使用）
   createTime: string
 }
 
@@ -214,6 +216,8 @@ export interface HeritageProjectDTO {
   endDate?: string
   maxPeople?: number
   status?: number
+  projectType?: number  // 0-公益(非盈利), 1-非公益(盈利)
+  price?: number        // 价格（非公益项目使用）
 }
 
 // ==================== 商城商品 ====================

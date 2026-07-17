@@ -354,6 +354,8 @@ CREATE TABLE heritage_project (
     max_people      INT COMMENT '最大参与人数',
     current_people  INT DEFAULT 0 COMMENT '当前报名人数',
     status          INT DEFAULT 0 COMMENT '0-下架 1-上架',
+    project_type    TINYINT NOT NULL DEFAULT 0 COMMENT '项目类型：0-公益(非盈利), 1-非公益(盈利)',
+    price           DECIMAL(10,2) DEFAULT NULL COMMENT '价格（非公益项目使用）',
     create_time     DATETIME COMMENT '创建时间',
     update_time     DATETIME COMMENT '修改时间',
     create_user     BIGINT COMMENT '创建人',

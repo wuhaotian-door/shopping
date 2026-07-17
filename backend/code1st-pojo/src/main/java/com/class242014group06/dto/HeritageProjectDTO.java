@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
@@ -40,4 +41,10 @@ public class HeritageProjectDTO implements Serializable {
 
     @ApiModelProperty("状态：0-下架 1-上架")
     private Integer status;
+
+    @ApiModelProperty("项目类型：0-公益(非盈利), 1-非公益(盈利)")
+    private Integer projectType;
+
+    @ApiModelProperty("价格（非公益项目使用）")
+    private BigDecimal price;
 }

@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -55,6 +56,12 @@ public class HeritageProjectVO implements Serializable {
 
     /** 状态：0-下架 1-上架 */
     private Integer status;
+
+    /** 项目类型：0-公益(非盈利), 1-非公益(盈利) */
+    private Integer projectType;
+
+    /** 价格（非公益项目使用） */
+    private BigDecimal price;
 
     private LocalDateTime createTime;
 }

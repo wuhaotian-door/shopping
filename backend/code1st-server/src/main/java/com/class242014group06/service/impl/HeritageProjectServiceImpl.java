@@ -39,6 +39,9 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
         if (project.getStatus() == null) {
             project.setStatus(0); // 默认下架
         }
+        if (project.getProjectType() == null) {
+            project.setProjectType(0); // 默认公益
+        }
         projectMapper.insert(project);
 
         // 校验项目日期是否在时段范围内
@@ -94,6 +97,16 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     @Override
     public List<HeritageProjectVO> listByInheritor(Long inheritorId) {
         List<HeritageProject> projects = projectMapper.getByInheritorId(inheritorId);
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
+        String inheritorName = inheritor != null ? inheritor.getName() : "";
+        return projects.stream()
+                .map(p -> toVO(p, inheritorName))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<HeritageProjectVO> listByInheritor(Long inheritorId, Integer projectType) {
+        List<HeritageProject> projects = projectMapper.getByInheritorIdAndType(inheritorId, projectType);
         Inheritor inheritor = inheritorMapper.getById(inheritorId);
         String inheritorName = inheritor != null ? inheritor.getName() : "";
         return projects.stream()
@@ -187,6 +200,8 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
                 .maxPeople(project.getMaxPeople())
                 .currentPeople(project.getCurrentPeople())
                 .status(project.getStatus())
+                .projectType(project.getProjectType())
+                .price(project.getPrice())
                 .createTime(project.getCreateTime())
                 .build();
     }

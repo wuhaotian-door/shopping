@@ -16,6 +16,8 @@
             <if test="maxPeople != null">max_people = #{maxPeople},</if>
             <if test="currentPeople != null">current_people = #{currentPeople},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="projectType != null">project_type = #{projectType},</if>
+            <if test="price != null">price = #{price},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="updateUser != null">update_user = #{updateUser},</if>
         </set>

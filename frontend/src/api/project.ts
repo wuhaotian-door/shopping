@@ -21,9 +21,13 @@ export function toggleProjectStatus(id: number, status: number): Promise<Result<
   return request.put(`/project/${id}/status`, null, { params: { status } })
 }
 
-/** 查看自己的项目列表 */
-export function listMyProjects(): Promise<Result<HeritageProjectVO[]>> {
-  return request.get('/project/my')
+/** 查看自己的项目列表，可按类型筛选 */
+export function listMyProjects(projectType?: number): Promise<Result<HeritageProjectVO[]>> {
+  const params: Record<string, any> = {}
+  if (projectType !== undefined) {
+    params.projectType = projectType
+  }
+  return request.get('/project/my', { params })
 }
 
 /** 查询所有已上架项目（公开） */

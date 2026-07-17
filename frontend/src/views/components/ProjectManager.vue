@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { listMyProjects, createProject, updateProject, deleteProject, toggleProjectStatus } from '@/api/project'
 import { getSlotRange } from '@/api/slot'
 import type { HeritageProjectVO, HeritageProjectDTO, SlotDateRange } from '@/types/api'
+
+const props = defineProps<{
+  projectType: number  // 0 = 公益（非盈利）, 1 = 非公益（盈利）
+}>()
 
 const projects = ref<HeritageProjectVO[]>([])
 const loading = ref(false)
@@ -20,17 +24,24 @@ const form = ref<HeritageProjectDTO>({
   endDate: '',
   maxPeople: 20,
   status: 0,
+  projectType: props.projectType,
+  price: undefined,
 })
 
 const submitMsg = ref('')
 const slotRange = ref<SlotDateRange | null>(null)
+
+// 面板标签
+const panelLabel = computed(() => props.projectType === 0 ? '公益（非盈利）' : '非公益（盈利）')
+const panelDesc = computed(() => props.projectType === 0 ? '公益（非盈利）非遗项目' : '非公益（盈利）非遗项目')
+const panelTheme = computed(() => props.projectType === 0 ? 'welfare' : 'forprofit')
 
 onMounted(() => { loadProjects(); loadSlotRange() })
 
 async function loadProjects() {
   loading.value = true
   try {
-    const res = await listMyProjects()
+    const res = await listMyProjects(props.projectType)
     projects.value = res.data
   } catch { /* ignore */ } finally { loading.value = false }
 }
@@ -48,7 +59,7 @@ async function loadSlotRange() {
 
 function openCreate() {
   editingId.value = null
-  form.value = { title: '', category: '', description: '', location: '', startDate: '', endDate: '', maxPeople: 20, status: 0 }
+  form.value = { title: '', category: '', description: '', location: '', startDate: '', endDate: '', maxPeople: 20, status: 0, projectType: props.projectType, price: undefined }
   showEditor.value = true
   submitMsg.value = ''
 }
@@ -64,6 +75,8 @@ function openEdit(project: HeritageProjectVO) {
     endDate: project.endDate,
     maxPeople: project.maxPeople,
     status: project.status,
+    projectType: project.projectType,
+    price: project.price,
   }
   showEditor.value = true
   submitMsg.value = ''
@@ -140,20 +153,20 @@ async function handleToggle(project: HeritageProjectVO) {
 </script>
 
 <template>
-  <section class="tab-content">
+  <section class="tab-content" :class="`panel-${panelTheme}`">
     <div class="section-header">
-      <h2>非遗项目管理</h2>
+      <h2 :class="`heading-${panelTheme}`">{{ panelDesc }}</h2>
       <div class="header-right">
         <span v-if="slotRange?.minDate" class="slot-range-info">
           时段覆盖：{{ slotRange.minDate }} ~ {{ slotRange.maxDate }}
         </span>
         <span v-else class="slot-range-warn">尚未配置时段</span>
-        <button class="btn-primary" @click="openCreate">+ 发布项目</button>
+        <button class="btn-primary" :class="`btn-${panelTheme}`" @click="openCreate">+ 发布{{ panelLabel }}项目</button>
       </div>
     </div>
 
     <div v-if="showEditor" class="editor-card">
-      <h3>{{ editingId ? '编辑项目' : '发布新项目' }}</h3>
+      <h3>{{ editingId ? '编辑项目' : `发布${panelLabel}项目` }}</h3>
       <div class="form-row">
         <div class="form-group flex-2">
           <label>项目标题 *</label>
@@ -194,12 +207,25 @@ async function handleToggle(project: HeritageProjectVO) {
           <input v-model="form.endDate" type="date" class="form-input" />
         </div>
       </div>
+      <div class="form-row">
+        <div class="form-group flex-1">
+          <label>项目类型</label>
+          <select v-model="form.projectType" class="form-input">
+            <option :value="0">公益（非盈利）</option>
+            <option :value="1">非公益（盈利）</option>
+          </select>
+        </div>
+        <div class="form-group flex-1" v-if="form.projectType === 1">
+          <label>价格（元）</label>
+          <input v-model.number="form.price" type="number" min="0" step="0.01" class="form-input" placeholder="0.00" />
+        </div>
+      </div>
       <div class="form-group">
         <label>项目描述</label>
         <textarea v-model="form.description" class="form-textarea" rows="5" placeholder="项目详情..."></textarea>
       </div>
       <div class="form-actions">
-        <button class="btn-primary" @click="handleSave">保存</button>
+        <button class="btn-primary" :class="`btn-${panelTheme}`" @click="handleSave">保存</button>
         <button class="btn-outline" @click="showEditor = false">取消</button>
         <span v-if="submitMsg" class="submit-msg error">{{ submitMsg }}</span>
       </div>
@@ -210,15 +236,17 @@ async function handleToggle(project: HeritageProjectVO) {
         <thead>
           <tr>
             <th>标题</th><th>分类</th><th>地点</th><th>日期</th>
+            <th v-if="props.projectType === 1">价格</th>
             <th>人数</th><th>状态</th><th>操作</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="p in projects" :key="p.id">
             <td class="article-title-cell">{{ p.title }}</td>
-            <td><span class="category-tag">{{ p.category || '-' }}</span></td>
+            <td><span class="category-tag" :class="`cat-${panelTheme}`">{{ p.category || '-' }}</span></td>
             <td>{{ p.location || '-' }}</td>
             <td>{{ p.startDate || '?' }} ~ {{ p.endDate || '?' }}</td>
+            <td v-if="props.projectType === 1">¥{{ (p.price ?? 0).toFixed(2) }}</td>
             <td>{{ p.currentPeople }}/{{ p.maxPeople }}</td>
             <td>
               <span class="article-status" :class="p.status === 1 ? 'published' : 'draft'">
@@ -236,15 +264,54 @@ async function handleToggle(project: HeritageProjectVO) {
         </tbody>
       </table>
       <div v-if="loading" class="empty-state">加载中…</div>
-      <div v-else-if="projects.length === 0" class="empty-state">暂无项目，点击"发布项目"创建</div>
+      <div v-else-if="projects.length === 0" class="empty-state">暂无{{ panelLabel }}项目，点击"发布{{ panelLabel }}项目"创建</div>
     </div>
   </section>
 </template>
 
 <style scoped>
 .tab-content { }
+
+/* ==================== 公益面板（红色系） ==================== */
+.panel-welfare { }
+.heading-welfare {
+  font-size: 22px;
+  color: #c41e3a;
+  padding-left: 14px;
+  border-left: 4px solid #c41e3a;
+}
+.btn-welfare {
+  background: #c41e3a;
+}
+.btn-welfare:hover {
+  background: #a8162b;
+}
+.cat-welfare {
+  background: #ffe9ec;
+  color: #c41e3a;
+}
+
+/* ==================== 非公益面板（蓝色系） ==================== */
+.panel-forprofit { }
+.heading-forprofit {
+  font-size: 22px;
+  color: #1a73e8;
+  padding-left: 14px;
+  border-left: 4px solid #1a73e8;
+}
+.btn-forprofit {
+  background: #1a73e8;
+}
+.btn-forprofit:hover {
+  background: #1557b0;
+}
+.cat-forprofit {
+  background: #e8f0fe;
+  color: #1a73e8;
+}
+
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
-.section-header h2 { font-size: 22px; color: #c41e3a; padding-left: 14px; border-left: 4px solid #c41e3a; }
+.section-header h2 { }
 .header-right { display: flex; align-items: center; gap: 16px; }
 .slot-range-info { font-size: 13px; color: #28a745; background: #d4edda; padding: 4px 12px; border-radius: 12px; }
 .slot-range-warn { font-size: 13px; color: #856404; background: #fff3cd; padding: 4px 12px; border-radius: 12px; }
@@ -257,7 +324,7 @@ async function handleToggle(project: HeritageProjectVO) {
 .order-table tbody tr:hover { background: #fefafa; }
 .article-title-cell { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .action-cell { white-space: nowrap; display: flex; gap: 6px; }
-.category-tag { display: inline-block; padding: 2px 10px; background: #ffe9ec; color: #c41e3a; border-radius: 10px; font-size: 12px; }
+.category-tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; }
 .article-status { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 12px; font-weight: 600; }
 .article-status.published { background: #d4edda; color: #155724; }
 .article-status.draft { background: #e2e3e5; color: #383d41; }
@@ -267,8 +334,7 @@ async function handleToggle(project: HeritageProjectVO) {
 .btn-outline-sm:hover { background: #fff5f7; }
 .btn-reject { padding: 5px 10px; font-size: 12px; color: #fff; background: #dc3545; border: none; border-radius: 4px; cursor: pointer; }
 .btn-reject:hover { background: #c82333; }
-.btn-primary { padding: 10px 24px; font-size: 14px; color: #fff; background: #c41e3a; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-.btn-primary:hover { background: #a8162b; }
+.btn-primary { padding: 10px 24px; font-size: 14px; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
 .btn-outline { padding: 10px 24px; font-size: 14px; color: #c41e3a; background: #fff; border: 1px solid #c41e3a; border-radius: 6px; cursor: pointer; }
 .btn-outline:hover { background: #fff5f7; }
 .editor-card { background: #fff; border-radius: 12px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 10px rgba(0,0,0,0.06); }

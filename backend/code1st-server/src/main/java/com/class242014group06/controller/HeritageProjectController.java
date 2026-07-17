@@ -80,14 +80,19 @@ public class HeritageProjectController {
     }
 
     /**
-     * 传承人查看自己的项目列表
+     * 传承人查看自己的项目列表，可按类型筛选
      */
     @GetMapping("/my")
-    @ApiOperation("查看自己的项目列表")
-    public Result<List<HeritageProjectVO>> listMyProjects() {
+    @ApiOperation("查看自己的项目列表，可按类型筛选")
+    public Result<List<HeritageProjectVO>> listMyProjects(@RequestParam(required = false) Integer projectType) {
         Long inheritorId = BaseContext.getCurrentId();
-        log.info("查看自己的项目列表，inheritorId：{}", inheritorId);
-        List<HeritageProjectVO> list = projectService.listByInheritor(inheritorId);
+        log.info("查看自己的项目列表，inheritorId：{}，projectType：{}", inheritorId, projectType);
+        List<HeritageProjectVO> list;
+        if (projectType != null) {
+            list = projectService.listByInheritor(inheritorId, projectType);
+        } else {
+            list = projectService.listByInheritor(inheritorId);
+        }
         return Result.success(list);
     }
 
