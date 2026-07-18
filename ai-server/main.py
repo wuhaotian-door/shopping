@@ -20,6 +20,9 @@ API 端点:
   POST /ai/agent/graph/stream — LangGraph 流式（展示每步执行状态）
   POST /ai/agent/human/start  — Human-in-the-loop: 启动（可能暂停要审批）
   POST /ai/agent/human/resume — Human-in-the-loop: 审批后恢复
+  POST /ai/agent/subgraph/start  — Subgraph Agent: 启动（子图封装审批流）
+  POST /ai/agent/subgraph/resume — Subgraph Agent: 审批后恢复
+  POST /ai/eval/rag         — RAGAS 评估
 """
 
 from typing import Any, Dict, List
@@ -34,6 +37,7 @@ from rag import build_knowledge_base, rag_ask, rag_ask_stream
 from tools import agent_chat
 from agent_graph import graph_ask, graph_ask_stream
 from agent_human import human_agent_start, human_agent_resume, human_agent_get_state
+from agent_subgraph import subgraph_agent_start, subgraph_agent_resume, subgraph_agent_get_state
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -269,3 +273,60 @@ async def ai_agent_human_resume(req: ResumeRequest):
 async def ai_agent_human_state(thread_id: str):
     """查询 Agent 当前状态"""
     return human_agent_get_state(thread_id)
+
+
+# ============================================================
+# Level 3: Subgraph Agent 端点
+# ============================================================
+
+@app.post("/ai/agent/subgraph/start")
+async def ai_agent_subgraph_start(req: ThreadRequest):
+    """启动 Subgraph Agent — tool_node 内部调用 tool_exec_subgraph 子图
+
+    和 /ai/agent/human/start 功能相同（审批流），但实现方式不同:
+      human: tool_node 是一个 50+ 行的函数，审批逻辑混在一起
+      subgraph: tool_node 调用子图，子图内部拆成 check → approve → execute 三个节点
+    """
+    return subgraph_agent_start(req.question, req.thread_id)
+
+
+@app.post("/ai/agent/subgraph/resume")
+async def ai_agent_subgraph_resume(req: ResumeRequest):
+    """审批后恢复 Subgraph Agent"""
+    return subgraph_agent_resume(req.thread_id, req.approved)
+
+
+@app.get("/ai/agent/subgraph/state/{thread_id}")
+async def ai_agent_subgraph_state(thread_id: str):
+    """查询 Subgraph Agent 当前状态"""
+    return subgraph_agent_get_state(thread_id)
+
+
+# ============================================================
+# Level 3: RAGAS 评估端点
+# ============================================================
+
+class EvalRequest(BaseModel):
+    test_questions: List[Dict[str, str]]  # [{"question": "...", "ground_truth": "..."}, ...]
+    evaluate_retrieval: bool = True       # 是否评估检索质量
+    evaluate_generation: bool = True      # 是否评估生成质量
+
+
+@app.post("/ai/eval/rag")
+async def ai_eval_rag(req: EvalRequest):
+    """RAGAS 评估 RAG 管道
+
+    输入一组测试问题 + 标准答案，输出 Faithfulness / Relevancy / Precision / Recall 等指标。
+
+    指标说明:
+      - Faithfulness:       答案是否100%源自检索到的文档（不编造）
+      - Answer Relevancy:   答案是否紧扣用户问题
+      - Context Precision:  检索到的文档中，相关的占多少（信噪比）
+      - Context Recall:     标准答案涉及的信息，检索到了多少（查全率）
+    """
+    from eval_ragas import evaluate_rag
+    return evaluate_rag(
+        test_questions=req.test_questions,
+        evaluate_retrieval=req.evaluate_retrieval,
+        evaluate_generation=req.evaluate_generation,
+    )

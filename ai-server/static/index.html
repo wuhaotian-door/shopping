@@ -386,6 +386,7 @@ const MODES = {
   agent:    { label: '🔧 Agent',   cls: 'toggle agent' },
   graph:    { label: '🕸 Graph',   cls: 'toggle graph' },
   hitl:     { label: '👤 HITL',    cls: 'toggle hitl' },
+  subgraph: { label: '🧩 子图',    cls: 'toggle graph' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -409,6 +410,8 @@ async function send() {
 
   if (mode === 'hitl') {
     await sendHITL(question);
+  } else if (mode === 'subgraph') {
+    await sendSubgraph(question);
   } else if (mode === 'graph') {
     await sendGraphStream(question);
   } else if (mode === 'agent') {
@@ -662,6 +665,84 @@ function renderHITLAnswer(data) {
 
   bubble.innerHTML = html;
   chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+// =============================================
+// Level 3: Subgraph Agent — 和 HITL 审批流程相同，底層用子图实现
+// =============================================
+async function sendSubgraph(question) {
+  const threadId = 'sub-' + Date.now();
+  const loading = addBubble('▊ Agent 决策中（子图模式）…', 'ai loading');
+
+  try {
+    const res = await fetch('/ai/agent/subgraph/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, thread_id: threadId }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    if (data.status === 'done') {
+      renderHITLAnswer(data);
+    } else if (data.status === 'interrupted') {
+      const interrupts = data.interrupts || [];
+      for (const iv of interrupts) {
+        const v = iv.value || iv;
+        showSubgraphApprovalDialog(threadId, v);
+      }
+    }
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败', 'ai');
+  }
+}
+
+function showSubgraphApprovalDialog(threadId, interruptInfo) {
+  const div = document.createElement('div');
+  div.className = 'approval-dialog';
+  div.style.borderColor = '#7e57c2';
+  div.style.borderWidth = '2px';
+  const toolName = interruptInfo.tool_name || '未知工具';
+  const toolArgs = interruptInfo.tool_args || {};
+
+  div.innerHTML = `
+    <div class="ad-title" style="color:#7e57c2">🧩 [子图模式] Agent 请求执行操作</div>
+    <div class="ad-detail">
+      <strong>工具:</strong> ${escapeHtml(toolName)}<br>
+      <strong>参数:</strong> ${escapeHtml(JSON.stringify(toolArgs, null, 2))}<br>
+      <span style="font-size:11px;color:#999">审批节点来自子图: check → approve(interrupt) → execute</span>
+    </div>
+    <div class="ad-btns">
+      <button class="btn-approve" data-action="approve" style="background:#7e57c2">✅ 批准</button>
+      <button class="btn-reject"  data-action="reject">❌ 拒绝</button>
+    </div>
+  `;
+
+  const onDecision = async (approved) => {
+    div.querySelectorAll('button').forEach(b => b.disabled = true);
+    div.innerHTML = approved
+      ? '<div style="color:#2e7d32">✅ 已批准，Agent 继续执行…</div>'
+      : '<div style="color:#c62828">❌ 已拒绝，Agent 继续执行…</div>';
+
+    try {
+      const res = await fetch('/ai/agent/subgraph/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: threadId, approved }),
+      });
+      const data = await res.json();
+      renderHITLAnswer(data);
+    } catch (err) {
+      div.innerHTML = '<div style="color:#c62828">恢复执行失败</div>';
+    }
+  };
+
+  div.querySelector('.btn-approve').onclick = () => onDecision(true);
+  div.querySelector('.btn-reject').onclick = () => onDecision(false);
+
+  chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
 }
 
