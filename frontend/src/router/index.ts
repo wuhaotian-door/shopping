@@ -88,6 +88,12 @@ const router = createRouter({
       component: () => import('@/views/ArticleDetailView.vue'),
       meta: { requiresAuth: false },
     },
+    {
+      path: '/appointment/:inheritorId',
+      name: 'Appointment',
+      component: () => import('@/views/AppointmentView.vue'),
+      meta: { requiresAuth: false },
+    },
   ],
 })
 

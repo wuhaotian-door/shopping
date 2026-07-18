@@ -5,6 +5,7 @@ import com.class242014group06.constant.OrderStatusConstant;
 import com.class242014group06.dto.OrderSubmitDTO;
 import com.class242014group06.entity.OrderAppointment;
 import com.class242014group06.exception.OrderBusinessException;
+import com.class242014group06.mapper.HeritageProjectMapper;
 import com.class242014group06.mapper.OrderMapper;
 import com.class242014group06.service.OrderService;
 import com.class242014group06.vo.OrderVO;
@@ -20,6 +21,9 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private OrderMapper orderMapper;
+
+    @Autowired
+    private HeritageProjectMapper projectMapper;
 
     /**
      * 用户提交预约订单
@@ -71,6 +75,11 @@ public class OrderServiceImpl implements OrderService {
                 .status(OrderStatusConstant.CONFIRMED)
                 .build();
         orderMapper.update(update);
+
+        // 确认后增加对应非遗项目的已报名人数
+        if (order.getProjectId() != null && order.getPeopleCount() != null && order.getPeopleCount() > 0) {
+            projectMapper.incrementCurrentPeople(order.getProjectId(), order.getPeopleCount());
+        }
     }
 
     /**
@@ -135,8 +144,15 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        boolean wasConfirmed = OrderStatusConstant.CONFIRMED.equals(order.getStatus());
         OrderAppointment update = OrderAppointment.builder().id(orderId).status(status).build();
         orderMapper.update(update);
+
+        // 从已确认变为已取消时，减少项目报名人数
+        if (wasConfirmed && OrderStatusConstant.CANCELLED.equals(status)
+                && order.getProjectId() != null && order.getPeopleCount() != null && order.getPeopleCount() > 0) {
+            projectMapper.decrementCurrentPeople(order.getProjectId(), order.getPeopleCount());
+        }
     }
 
     @Override
@@ -161,11 +177,17 @@ public class OrderServiceImpl implements OrderService {
         if (order == null) {
             throw new OrderBusinessException(MessageConstant.ORDER_NOT_FOUND);
         }
+        // 如果订单已确认，取消时需减少项目报名人数
+        boolean wasConfirmed = OrderStatusConstant.CONFIRMED.equals(order.getStatus());
         OrderAppointment update = OrderAppointment.builder()
                 .id(orderId)
                 .status(OrderStatusConstant.CANCELLED)
                 .build();
         orderMapper.update(update);
+
+        if (wasConfirmed && order.getProjectId() != null && order.getPeopleCount() != null && order.getPeopleCount() > 0) {
+            projectMapper.decrementCurrentPeople(order.getProjectId(), order.getPeopleCount());
+        }
     }
 
     /**
@@ -175,6 +197,7 @@ public class OrderServiceImpl implements OrderService {
         return OrderVO.builder()
                 .id(order.getId())
                 .inheritorId(order.getInheritorId())
+                .projectId(order.getProjectId())
                 .userName(order.getUserName())
                 .phone(order.getPhone())
                 .appointmentDate(order.getAppointmentDate())

@@ -10,6 +10,7 @@
             <if test="phone != null">phone = #{phone},</if>
             <if test="appointmentDate != null">appointment_date = #{appointmentDate},</if>
             <if test="timeSlot != null">time_slot = #{timeSlot},</if>
+            <if test="projectId != null">project_id = #{projectId},</if>
             <if test="peopleCount != null">people_count = #{peopleCount},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="status != null">status = #{status},</if>

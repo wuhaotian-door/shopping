@@ -124,6 +124,7 @@ CREATE TABLE appointment_order (
     user_name        VARCHAR(255) COMMENT '预约用户姓名',
     phone            VARCHAR(50)  COMMENT '联系电话',
     inheritor_id     BIGINT       COMMENT '传承人工坊ID（关联inheritor表）',
+    project_id       BIGINT       COMMENT '关联非遗项目ID（可选）',
     appointment_date DATE         COMMENT '预约日期',
     time_slot        VARCHAR(100) COMMENT '预约时段，如 上午 9:00-11:00',
     people_count     INT          COMMENT '预约人数',

@@ -16,9 +16,9 @@ public interface OrderMapper {
      * 新增预约订单
      */
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into appointment_order (user_id, user_name, phone, inheritor_id, appointment_date, time_slot, " +
+    @Insert("insert into appointment_order (user_id, user_name, phone, inheritor_id, project_id, appointment_date, time_slot, " +
             "people_count, remark, status, create_time, update_time, create_user, update_user) " +
-            "values (#{userId}, #{userName}, #{phone}, #{inheritorId}, #{appointmentDate}, #{timeSlot}, " +
+            "values (#{userId}, #{userName}, #{phone}, #{inheritorId}, #{projectId}, #{appointmentDate}, #{timeSlot}, " +
             "#{peopleCount}, #{remark}, #{status}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})")
     void insert(OrderAppointment order);
 

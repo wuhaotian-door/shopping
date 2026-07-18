@@ -8,6 +8,7 @@ import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -60,4 +61,22 @@ public interface HeritageProjectMapper {
 
     @Select("select * from heritage_project order by create_time desc")
     List<HeritageProject> listAll();
+
+    /**
+     * 根据传承人ID查询已上架项目列表（公开）
+     */
+    @Select("select * from heritage_project where inheritor_id = #{inheritorId} and status = 1 order by create_time desc")
+    List<HeritageProject> getPublishedByInheritorId(Long inheritorId);
+
+    /**
+     * 增加项目报名人数
+     */
+    @Update("update heritage_project set current_people = current_people + #{delta} where id = #{projectId} and current_people + #{delta} <= max_people")
+    int incrementCurrentPeople(@Param("projectId") Long projectId, @Param("delta") Integer delta);
+
+    /**
+     * 减少项目报名人数（不低于0）
+     */
+    @Update("update heritage_project set current_people = greatest(current_people - #{delta}, 0) where id = #{projectId}")
+    int decrementCurrentPeople(@Param("projectId") Long projectId, @Param("delta") Integer delta);
 }

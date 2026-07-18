@@ -119,6 +119,7 @@ export interface OrderSubmitRequest {
   userName: string
   phone: string
   inheritorId: number
+  projectId?: number
   appointmentDate: string // yyyy-MM-dd
   timeSlot: string
   peopleCount: number
@@ -129,6 +130,7 @@ export interface OrderSubmitRequest {
 export interface OrderVO {
   id: number
   inheritorId: number
+  projectId?: number
   userName: string
   phone: string
   appointmentDate: string
