@@ -48,4 +48,7 @@ public interface ProductOrderMapper {
 
     @Select("select * from product_order order by create_time desc")
     List<ProductOrder> listAll();
+
+    @Select("select count(*) from product_order where status = #{status}")
+    Long countByStatus(Integer status);
 }

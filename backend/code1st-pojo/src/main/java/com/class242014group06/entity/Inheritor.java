@@ -28,6 +28,8 @@ public class Inheritor implements Serializable {
     private String idNumber;
     /** 所属地区，如"江苏省苏州市" */
     private String region;
+    /** 年龄 */
+    private Integer age;
     private Integer status;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
