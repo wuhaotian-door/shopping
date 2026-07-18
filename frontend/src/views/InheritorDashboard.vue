@@ -9,6 +9,7 @@ import ProjectManager from './components/ProjectManager.vue'
 import ProductManager from './components/ProductManager.vue'
 import InheritorProfile from './components/InheritorProfile.vue'
 import ChatPanel from './components/ChatPanel.vue'
+import StatsPanel from './components/StatsPanel.vue'
 import { listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder } from '@/api/product'
 import type { ProductOrderVO } from '@/types/api'
 
@@ -22,7 +23,7 @@ onMounted(() => {
 const userName = computed(() => authStore.userInfo?.name)
 
 // 当前激活的 tab
-type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'consultation' | 'profile'
+type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
 const activeTab = ref<TabKey>('orders')
 
 const tabs: { key: TabKey; label: string }[] = [
@@ -32,6 +33,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'projects', label: '非遗项目' },
   { key: 'products', label: '商品设置' },
   { key: 'productOrders', label: '订单管理' },
+  { key: 'stats', label: '数据统计' },
   { key: 'consultation', label: '咨询消息' },
   { key: 'profile', label: '入驻管理' },
 ]
@@ -200,6 +202,9 @@ function onTabSwitch(key: TabKey) {
           <div v-else-if="productOrderList.length === 0" class="empty-state">暂无商品订单</div>
         </div>
       </section>
+
+      <!-- 数据统计 — ECharts 可视化 -->
+      <StatsPanel v-if="activeTab === 'stats'" />
 
       <!-- 咨询消息 — 实时会话聊天 -->
       <ChatPanel v-if="activeTab === 'consultation'" />

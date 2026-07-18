@@ -19,8 +19,8 @@ public interface InheritorMapper {
     Inheritor getByUsername(String username);
 
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, create_time, update_time, create_user, update_user, status) " +
-            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
+    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, age, create_time, update_time, create_user, update_user, status) " +
+            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{age},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
     void insert(Inheritor inheritor);
 
     @Select("select * from inheritor where id = #{id}")
@@ -34,6 +34,9 @@ public interface InheritorMapper {
 
     @Select("select * from inheritor order by create_time desc")
     List<Inheritor> listAll();
+
+    @Select("select * from inheritor where status = 1 order by create_time desc")
+    List<Inheritor> getAllEnabled();
 
     @Select("select * from inheritor where name like concat('%', #{keyword}, '%') or username like concat('%', #{keyword}, '%') order by create_time desc")
     List<Inheritor> searchByKeyword(String keyword);

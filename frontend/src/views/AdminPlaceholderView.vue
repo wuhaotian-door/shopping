@@ -12,6 +12,7 @@ import { listAllArticles, adminDeleteArticle } from '@/api/knowledge'
 import { listProducts as listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress } from '@/api/product'
 import { listAllProjects, adminDeleteProject } from '@/api/project'
 import ChatPanel from './components/ChatPanel.vue'
+import AdminMonitorPanel from './components/AdminMonitorPanel.vue'
 import type { PendingUser, UserInfo, DashboardStats, OrderVO, KnowledgeArticleVO, ProductVO, ProductOrderVO, HeritageProjectVO } from '@/types/api'
 
 const authStore = useAuthStore()
@@ -509,29 +510,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </div>
             </div>
 
-            <!-- 快捷入口 -->
-            <div class="quick-actions">
-              <h3>快捷操作</h3>
-              <div class="quick-grid">
-                <div class="quick-card" @click="switchMenu('pending')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">✅</span>
-                  <span>审核传承人申请</span>
-                  <span v-if="stats.pendingCount > 0" class="quick-badge">{{ stats.pendingCount }}</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('users')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">👥</span>
-                  <span>管理用户</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('orders')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">🛒</span>
-                  <span>查看订单</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('settings')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">⚙️</span>
-                  <span>添加管理员</span>
-                </div>
-              </div>
-            </div>
+            <!-- 监控面板 -->
+            <AdminMonitorPanel />
           </template>
         </section>
 

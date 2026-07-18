@@ -81,6 +81,7 @@ function handleLogout() {
       <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
       <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
       <a class="nav-item" @click="router.push('/store')">文创周边</a>
+      <a class="nav-item" @click="router.push('/stats')">数据统计</a>
       <a class="nav-item" href="#ai">智能问答</a>
 
       <!-- 非遗传承人专属导航 -->
