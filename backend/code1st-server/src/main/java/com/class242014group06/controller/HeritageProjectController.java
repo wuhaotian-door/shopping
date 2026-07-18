@@ -129,6 +129,17 @@ public class HeritageProjectController {
     }
 
     /**
+     * 公开接口：查询指定传承人的已上架项目
+     */
+    @GetMapping("/public/inheritor/{inheritorId}")
+    @ApiOperation("查询指定传承人的已上架项目（公开）")
+    public Result<List<HeritageProjectVO>> listPublishedByInheritor(@PathVariable Long inheritorId) {
+        log.info("公开查询传承人的已上架项目，inheritorId：{}", inheritorId);
+        List<HeritageProjectVO> list = projectService.listPublishedByInheritor(inheritorId);
+        return Result.success(list);
+    }
+
+    /**
      * 校验项目日期是否在时段范围内
      */
     @GetMapping("/validate-dates")

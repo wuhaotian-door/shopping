@@ -147,6 +147,16 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    public List<HeritageProjectVO> listPublishedByInheritor(Long inheritorId) {
+        List<HeritageProject> projects = projectMapper.getPublishedByInheritorId(inheritorId);
+        Inheritor inheritor = inheritorMapper.getById(inheritorId);
+        String inheritorName = inheritor != null ? inheritor.getName() : "";
+        return projects.stream()
+                .map(p -> toVO(p, inheritorName))
+                .collect(Collectors.toList());
+    }
+
     /**
      * 校验项目日期是否在时段覆盖范围内
      * @return 警告信息，无问题时返回null

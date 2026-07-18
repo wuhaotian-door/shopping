@@ -40,6 +40,9 @@ public class OrderAppointment implements Serializable {
     /** 预约时段，如 上午 9:00-11:00 */
     private String timeSlot;
 
+    /** 关联非遗项目ID（可选） */
+    private Long projectId;
+
     /** 预约人数 */
     private Integer peopleCount;
 

@@ -44,8 +44,13 @@ public interface AppointmentSlotMapper {
 
     /**
      * 查询传承人某日期的可用时段（供用户预约时选择）
+     * 支持重复时段：NONE 精确匹配日期，WEEKLY 匹配同星期，MONTHLY 匹配同月日
      */
-    @Select("select * from appointment_slot where inheritor_id = #{inheritorId} and slot_date = #{date} and status = 1 and booked_count < max_people order by start_time")
+    @Select("select * from appointment_slot where inheritor_id = #{inheritorId} and status = 1 and booked_count < max_people " +
+            "and (slot_date = #{date} " +
+            "  or (recurrence_type = 'WEEKLY' and slot_date <= #{date} and (recurrence_end_date is null or recurrence_end_date >= #{date}) and dayofweek(slot_date) = dayofweek(#{date})) " +
+            "  or (recurrence_type = 'MONTHLY' and slot_date <= #{date} and (recurrence_end_date is null or recurrence_end_date >= #{date}) and dayofmonth(slot_date) = dayofmonth(#{date}))) " +
+            "order by start_time")
     List<AppointmentSlot> getAvailableSlots(@Param("inheritorId") Long inheritorId, @Param("date") String date);
 
     /**

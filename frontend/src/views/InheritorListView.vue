@@ -110,7 +110,7 @@ function splitCrafts(craftTypes: string): string[] {
               <span v-if="splitCrafts(master.craftTypes).length > 3" class="master-craft-more">+{{ splitCrafts(master.craftTypes).length - 3 }}</span>
             </div>
             <p class="master-intro">{{ master.selfIntro?.slice(0, 80) || '暂无简介' }}</p>
-            <a href="#" class="master-book-btn">预约工坊</a>
+            <a class="master-book-btn" @click="router.push('/appointment/' + master.employeeId)">预约工坊</a>
           </div>
         </div>
         <div v-if="masterList.length === 0" class="empty-state">暂无入驻传承人</div>

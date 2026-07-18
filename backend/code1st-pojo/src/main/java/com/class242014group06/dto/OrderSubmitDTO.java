@@ -29,6 +29,9 @@ public class OrderSubmitDTO implements Serializable {
     /** 预约人数 */
     private Integer peopleCount;
 
+    /** 关联非遗项目ID（可选） */
+    private Long projectId;
+
     /** 备注说明 */
     private String remark;
 }

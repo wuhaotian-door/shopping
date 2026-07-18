@@ -43,6 +43,11 @@ public interface HeritageProjectService {
      * 查询所有已上架项目（首页展示）
      */
     List<HeritageProjectVO> listPublished();
+    /**
+     * 查询指定传承人的已上架项目（公开接口）
+     */
+    List<HeritageProjectVO> listPublishedByInheritor(Long inheritorId);
+
     List<HeritageProjectVO> listAll();
     void deleteByAdmin(Long id);
 }

@@ -2,13 +2,36 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
-import type { UserProfileVO, UserProfileDTO } from '@/types/api'
+import { listMyOrders } from '@/api/order'
+import type { UserProfileVO, UserProfileDTO, OrderVO } from '@/types/api'
 
 const router = useRouter()
+
+// ==================== 我的预约 ====================
+const orders = ref<OrderVO[]>([])
+const loadingOrders = ref(false)
+
+const statusMap: Record<number, { label: string; cls: string }> = {
+  0: { label: '待确认', cls: 'status-pending' },
+  1: { label: '已确认', cls: 'status-confirmed' },
+  2: { label: '已完成', cls: 'status-done' },
+  3: { label: '已取消', cls: 'status-cancelled' },
+}
+
+async function loadOrders() {
+  loadingOrders.value = true
+  try {
+    const res = await listMyOrders()
+    orders.value = res.data || []
+  } catch { /* ignore */ } finally {
+    loadingOrders.value = false
+  }
+}
 
 onMounted(() => {
   document.title = '个人中心 — 码上非遗'
   loadProfile()
+  loadOrders()
 })
 
 const profile = ref<UserProfileVO>({
@@ -342,6 +365,48 @@ async function resendCode() {
               <button class="back-link-btn" @click="pwStep = 1; pwErrorMsg = ''; pwSuccessMsg = ''">
                 返回上一步
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 我的预约 ========== -->
+        <div class="section-header" style="margin-top: 40px">
+          <h2>我的预约</h2>
+        </div>
+
+        <div class="profile-card">
+          <div v-if="loadingOrders" class="loading-tip">加载中...</div>
+          <div v-else-if="orders.length === 0" class="empty-tip">暂无预约记录</div>
+          <div v-else class="order-list">
+            <div v-for="order in orders" :key="order.id" class="order-item">
+              <div class="order-header">
+                <span class="order-id">#{{ order.id }}</span>
+                <span class="order-status-badge" :class="statusMap[order.status]?.cls">
+                  {{ statusMap[order.status]?.label || '未知' }}
+                </span>
+              </div>
+              <div class="order-body">
+                <div class="order-field">
+                  <span class="field-label">预约日期</span>
+                  <span class="field-value">{{ order.appointmentDate }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">预约时段</span>
+                  <span class="field-value">{{ order.timeSlot }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">人数</span>
+                  <span class="field-value">{{ order.peopleCount }}人</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">提交时间</span>
+                  <span class="field-value">{{ order.createTime?.slice(0, 16) }}</span>
+                </div>
+                <div v-if="order.remark" class="order-field full-width">
+                  <span class="field-label">备注</span>
+                  <span class="field-value">{{ order.remark }}</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -741,6 +806,91 @@ async function resendCode() {
 }
 select.form-input {
   cursor: pointer;
+}
+
+/* ---- 我的预约 ---- */
+.loading-tip {
+  text-align: center;
+  padding: 32px 0;
+  color: #999;
+  font-size: 14px;
+}
+.empty-tip {
+  text-align: center;
+  padding: 32px 0;
+  color: #999;
+  font-size: 14px;
+}
+.order-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.order-item {
+  border: 1px solid #f0f0f0;
+  border-radius: 10px;
+  padding: 20px;
+  transition: 0.2s;
+}
+.order-item:hover {
+  border-color: #f0c0c8;
+  box-shadow: 0 2px 8px rgba(196, 30, 58, 0.06);
+}
+.order-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #f5f5f5;
+}
+.order-id {
+  font-size: 13px;
+  color: #999;
+  font-weight: 600;
+}
+.order-status-badge {
+  padding: 3px 12px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.status-pending {
+  background: #fff8e1;
+  color: #f57f17;
+}
+.status-confirmed {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+.status-done {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+.status-cancelled {
+  background: #f5f5f5;
+  color: #999;
+}
+.order-body {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.order-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.order-field.full-width {
+  grid-column: 1 / -1;
+}
+.field-label {
+  font-size: 12px;
+  color: #999;
+}
+.field-value {
+  font-size: 14px;
+  color: #333;
 }
 
 /* ---- 响应式 ---- */

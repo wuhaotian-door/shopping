@@ -45,6 +45,11 @@ export function listAllProjects(): Promise<Result<HeritageProjectVO[]>> {
   return request.get('/project/all')
 }
 
+/** 查询指定传承人的已上架项目（公开） */
+export function listPublicProjectsByInheritor(inheritorId: number): Promise<Result<HeritageProjectVO[]>> {
+  return request.get(`/project/public/inheritor/${inheritorId}`)
+}
+
 /** 管理员删除任意项目 */
 export function adminDeleteProject(id: number): Promise<Result<string>> {
   return request.delete(`/project/${id}/admin`)

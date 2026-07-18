@@ -35,6 +35,9 @@ public class OrderVO implements Serializable {
     /** 预约时段 */
     private String timeSlot;
 
+    /** 关联非遗项目ID */
+    private Long projectId;
+
     /** 预约人数 */
     private Integer peopleCount;
 
