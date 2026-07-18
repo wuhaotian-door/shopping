@@ -42,6 +42,7 @@ CREATE TABLE `inheritor` (
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `id_number`   VARCHAR(18)  DEFAULT NULL COMMENT '身份证号',
     `region`      VARCHAR(100) DEFAULT NULL COMMENT '所属地区（如：江苏省苏州市）',
+    `age`         INT          DEFAULT NULL COMMENT '年龄',
     `status`      INT          NOT NULL DEFAULT 2 COMMENT '状态 2:待审核 1:启用 0:禁用',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
@@ -100,18 +101,18 @@ VALUES
 -- =====================================================
 -- 非遗传承人测试数据（密码均为 123456 的 MD5，status=1 表示已审核通过）
 -- =====================================================
-INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, status)
+INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, age, status)
 VALUES
-    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     1),
-    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     1),
-    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     1),
-    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     1),
-    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   1),
-    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     1),
-    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     1),
-    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     1),
-    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     1),
-    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', 2);
+    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     51, 1),
+    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     58, 1),
+    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     54, 1),
+    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     44, 1),
+    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   48, 1),
+    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     41, 1),
+    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     61, 1),
+    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     38, 1),
+    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     36, 1),
+    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', 31, 2);
 -- =====================================================
 -- 预约订单表 DDL
 -- 用户向工坊（传承人）发送预约订单
@@ -330,6 +331,69 @@ CREATE TABLE inheritor_profile (
     create_time     DATETIME COMMENT '创建时间',
     update_time     DATETIME COMMENT '修改时间'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='传承人详细信息表';
+
+-- 传承人详细信息测试数据（employee_id 对应 inheritor 表的 id）
+INSERT INTO inheritor_profile (employee_id, honor_title, self_intro, craft_types, address, avatar_url, create_time, update_time)
+VALUES
+    (1, '国家级非遗传承人 · 苏绣',
+     '从事苏绣创作近五十年，作品多次获国家级大奖，致力于将刺绣技艺带入校园，让更多年轻人了解和喜爱传统手工艺。',
+     '苏绣,双面绣,乱针绣,剪纸',
+     '江苏省苏州市姑苏区十全街128号',
+     'https://picsum.photos/seed/inheritor1/200/200', NOW(), NOW()),
+
+    (2, '江苏省工艺美术大师 · 紫砂',
+     '宜兴紫砂世家第四代传人，从事紫砂壶制作四十余年，擅长传统器型与创新造型结合，作品远销海内外。',
+     '紫砂壶,陶艺,紫砂雕塑,紫砂杯',
+     '江苏省宜兴市丁蜀镇紫砂路56号',
+     'https://picsum.photos/seed/inheritor2/200/200', NOW(), NOW()),
+
+    (3, '浙江省非遗传承人 · 竹编',
+     '安吉竹编技艺传承人，自幼学习竹编工艺，将传统竹编与现代生活美学结合，开创了竹编文创系列产品。',
+     '竹编,竹雕,竹工艺',
+     '浙江省湖州市安吉县天荒坪镇竹艺村8号',
+     'https://picsum.photos/seed/inheritor3/200/200', NOW(), NOW()),
+
+    (4, '四川省工艺美术大师 · 蜀绣',
+     '蜀绣代表性传承人，师从多位蜀绣大师，擅长双面绣、芙蓉锦鲤等经典题材，作品温婉细腻。',
+     '蜀绣,双面绣,刺绣',
+     '四川省成都市锦江区春熙路189号',
+     'https://picsum.photos/seed/inheritor4/200/200', NOW(), NOW()),
+
+    (5, '国家级非遗传承人 · 景德镇陶瓷',
+     '景德镇青花瓷非遗传承人，从事陶瓷艺术创作三十余年，擅长青花、粉彩、颜色釉等传统工艺。',
+     '青花瓷,粉彩,陶艺,陶瓷雕塑,颜色釉',
+     '江西省景德镇市珠山区陶阳路99号',
+     'https://picsum.photos/seed/inheritor5/200/200', NOW(), NOW()),
+
+    (6, '河南省非遗传承人 · 汴绣',
+     '开封汴绣技艺传承人，专攻宋代名画复刻绣制，作品《清明上河图》刺绣卷轴获全国工艺美术金奖。',
+     '汴绣,刺绣,双面绣,宋绣',
+     '河南省开封市龙亭区宋都御街32号',
+     'https://picsum.photos/seed/inheritor6/200/200', NOW(), NOW()),
+
+    (7, '国家级非遗传承人 · 木雕',
+     '泉州木雕技艺代表性传承人，从事木雕创作五十载，精通黄杨木雕、龙眼木雕等多种雕刻技法。',
+     '木雕,黄杨木雕,根雕,木刻',
+     '福建省泉州市鲤城区中山路201号',
+     'https://picsum.photos/seed/inheritor7/200/200', NOW(), NOW()),
+
+    (8, '云南省非遗传承人 · 扎染',
+     '大理白族扎染技艺传承人，坚持使用纯植物染料手工扎染，作品充满苍山洱海的自然之美。',
+     '扎染,白族扎染,植物染,布艺',
+     '云南省大理白族自治州大理古城人民路78号',
+     'https://picsum.photos/seed/inheritor8/200/200', NOW(), NOW()),
+
+    (9, '陕西省非遗传承人 · 皮影',
+     '陕西皮影戏传承人，精通皮影雕刻与表演，致力于将皮影艺术与现代舞台技术融合创新。',
+     '皮影,皮影雕刻,剪纸',
+     '陕西省西安市碑林区书院门15号',
+     'https://picsum.photos/seed/inheritor9/200/200', NOW(), NOW()),
+
+    (10, '待审核传承人',
+     '广东广彩技艺爱好者，正在申请非遗传承人资格，擅长广彩瓷绘制与岭南传统工艺研究。',
+     '广彩,陶艺,岭南工艺',
+     '广东省广州市荔湾区恩宁路56号',
+     'https://picsum.photos/seed/inheritor10/200/200', NOW(), NOW());
 
 -- =====================================================
 -- 非遗知识库文章表

@@ -5,12 +5,14 @@ import { useRouter } from 'vue-router'
 import {
   adminCreate, getPendingList, approveInheritor, rejectInheritor,
   listAllUsers, searchUsers, updateUserStatus, getDashboardStats,
+  changePassword,
 } from '@/api/auth'
 import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, adminUpdateOrderFields } from '@/api/order'
 import { listAllArticles, adminDeleteArticle } from '@/api/knowledge'
 import { listProducts as listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress } from '@/api/product'
 import { listAllProjects, adminDeleteProject } from '@/api/project'
 import ChatPanel from './components/ChatPanel.vue'
+import AdminMonitorPanel from './components/AdminMonitorPanel.vue'
 import type { PendingUser, UserInfo, DashboardStats, OrderVO, KnowledgeArticleVO, ProductVO, ProductOrderVO, HeritageProjectVO } from '@/types/api'
 
 const authStore = useAuthStore()
@@ -204,7 +206,7 @@ const filteredProducts = computed(() =>
     p.name.includes(productKeyword.value) || (p.category || '').includes(productKeyword.value) || (p.inheritorName || '').includes(productKeyword.value)))
 const filteredProjects = computed(() =>
   !projectKeyword.value ? projects.value : projects.value.filter(p =>
-    p.title.includes(projectKeyword.value) || (p.category || '').includes(projectKeyword.value) || (p.inheritorName || '').includes(projectKeyword.value)))
+    p.title.includes(projectKeyword.value) || (p.category || '').includes(projectKeyword.value) || (p.inheritorName || '').includes(projectKeyword.value) || projectTypeLabel(p.projectType ?? 0).includes(projectKeyword.value)))
 const filteredOrders = computed(() =>
   !orderKeyword.value ? orderList.value : orderList.value.filter(o =>
     o.userName.includes(orderKeyword.value) || o.phone.includes(orderKeyword.value) || String(o.id).includes(orderKeyword.value)))
@@ -347,6 +349,29 @@ async function handleCreateAdmin() {
   } finally { adminSubmitting.value = false }
 }
 
+// ---------- 修改密码 ----------
+const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
+const pwdMsg = ref('')
+const pwdMsgType = ref<'success' | 'error'>('success')
+const pwdSubmitting = ref(false)
+
+async function handleChangePassword() {
+  pwdMsg.value = ''
+  if (!pwdForm.oldPassword) { pwdMsg.value = '请输入旧密码'; pwdMsgType.value = 'error'; return }
+  if (!pwdForm.newPassword || pwdForm.newPassword.length < 6) { pwdMsg.value = '新密码至少6位'; pwdMsgType.value = 'error'; return }
+  if (pwdForm.newPassword !== pwdForm.confirmPassword) { pwdMsg.value = '两次密码不一致'; pwdMsgType.value = 'error'; return }
+  pwdSubmitting.value = true
+  try {
+    await changePassword(pwdForm.oldPassword, pwdForm.newPassword)
+    pwdMsg.value = '密码修改成功'
+    pwdMsgType.value = 'success'
+    pwdForm.oldPassword = ''; pwdForm.newPassword = ''; pwdForm.confirmPassword = ''
+  } catch (e: unknown) {
+    pwdMsg.value = e instanceof Error ? e.message : '修改失败'
+    pwdMsgType.value = 'error'
+  } finally { pwdSubmitting.value = false }
+}
+
 function handleLogout() {
   authStore.logout()
   router.push('/')
@@ -485,29 +510,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </div>
             </div>
 
-            <!-- 快捷入口 -->
-            <div class="quick-actions">
-              <h3>快捷操作</h3>
-              <div class="quick-grid">
-                <div class="quick-card" @click="switchMenu('pending')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">✅</span>
-                  <span>审核传承人申请</span>
-                  <span v-if="stats.pendingCount > 0" class="quick-badge">{{ stats.pendingCount }}</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('users')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">👥</span>
-                  <span>管理用户</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('orders')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">🛒</span>
-                  <span>查看订单</span>
-                </div>
-                <div class="quick-card" @click="switchMenu('settings')" @mousemove="onQuickCardMouseMove" @mouseenter="onQuickCardMouseEnter" @mouseleave="onQuickCardMouseLeave">
-                  <span class="quick-icon">⚙️</span>
-                  <span>添加管理员</span>
-                </div>
-              </div>
-            </div>
+            <!-- 监控面板 -->
+            <AdminMonitorPanel />
           </template>
         </section>
 
@@ -674,6 +678,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <th>分类</th>
                   <th>价格</th>
                   <th>库存</th>
+                  <th>评分</th>
                   <th>传承人</th>
                   <th>状态</th>
                   <th>上架时间</th>
@@ -687,6 +692,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <td>{{ p.category || '-' }}</td>
                   <td>¥{{ p.price }}</td>
                   <td>{{ p.stock }}</td>
+                  <td>{{ p.avgRating ? p.avgRating + ' (' + (p.reviewCount || 0) + ')' : '-' }}</td>
                   <td>{{ p.inheritorName || '-' }}</td>
                   <td><span class="status-dot" :class="p.status === 1 ? 's-enabled' : 's-disabled'">{{ p.status === 1 ? '上架' : '下架' }}</span></td>
                   <td>{{ p.createTime?.slice(0, 10) }}</td>
@@ -705,7 +711,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
         <section v-if="activeMenu === 'projects'" class="panel">
           <div class="panel-toolbar">
             <div class="search-box">
-              <input v-model="projectKeyword" type="text" placeholder="搜索名称/分类/传承人..." />
+              <input v-model="projectKeyword" type="text" placeholder="搜索名称/分类/传承人/类型..." />
               <button v-if="projectKeyword" class="btn-clear" @click="projectKeyword = ''">清空</button>
             </div>
           </div>
@@ -889,6 +895,31 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 
               <button type="submit" class="btn-primary" :disabled="adminSubmitting">
                 {{ adminSubmitting ? '创建中...' : '创建管理员' }}
+              </button>
+            </form>
+          </div>
+
+          <div class="settings-card" style="margin-top: 20px">
+            <h3>修改密码</h3>
+            <p class="settings-desc">修改当前管理员 <strong>{{ authStore.userInfo?.name }}</strong> 的登录密码</p>
+            <form class="settings-form" @submit.prevent="handleChangePassword">
+              <div class="form-g">
+                <label>旧密码</label>
+                <input v-model="pwdForm.oldPassword" type="password" placeholder="输入旧密码" autocomplete="current-password" />
+              </div>
+              <div class="form-row">
+                <div class="form-g">
+                  <label>新密码</label>
+                  <input v-model="pwdForm.newPassword" type="password" placeholder="至少 6 位" autocomplete="new-password" />
+                </div>
+                <div class="form-g">
+                  <label>确认新密码</label>
+                  <input v-model="pwdForm.confirmPassword" type="password" placeholder="再次输入" autocomplete="new-password" />
+                </div>
+              </div>
+              <p v-if="pwdMsg" class="form-msg" :class="pwdMsgType">{{ pwdMsg }}</p>
+              <button type="submit" class="btn-primary" :disabled="pwdSubmitting">
+                {{ pwdSubmitting ? '修改中...' : '修改密码' }}
               </button>
             </form>
           </div>

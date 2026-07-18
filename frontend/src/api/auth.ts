@@ -70,3 +70,8 @@ export function sendResetCode(data: ForgotPasswordRequest): Promise<Result<strin
 export function resetPassword(data: ResetPasswordRequest): Promise<Result<string>> {
   return request.post('/auth/forgot-password/reset', data)
 }
+
+/** 修改密码（需登录） */
+export function changePassword(oldPassword: string, newPassword: string): Promise<Result<string>> {
+  return request.put('/auth/change-password', { oldPassword, newPassword })
+}

@@ -33,4 +33,23 @@ public class AdminServiceImpl implements AdminService {
         }
         return admin;
     }
+
+    @Override
+    public void changePassword(Long adminId, String oldPassword, String newPassword) {
+        Admin admin = adminMapper.getById(adminId);
+        if (admin == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        // 校验旧密码
+        String oldMd5 = DigestUtils.md5DigestAsHex(oldPassword.getBytes());
+        if (!oldMd5.equals(admin.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+        // 更新为新密码
+        Admin update = Admin.builder()
+                .id(adminId)
+                .password(DigestUtils.md5DigestAsHex(newPassword.getBytes()))
+                .build();
+        adminMapper.update(update);
+    }
 }

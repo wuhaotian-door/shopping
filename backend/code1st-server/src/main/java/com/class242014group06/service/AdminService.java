@@ -8,4 +8,9 @@ import com.class242014group06.entity.Admin;
 public interface AdminService {
 
     Admin login(String username, String password);
+
+    /**
+     * 管理员修改自己的密码
+     */
+    void changePassword(Long adminId, String oldPassword, String newPassword);
 }
