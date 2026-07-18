@@ -86,7 +86,41 @@ def list_documents(query: str = "") -> str:
 
 # 工具注册表
 TOOLS = [search_knowledge_base, list_documents]
-TOOLS_BY_NAME = {t.name: t for t in TOOLS}
+
+# ============================================================
+# Human-in-the-loop: 需要审批的"危险"工具
+# ============================================================
+
+@tool
+def add_knowledge(title: str, content: str) -> str:
+    """往知识库添加新的非遗文档。此操作需要人工审批。
+    当用户说"记录一下"、"添加到知识库"、"保存这个信息"时使用。
+
+    Args:
+        title: 文档标题，例如"苏绣"
+        content: 文档正文内容
+    """
+    import os as _os
+    knowledge_dir = _os.path.join(_os.path.dirname(__file__), "knowledge")
+    filepath = _os.path.join(knowledge_dir, f"{title}.md")
+
+    if _os.path.exists(filepath):
+        return f"文档「{title}」已存在，请使用其他标题或先告知用户。"
+
+    with open(filepath, "w", encoding="utf-8") as f:
+        f.write(f"# {title}\n\n{content}")
+
+    return f"文档「{title}」已成功添加到知识库。需要调用 /ai/knowledge/reload 重建索引后才能被检索到。"
+
+
+# 完整工具集（含需要审批的工具）
+ALL_TOOLS = TOOLS + [add_knowledge]
+ALL_TOOLS_BY_NAME = {t.name: t for t in ALL_TOOLS}
+
+# 标记哪些工具需要审批
+APPROVAL_REQUIRED = {"add_knowledge"}
+
+TOOLS_BY_NAME = {t.name: t for t in TOOLS}  # 保留旧的兼容 tools.py Agent
 
 # ============================================================
 # 带工具的模型

@@ -18,6 +18,8 @@ API 端点:
   POST /ai/agent       — Agent 工具调用（LLM 自主决定查资料还是列举）
   POST /ai/agent/graph — LangGraph ReAct Agent（状态图 + 对话记忆）
   POST /ai/agent/graph/stream — LangGraph 流式（展示每步执行状态）
+  POST /ai/agent/human/start  — Human-in-the-loop: 启动（可能暂停要审批）
+  POST /ai/agent/human/resume — Human-in-the-loop: 审批后恢复
 """
 
 from typing import Any, Dict, List
@@ -31,6 +33,7 @@ from chain import ask, ask_batch, ask_enhanced, ask_stream
 from rag import build_knowledge_base, rag_ask, rag_ask_stream
 from tools import agent_chat
 from agent_graph import graph_ask, graph_ask_stream
+from agent_human import human_agent_start, human_agent_resume, human_agent_get_state
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -234,3 +237,35 @@ async def ai_agent_graph_stream(req: ThreadRequest):
         media_type="text/event-stream",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ============================================================
+# Level 3: Human-in-the-loop 端点
+# ============================================================
+
+class ResumeRequest(BaseModel):
+    thread_id: str
+    approved: bool
+
+
+@app.post("/ai/agent/human/start")
+async def ai_agent_human_start(req: ThreadRequest):
+    """启动 Human-in-the-loop Agent
+
+    可能返回两种状态:
+      - status="done":       Agent 直接完成了
+      - status="interrupted": Agent 暂停，返回 interrupt 信息，等 /resume 审批
+    """
+    return human_agent_start(req.question, req.thread_id)
+
+
+@app.post("/ai/agent/human/resume")
+async def ai_agent_human_resume(req: ResumeRequest):
+    """审批后恢复 Agent"""
+    return human_agent_resume(req.thread_id, req.approved)
+
+
+@app.get("/ai/agent/human/state/{thread_id}")
+async def ai_agent_human_state(thread_id: str):
+    """查询 Agent 当前状态"""
+    return human_agent_get_state(thread_id)

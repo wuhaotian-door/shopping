@@ -175,6 +175,7 @@
   .toggle.rag { background: #2e7d32; color: #fff; border-color: #2e7d32; }
   .toggle.agent { background: #1565c0; color: #fff; border-color: #1565c0; }
   .toggle.graph { background: #6a1b9a; color: #fff; border-color: #6a1b9a; }
+  .toggle.hitl  { background: #c62828; color: #fff; border-color: #c62828; }
 
   /* ---- Streaming cursor ---- */
   .bubble.streaming { border-right: none; }
@@ -285,6 +286,53 @@
     max-height: 80px;
     overflow: hidden;
   }
+
+  /* ---- HITL approval dialog ---- */
+  .approval-dialog {
+    align-self: flex-start;
+    max-width: 85%;
+    padding: 14px 18px;
+    border-radius: 14px;
+    background: #fff3f3;
+    border: 2px solid #ef9a9a;
+    font-size: 14px;
+    animation: fadeIn 0.3s ease;
+  }
+  .approval-dialog .ad-title {
+    font-weight: 600;
+    color: #c62828;
+    margin-bottom: 6px;
+  }
+  .approval-dialog .ad-detail {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 10px;
+    max-height: 80px;
+    overflow-y: auto;
+  }
+  .approval-dialog .ad-btns {
+    display: flex;
+    gap: 8px;
+  }
+  .approval-dialog .ad-btns button {
+    padding: 6px 18px;
+    border-radius: 14px;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    font-family: inherit;
+    transition: opacity 0.2s;
+  }
+  .approval-dialog .ad-btns .btn-approve {
+    background: #c62828;
+    color: #fff;
+  }
+  .approval-dialog .ad-btns .btn-reject {
+    background: #fff;
+    color: #c62828;
+    border: 1px solid #c62828;
+  }
+  .approval-dialog .ad-btns button:hover { opacity: 0.8; }
 </style>
 </head>
 <body>
@@ -337,6 +385,7 @@ const MODES = {
   rag:      { label: '📚 RAG',     cls: 'toggle rag' },
   agent:    { label: '🔧 Agent',   cls: 'toggle agent' },
   graph:    { label: '🕸 Graph',   cls: 'toggle graph' },
+  hitl:     { label: '👤 HITL',    cls: 'toggle hitl' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -358,7 +407,9 @@ async function send() {
   input.value = '';
   btn.disabled = true;
 
-  if (mode === 'graph') {
+  if (mode === 'hitl') {
+    await sendHITL(question);
+  } else if (mode === 'graph') {
     await sendGraphStream(question);
   } else if (mode === 'agent') {
     await sendAgent(question);
@@ -505,6 +556,113 @@ function addBubble(text, className) {
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
   return div;
+}
+
+// =============================================
+// Level 3: Human-in-the-loop — 关键操作暂停，人工审批
+// =============================================
+async function sendHITL(question) {
+  addBubble(question, 'user');
+  input.value = '';
+  btn.disabled = true;
+
+  const threadId = 'hitl-' + Date.now();
+  const loading = addBubble('▊ Agent 决策中…', 'ai loading');
+
+  try {
+    // ① 启动 Agent
+    const res = await fetch('/ai/agent/human/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, thread_id: threadId }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    if (data.status === 'done') {
+      // 没触发审批，直接显示答案
+      renderHITLAnswer(data);
+    } else if (data.status === 'interrupted') {
+      // ② 触发 interrupt()，弹出审批对话框
+      const interrupts = data.interrupts || [];
+      for (const iv of interrupts) {
+        const v = iv.value || iv;
+        showApprovalDialog(threadId, v);
+      }
+    }
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败', 'ai');
+  }
+  btn.disabled = false;
+}
+
+function showApprovalDialog(threadId, interruptInfo) {
+  const div = document.createElement('div');
+  div.className = 'approval-dialog';
+  const toolName = interruptInfo.tool_name || '未知工具';
+  const toolArgs = interruptInfo.tool_args || {};
+
+  div.innerHTML = `
+    <div class="ad-title">⚠ Agent 请求执行操作</div>
+    <div class="ad-detail">
+      <strong>工具:</strong> ${escapeHtml(toolName)}<br>
+      <strong>参数:</strong> ${escapeHtml(JSON.stringify(toolArgs, null, 2))}
+    </div>
+    <div class="ad-btns">
+      <button class="btn-approve" data-action="approve">✅ 批准</button>
+      <button class="btn-reject"  data-action="reject">❌ 拒绝</button>
+    </div>
+  `;
+
+  const onDecision = async (approved) => {
+    div.querySelectorAll('button').forEach(b => b.disabled = true);
+    div.innerHTML = approved
+      ? '<div style="color:#2e7d32">✅ 已批准，Agent 继续执行…</div>'
+      : '<div style="color:#c62828">❌ 已拒绝，Agent 继续执行…</div>';
+
+    // ③ 恢复 Agent
+    try {
+      const res = await fetch('/ai/agent/human/resume', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: threadId, approved }),
+      });
+      const data = await res.json();
+      renderHITLAnswer(data);
+    } catch (err) {
+      div.innerHTML = '<div style="color:#c62828">恢复执行失败</div>';
+    }
+  };
+
+  div.querySelector('.btn-approve').onclick = () => onDecision(true);
+  div.querySelector('.btn-reject').onclick = () => onDecision(false);
+
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+function renderHITLAnswer(data) {
+  const bubble = document.createElement('div');
+  bubble.className = 'bubble ai';
+  bubble.style.maxWidth = '90%';
+
+  let html = '<div>' + escapeHtml(data.answer || '(Agent 未返回文本)') + '</div>';
+
+  if (data.tool_calls && data.tool_calls.length > 0) {
+    html += '<div class="section-label">🔧 工具调用记录</div><div class="tool-calls-row">';
+    for (const tc of data.tool_calls) {
+      html += `<div class="tool-call">
+        <div class="tc-name">⚙ ${escapeHtml(tc.tool)}</div>
+        <div class="tc-args">参数: ${escapeHtml(JSON.stringify(tc.args))}</div>
+      </div>`;
+    }
+    html += '</div>';
+  }
+
+  bubble.innerHTML = html;
+  chat.appendChild(bubble);
+  chat.scrollTop = chat.scrollHeight;
 }
 
 // =============================================
