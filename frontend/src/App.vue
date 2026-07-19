@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onErrorCaptured } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
@@ -17,7 +17,7 @@ const renderError = ref<string>('')
 onErrorCaptured((err: unknown) => {
   renderError.value = err instanceof Error ? (err.message + '\n' + err.stack) : String(err)
   console.error('App error captured:', err)
-  return false // prevent error propagation
+  return false
 })
 
 onMounted(async () => {

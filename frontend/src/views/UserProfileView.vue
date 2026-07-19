@@ -192,17 +192,6 @@ async function resendCode() {
 
 <template>
   <div class="profile-page">
-    <!-- ==================== 顶部导航 ==================== -->
-    <header class="page-header">
-      <div class="header-left">
-        <div class="logo" @click="router.push('/')">码上非遗</div>
-        <span class="workspace-tag">个人中心</span>
-      </div>
-      <nav class="header-right">
-        <button class="nav-btn" @click="router.push('/')">返回首页</button>
-      </nav>
-    </header>
-
     <!-- ==================== 主体内容 ==================== -->
     <main class="profile-main">
       <div class="profile-container">

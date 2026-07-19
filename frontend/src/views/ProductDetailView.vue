@@ -104,20 +104,9 @@ async function handleSubmitReview() {
 
 <template>
   <div class="detail-page">
-    <!-- ==================== 顶部导航 ==================== -->
-    <header class="page-header">
-      <div class="logo" @click="router.push('/')">码上非遗</div>
-      <nav class="nav-links">
-        <a class="nav-item" @click="router.push('/')">首页</a>
-        <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
-        <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
-        <a class="nav-item active" @click="router.push('/store')">文创周边</a>
-        <a class="nav-item" @click="router.push('/')">智能问答</a>
-      </nav>
-      <div class="header-right">
-        <button class="nav-btn" @click="router.push('/store')">← 返回商城</button>
-      </div>
-    </header>
+    <div class="back-bar">
+      <button class="nav-btn" @click="router.push('/store')">← 返回商城</button>
+    </div>
 
     <!-- ==================== 主体 ==================== -->
     <main class="detail-main">
@@ -241,7 +230,12 @@ async function handleSubmitReview() {
   flex-direction: column;
 }
 
-/* ---- 导航 ---- */
+/* ---- 返回栏 ---- */
+.back-bar { padding: 10px 5%; background: #fcf4e8; }
+.nav-btn { padding: 6px 16px; font-size: 13px; color: #c41e3a; background: #fff; border: 1px solid #e8647a; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.nav-btn:hover { background: #fff5f7; }
+
+/* ---- 旧导航（保留备用） ---- */
 .page-header {
   background-color: #c41e3a;
   color: #fff;

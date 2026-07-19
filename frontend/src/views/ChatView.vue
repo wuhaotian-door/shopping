@@ -11,13 +11,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="chat-page-header">
-    <div class="header-left">
-      <span class="logo" @click="router.push('/')">码上非遗</span>
-      <span class="header-title">消息中心</span>
-    </div>
-    <button class="back-btn" @click="router.push('/')">返回首页</button>
-  </header>
   <div class="chat-page-body">
     <ChatPanel />
   </div>
