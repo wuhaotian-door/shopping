@@ -113,3 +113,18 @@ export function adminUpdateProductOrderStatus(id: number, status: number): Promi
 export function adminUpdateProductOrderAddress(id: number, address: string): Promise<Result<string>> {
   return request.put(`/product-order/${id}/admin/address`, null, { params: { address } })
 }
+
+/** 管理员批量切换商品上下架 */
+export function batchToggleProduct(ids: number[], status: number): Promise<Result<string>> {
+  return request.put('/product/batch-toggle', { ids, status })
+}
+
+/** 管理员查询所有商品（含已下架） */
+export function listAllProducts(): Promise<Result<ProductVO[]>> {
+  return request.get('/product/all')
+}
+
+/** 管理员批量删除商品 */
+export function batchDeleteProduct(ids: number[]): Promise<Result<string>> {
+  return request.post('/product/batch', { ids })
+}

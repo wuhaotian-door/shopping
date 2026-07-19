@@ -136,6 +136,23 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     }
 
     @Override
+    public void toggleByAdmin(Long id, Integer status) {
+        HeritageProject existing = projectMapper.getById(id);
+        if (existing == null) {
+            throw new BaseException(MessageConstant.PROJECT_NOT_FOUND);
+        }
+        HeritageProject update = HeritageProject.builder().id(id).status(status).build();
+        projectMapper.update(update);
+    }
+
+    @Override
+    public void batchDelete(java.util.List<Long> ids) {
+        for (Long id : ids) {
+            deleteByAdmin(id);
+        }
+    }
+
+    @Override
     public List<HeritageProjectVO> listPublished() {
         List<HeritageProject> projects = projectMapper.listPublished();
         return projects.stream()

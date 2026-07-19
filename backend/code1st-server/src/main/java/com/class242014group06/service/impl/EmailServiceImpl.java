@@ -43,4 +43,46 @@ public class EmailServiceImpl implements EmailService {
             log.warn("异常详情: {}", e.getMessage());
         }
     }
+
+    @Override
+    public void sendRejectNotification(String toEmail, String name, String reason) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("【码上非遗】非遗传承人申请审核结果通知");
+        message.setText(name + "，您好！\n\n"
+                + "您提交的非遗传承人入驻申请经审核未被通过。\n\n"
+                + "驳回原因：" + reason + "\n\n"
+                + "如有疑问，请联系平台管理员。\n"
+                + "您可以修改资料后重新提交申请。\n\n"
+                + "—— 码上非遗平台");
+
+        try {
+            mailSender.send(message);
+            log.info("驳回通知邮件已发送至 {}", toEmail);
+        } catch (Exception e) {
+            log.warn("驳回通知邮件发送失败，收件人: {}，异常: {}", toEmail, e.getMessage());
+        }
+    }
+
+    @Override
+    public void sendApprovalNotification(String toEmail, String name) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom(fromEmail);
+        message.setTo(toEmail);
+        message.setSubject("【码上非遗】非遗传承人申请审核结果通知");
+        message.setText(name + "，您好！\n\n"
+                + "恭喜！您提交的非遗传承人入驻申请已审核通过。\n\n"
+                + "您现在可以使用注册的账号登录平台，开始管理您的非遗项目、\n"
+                + "上架非遗商品、发布非遗知识文章。\n\n"
+                + "登录地址：请返回平台首页进行登录。\n\n"
+                + "—— 码上非遗平台");
+
+        try {
+            mailSender.send(message);
+            log.info("审核通过通知邮件已发送至 {}", toEmail);
+        } catch (Exception e) {
+            log.warn("审核通过通知邮件发送失败，收件人: {}，异常: {}", toEmail, e.getMessage());
+        }
+    }
 }

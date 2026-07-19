@@ -64,6 +64,7 @@ export interface InheritorRegisterRequest {
   password: string
   phone?: string
   sex?: string
+  email?: string   // 邮箱（用于接收审核结果通知）
   idNumber: string
   /** 所属地区，如：江苏省苏州市 */
   region: string
@@ -370,8 +371,9 @@ export interface UserProfileDTO {
 }
 
 export interface ChangePasswordDTO {
-  code: string
-  newPassword: string
+  code?: string        // 验证码（忘记密码场景）
+  oldPassword?: string // 旧密码（已登录改密码场景）
+  newPassword: string  // 新密码
 }
 
 // ==================== 好友系统 ====================
@@ -399,4 +401,18 @@ export interface ArticleCommentVO {
 
 export interface ArticleCommentDTO {
   content: string
+}
+
+// ==================== 操作日志 ====================
+
+export interface OperationLog {
+  id: number
+  operatorId: number
+  operatorName: string
+  operatorRole: string
+  operationType: string
+  targetType: string
+  targetId: number
+  detail: string
+  createTime: string
 }

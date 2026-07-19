@@ -1,8 +1,10 @@
 package com.class242014group06.controller;
 
+import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.OrderSubmitDTO;
 import com.class242014group06.result.Result;
+import com.class242014group06.service.OperationLogService;
 import com.class242014group06.service.OrderService;
 import com.class242014group06.vo.OrderVO;
 import io.swagger.annotations.Api;
@@ -24,6 +26,9 @@ public class OrderController {
 
     @Autowired
     private OrderService orderService;
+
+    @Autowired
+    private OperationLogService operationLogService;
 
     /**
      * 用户提交预约订单
@@ -113,8 +118,11 @@ public class OrderController {
     @PutMapping("/{id}/cancel")
     @ApiOperation("管理员取消订单")
     public Result<String> cancelByAdmin(@PathVariable Long id) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员取消订单，orderId：{}", id);
         orderService.cancelByAdmin(id);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "CANCEL_ORDER", "order", id, "取消预约订单ID=" + id);
         return Result.success("订单已取消");
     }
 
@@ -124,8 +132,12 @@ public class OrderController {
     @PutMapping("/{id}/admin/status")
     @ApiOperation("管理员修改订单状态")
     public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改订单状态，orderId：{}，status：{}", id, status);
         orderService.updateStatusByAdmin(id, status);
+        String st = status == 0 ? "待确认" : status == 1 ? "已确认" : status == 2 ? "已完成" : "已取消";
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "UPDATE_ORDER_STATUS", "order", id, "修改预约订单ID=" + id + "状态为" + st);
         return Result.success("状态已更新");
     }
 

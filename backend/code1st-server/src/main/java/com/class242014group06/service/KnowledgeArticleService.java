@@ -43,6 +43,11 @@ public interface KnowledgeArticleService {
     void deleteByAdmin(Long id);
 
     /**
+     * 批量删除文章
+     */
+    void batchDelete(java.util.List<Long> ids);
+
+    /**
      * 根据ID查询文章（公开）
      */
     KnowledgeArticleVO getById(Long id);

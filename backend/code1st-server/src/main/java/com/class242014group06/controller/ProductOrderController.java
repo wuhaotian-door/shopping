@@ -1,10 +1,12 @@
 package com.class242014group06.controller;
 
+import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.ProductOrderSubmitDTO;
 import com.class242014group06.entity.User;
 import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.result.Result;
+import com.class242014group06.service.OperationLogService;
 import com.class242014group06.service.ProductOrderService;
 import com.class242014group06.vo.ProductOrderVO;
 import io.swagger.annotations.Api;
@@ -26,6 +28,9 @@ public class ProductOrderController {
 
     @Autowired
     private ProductOrderService productOrderService;
+
+    @Autowired
+    private OperationLogService operationLogService;
 
     @Autowired
     private UserMapper userMapper;
@@ -112,8 +117,12 @@ public class ProductOrderController {
     @PutMapping("/{id}/admin/status")
     @ApiOperation("管理员修改商品订单状态")
     public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改商品订单状态，orderId：{}，status：{}", id, status);
         productOrderService.updateStatusByAdmin(id, status);
+        String st = status == 0 ? "待发货" : status == 1 ? "已发货" : status == 2 ? "已完成" : "已取消";
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "UPDATE_ORDER_STATUS", "product_order", id, "修改商品订单ID=" + id + "状态为" + st);
         return Result.success("状态已更新");
     }
 

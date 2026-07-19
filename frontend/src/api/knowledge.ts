@@ -36,6 +36,11 @@ export function adminDeleteArticle(id: number): Promise<Result<string>> {
   return request.delete(`/knowledge/${id}/admin`)
 }
 
+/** 管理员批量删除文章 */
+export function batchDeleteArticle(ids: number[]): Promise<Result<string>> {
+  return request.post('/knowledge/batch', { ids })
+}
+
 /** 查询单篇文章详情（公开） */
 export function getArticleById(id: number): Promise<Result<KnowledgeArticleVO>> {
   return request.get(`/knowledge/public/${id}`)

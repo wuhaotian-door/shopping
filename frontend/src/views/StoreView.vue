@@ -198,42 +198,13 @@ async function loadMyOrders() {
 </script>
 
 <template>
-  <!-- ==================== 顶部导航 ==================== -->
-  <header class="page-header">
-    <div class="logo" @click="router.push('/')">码上非遗</div>
-
-    <nav class="nav-links">
-      <a class="nav-item" @click="router.push('/')">首页</a>
-      <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
-      <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
-      <a class="nav-item active" @click="router.push('/store')">文创周边</a>
-      <a class="nav-item" @click="router.push('/')">智能问答</a>
-      <template v-if="isInheritor">
-        <span class="nav-separator"></span>
-        <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">我的工坊</a>
-      </template>
-    </nav>
-
-    <div class="header-right">
-      <template v-if="isLoggedIn">
-        <span class="user-role-tag" :class="isInheritor ? 'inheritor-tag' : 'user-tag'">
-          {{ isInheritor ? '非遗传承人' : '用户' }}
-        </span>
-        <span class="user-name">{{ userName }}</span>
-        <!-- 购物车按钮 -->
-        <button class="cart-btn" @click="showCart = !showCart; showMyOrders = false">
-          🛒购物车
-          <span v-if="cart.length > 0" class="cart-badge">{{ cart.length }}</span>
-        </button>
-        <button class="my-orders-btn" @click="loadMyOrders">我的订单</button>
-        <button class="chat-btn" @click="router.push('/chat')">💬 消息</button>
-        <button class="logout-btn" @click="handleLogout">退出</button>
-      </template>
-      <template v-else>
-        <button class="login-top-btn" @click="router.push('/login')">登录</button>
-      </template>
-    </div>
-  </header>
+  <!-- 店铺快捷操作栏 -->
+  <div v-if="isLoggedIn" class="store-toolbar">
+    <button class="cart-btn" @click="showCart = !showCart; showMyOrders = false">
+      🛒 购物车<span v-if="cart.length > 0" class="cart-badge">{{ cart.length }}</span>
+    </button>
+    <button class="my-orders-btn" @click="loadMyOrders">📋 我的订单</button>
+  </div>
 
   <!-- ==================== 购物车侧边栏 ==================== -->
   <div v-if="showCart" class="cart-overlay" @click.self="showCart = false">
@@ -459,7 +430,18 @@ async function loadMyOrders() {
   box-sizing: border-box;
 }
 
-/* ==================== 顶部导航 ==================== */
+/* ==================== 快捷工具栏 ==================== */
+.store-toolbar {
+  display: flex; gap: 10px; padding: 12px 5%; background: #fcf4e8; border-bottom: 1px solid #ffe9ec;
+}
+.cart-btn, .my-orders-btn {
+  padding: 7px 16px; font-size: 13px; color: #c41e3a; background: #fff;
+  border: 1px solid #e8647a; border-radius: 6px; cursor: pointer; transition: all 0.2s;
+}
+.cart-btn:hover, .my-orders-btn:hover { background: #fff5f7; border-color: #c41e3a; }
+.cart-badge { background: #ff4d4f; color: #fff; font-size: 11px; padding: 1px 7px; border-radius: 10px; margin-left: 4px; }
+
+/* ==================== 旧导航（保留样式备用） ==================== */
 .page-header {
   background-color: #c41e3a;
   color: #fff;

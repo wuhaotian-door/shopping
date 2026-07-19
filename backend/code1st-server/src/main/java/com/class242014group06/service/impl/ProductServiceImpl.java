@@ -83,6 +83,12 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
+    public List<ProductVO> listAllAdmin() {
+        List<Product> products = productMapper.listAllAdmin();
+        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
+    }
+
+    @Override
     public List<ProductVO> listByCategory(String category) {
         List<Product> products = productMapper.listByCategory(category);
         return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
@@ -112,6 +118,20 @@ public class ProductServiceImpl implements ProductService {
     public void toggleByAdmin(Long id, Integer status) {
         Product product = Product.builder().id(id).status(status).build();
         productMapper.update(product);
+    }
+
+    @Override
+    public void batchToggle(java.util.List<Long> ids, Integer status) {
+        for (Long id : ids) {
+            toggleByAdmin(id, status);
+        }
+    }
+
+    @Override
+    public void batchDelete(java.util.List<Long> ids) {
+        for (Long id : ids) {
+            deleteByAdmin(id);
+        }
     }
 
     private ProductVO toVO(Product product) {
