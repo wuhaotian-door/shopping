@@ -66,6 +66,8 @@ export interface InheritorRegisterRequest {
   sex?: string
   email?: string   // 邮箱（用于接收审核结果通知）
   idNumber: string
+  /** 出生日期，如：1985-03-12 */
+  birthDate?: string
   /** 所属地区，如：江苏省苏州市 */
   region: string
 }
@@ -156,6 +158,8 @@ export interface InheritorProfileVO {
   craftTypes: string
   address: string
   avatarUrl: string
+  birthDate: string | null
+  age: number | null
 }
 
 export interface InheritorProfileDTO {

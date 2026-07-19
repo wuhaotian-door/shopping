@@ -35,7 +35,7 @@ const tabs: { key: TabKey; label: string }[] = [
   { key: 'productOrders', label: '订单管理' },
   { key: 'stats', label: '数据统计' },
   { key: 'consultation', label: '咨询消息' },
-  { key: 'profile', label: '入驻管理' },
+  { key: 'profile', label: '个人中心' },
 ]
 
 function switchTab(key: TabKey) {

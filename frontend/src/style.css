@@ -10,6 +10,22 @@ html, body {
   height: 100%;
 }
 
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
 body {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'FangSong', '仿宋', 'STSong', '宋体', 'SimSun', serif;
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 700;
+}
+
+a, button {
+  font-weight: 500;
+}
+
+strong, b, label {
+  font-weight: 700;
 }

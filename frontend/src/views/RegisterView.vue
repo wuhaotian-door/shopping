@@ -20,6 +20,7 @@ const form = reactive({
   sex: '',
   idNumber: '',
   region: '',
+  birthDate: '',
   role: '' as RoleType | '',
 })
 
@@ -116,6 +117,7 @@ async function handleRegister() {
         phone: form.phone.trim(),
         sex: form.sex || undefined,
         idNumber: form.idNumber.trim(),
+        birthDate: form.birthDate || undefined,
         region: form.region.trim(),
       })
       router.push('/register-success?type=inheritor')
@@ -306,6 +308,15 @@ async function handleRegister() {
                   type="text"
                   placeholder="请输入身份证号"
                   maxlength="18"
+              />
+            </div>
+
+            <div class="form-item">
+              <label for="reg-birthdate">出生日期</label>
+              <input
+                  id="reg-birthdate"
+                  v-model="form.birthDate"
+                  type="date"
               />
             </div>
 
