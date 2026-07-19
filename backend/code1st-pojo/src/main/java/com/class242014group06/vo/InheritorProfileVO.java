@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 /**
  * 传承人个人资料返回对象
@@ -47,4 +48,10 @@ public class InheritorProfileVO implements Serializable {
 
     /** 头像URL */
     private String avatarUrl;
+
+    /** 出生日期 */
+    private LocalDate birthDate;
+
+    /** 年龄（由出生日期计算） */
+    private Integer age;
 }

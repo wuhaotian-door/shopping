@@ -42,8 +42,10 @@ CREATE TABLE `inheritor` (
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `id_number`   VARCHAR(18)  DEFAULT NULL COMMENT '身份证号',
     `region`      VARCHAR(100) DEFAULT NULL COMMENT '所属地区（如：江苏省苏州市）',
-    `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于接收审核结果通知等）',
-    `age`         INT          DEFAULT NULL COMMENT '年龄',
+    `birth_date`            DATE         DEFAULT NULL COMMENT '出生日期',
+    `birth_date_updated_at` DATETIME     DEFAULT NULL COMMENT '出生日期上次修改时间（一年限制）',
+    `age`                   INT          DEFAULT NULL COMMENT '年龄（由出生日期自动计算）',
+    `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于找回密码和审核通知）',
     `status`      INT          NOT NULL DEFAULT 2 COMMENT '状态 2:待审核 1:启用 0:禁用',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
@@ -102,18 +104,18 @@ VALUES
 -- =====================================================
 -- 非遗传承人测试数据（密码均为 123456 的 MD5，status=1 表示已审核通过）
 -- =====================================================
-INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, age, status)
+INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, birth_date, age, email, status)
 VALUES
-    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     51, 1),
-    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     58, 1),
-    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     54, 1),
-    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     44, 1),
-    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   48, 1),
-    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     41, 1),
-    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     61, 1),
-    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     38, 1),
-    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     36, 1),
-    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', 31, 2);
+    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     '1975-03-12', 51, '3326353413@qq.com', 1),
+    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     '1968-08-15', 58, '3326353413@qq.com', 1),
+    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     '1972-11-08', 54, '3326353413@qq.com', 1),
+    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     '1982-04-22', 44, '3326353413@qq.com', 1),
+    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   '1978-08-16', 48, '3326353413@qq.com', 1),
+    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     '1985-11-20', 41, '3326353413@qq.com', 1),
+    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     '1965-03-30', 61, '3326353413@qq.com', 1),
+    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     '1988-11-05', 38, '3326353413@qq.com', 1),
+    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     '1990-03-22', 36, '3326353413@qq.com', 1),
+    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', '1995-01-01', 31, '3326353413@qq.com', 2);
 -- =====================================================
 -- 预约订单表 DDL
 -- 用户向工坊（传承人）发送预约订单
