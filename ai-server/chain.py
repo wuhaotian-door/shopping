@@ -11,8 +11,10 @@ from dotenv import load_dotenv
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables import RunnableParallel, RunnablePassthrough, RunnableLambda
-from langchain_openai import ChatOpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
+
+# Level 4: 使用生产级模型工厂（自带 token 跟踪）
+from production import create_model
 
 load_dotenv()
 
@@ -33,7 +35,7 @@ RETRY = retry(
 # 模型 & 链（不变的部分）
 # ============================================================
 
-model = ChatOpenAI(
+model = create_model(
     model="deepseek-chat",
     base_url=os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com"),
     api_key=os.getenv("DEEPSEEK_API_KEY"),

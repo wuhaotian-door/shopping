@@ -22,7 +22,9 @@ API 端点:
   POST /ai/agent/human/resume — Human-in-the-loop: 审批后恢复
   POST /ai/agent/subgraph/start  — Subgraph Agent: 启动（子图封装审批流）
   POST /ai/agent/subgraph/resume — Subgraph Agent: 审批后恢复
-  POST /ai/eval/rag         — RAGAS 评估
+  POST /ai/eval/rag         — RAGAS 评估（Faithfulness/Relevancy/Precision/Recall）
+  GET  /ai/usage            — Token 用量统计（Level 4）
+  GET  /ai/cache/stats      — 缓存命中统计（Level 4）
 """
 
 from typing import Any, Dict, List
@@ -38,8 +40,18 @@ from tools import agent_chat
 from agent_graph import graph_ask, graph_ask_stream
 from agent_human import human_agent_start, human_agent_resume, human_agent_get_state
 from agent_subgraph import subgraph_agent_start, subgraph_agent_resume, subgraph_agent_get_state
+from production import setup_cache, create_rate_limit_middleware, get_usage, get_cache_stats
 
 app = FastAPI(title="码上非遗 AI 服务")
+
+# ---- Level 4: 生产级功能 ----
+
+# ① 启用 LLM 缓存（SQLite）
+setup_cache()
+
+# ② 添加频率限制中间件
+from starlette.middleware.base import BaseHTTPMiddleware
+app.add_middleware(BaseHTTPMiddleware, dispatch=create_rate_limit_middleware())
 
 # 托管静态文件（前端聊天页面）
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -330,3 +342,26 @@ async def ai_eval_rag(req: EvalRequest):
         evaluate_retrieval=req.evaluate_retrieval,
         evaluate_generation=req.evaluate_generation,
     )
+
+
+# ============================================================
+# Level 4: 生产级端点 — 用量 / 缓存统计
+# ============================================================
+
+@app.get("/ai/usage")
+async def ai_usage():
+    """Token 用量统计
+
+    返回累计 token 消耗 + 估算费用 + 最近 10 条调用记录。
+
+    DeepSeek 定价参考 (2024):
+      - 输入: 1 RMB / 百万 token
+      - 输出: 2 RMB / 百万 token
+    """
+    return get_usage()
+
+
+@app.get("/ai/cache/stats")
+async def ai_cache_stats():
+    """LLM 缓存统计 — 命中率等"""
+    return get_cache_stats()
