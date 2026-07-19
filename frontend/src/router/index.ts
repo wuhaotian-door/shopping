@@ -100,6 +100,12 @@ const router = createRouter({
       component: () => import('@/views/StatsView.vue'),
       meta: { requiresAuth: true },
     },
+    {
+      path: '/rag',
+      name: 'Rag',
+      component: () => import('@/views/RagView.vue'),
+      meta: { requiresAuth: false },
+    },
   ],
 })
 
