@@ -72,43 +72,6 @@ function handleLogout() {
 </script>
 
 <template>
-  <!-- ==================== 顶部导航 ==================== -->
-  <header class="page-header">
-    <div class="logo" @click="router.push('/')">码上非遗</div>
-
-    <nav class="nav-links">
-      <a class="nav-item active" href="#">首页</a>
-      <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
-      <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
-      <a class="nav-item" @click="router.push('/store')">文创周边</a>
-      <a class="nav-item" @click="router.push('/stats')">数据统计</a>
-      <a class="nav-item" href="#ai">智能问答</a>
-
-      <!-- 非遗传承人专属导航 -->
-      <template v-if="isInheritor">
-        <span class="nav-separator"></span>
-        <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">我的工坊</a>
-        <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">工坊管理</a>
-      </template>
-    </nav>
-
-    <!-- 右侧：游客 → 登录按钮 | 已登录 → 用户菜单 -->
-    <div class="header-right">
-      <template v-if="isLoggedIn">
-        <span class="user-role-tag" :class="userRole === 'INHERITOR' ? 'inheritor-tag' : 'user-tag'">
-          {{ isInheritor ? '非遗传承人' : '用户' }}
-        </span>
-        <span class="user-name">{{ userName }}</span>
-        <button v-if="!isInheritor" class="header-profile-btn" @click="router.push('/profile')">👤 个人中心</button>
-        <button class="header-chat-btn" @click="router.push('/chat')">💬 消息</button>
-        <button class="logout-btn" @click="handleLogout">退出</button>
-      </template>
-      <template v-else>
-        <button class="login-top-btn" @click="router.push('/login')">登录</button>
-      </template>
-    </div>
-  </header>
-
   <!-- ==================== 视频轮播横幅 ==================== -->
   <section class="banner">
     <div class="banner-video-wrap">
@@ -184,7 +147,7 @@ function handleLogout() {
             <span v-if="splitCrafts(master.craftTypes).length > 3" class="master-craft-more">+{{ splitCrafts(master.craftTypes).length - 3 }}</span>
           </div>
           <p class="master-intro">{{ master.selfIntro?.slice(0, 80) || '暂无简介' }}</p>
-          <a href="#" class="master-book-btn">预约工坊</a>
+          <a class="master-book-btn" @click="router.push('/appointment/' + master.employeeId)">预约工坊</a>
         </div>
       </div>
       <div v-if="masterList.length === 0" class="empty-state" style="grid-column:1/-1">暂无入驻传承人</div>

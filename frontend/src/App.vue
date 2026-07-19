@@ -1,7 +1,16 @@
 <script setup lang="ts">
-import { onMounted, onErrorCaptured, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted } from 'vue'
+import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import AppHeader from '@/components/AppHeader.vue'
+
+const router = useRouter()
+const route = useRoute()
+const authStore = useAuthStore()
+
+// 不需要公共导航栏的页面（精确匹配，避免 /inheritors 误匹配 /inheritor）
+const noHeaderNames = ['Login', 'Register', 'RegisterSuccess', 'ForgotPassword', 'Admin', 'Inheritor']
+const showHeader = computed(() => !noHeaderNames.includes(route.name as string))
 
 const renderError = ref<string>('')
 
@@ -12,15 +21,10 @@ onErrorCaptured((err: unknown) => {
 })
 
 onMounted(async () => {
-  const authStore = useAuthStore()
-  const router = useRouter()
   const hadToken = !!authStore.token
-
   await authStore.initAuth()
 
-  // token 失效时（如后端重启），仅在需要登录的页面才跳转
   if (hadToken && !authStore.token) {
-    const route = router.currentRoute.value
     const needsAuth = route.meta.requiresAdmin || route.meta.requiresInheritor || route.meta.requiresAuth === true
     if (needsAuth) {
       router.push('/login')
@@ -30,9 +34,6 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div v-if="renderError" style="padding:40px;color:red;font-family:monospace;white-space:pre-wrap;background:#fff;">
-    <h2>页面渲染错误</h2>
-    {{ renderError }}
-  </div>
-  <router-view v-else />
+  <AppHeader v-if="showHeader" />
+  <router-view />
 </template>

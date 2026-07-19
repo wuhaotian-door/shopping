@@ -11,13 +11,6 @@ onMounted(() => {
 </script>
 
 <template>
-  <header class="stats-page-header">
-    <div class="header-left">
-      <span class="logo" @click="router.push('/')">码上非遗</span>
-      <span class="header-title">数据统计</span>
-    </div>
-    <button class="back-btn" @click="router.push('/')">返回首页</button>
-  </header>
   <div class="stats-page-body">
     <StatsPanel />
   </div>
