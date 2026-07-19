@@ -54,3 +54,13 @@ export function listPublicProjectsByInheritor(inheritorId: number): Promise<Resu
 export function adminDeleteProject(id: number): Promise<Result<string>> {
   return request.delete(`/project/${id}/admin`)
 }
+
+/** 管理员切换项目上下架 */
+export function adminToggleProject(id: number, status: number): Promise<Result<string>> {
+  return request.put(`/project/${id}/admin/toggle`, null, { params: { status } })
+}
+
+/** 管理员批量删除项目 */
+export function batchDeleteProject(ids: number[]): Promise<Result<string>> {
+  return request.post('/project/batch', { ids })
+}

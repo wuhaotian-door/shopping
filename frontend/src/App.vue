@@ -1,7 +1,15 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onErrorCaptured, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+
+const renderError = ref<string>('')
+
+onErrorCaptured((err: unknown) => {
+  renderError.value = err instanceof Error ? (err.message + '\n' + err.stack) : String(err)
+  console.error('App error captured:', err)
+  return false // prevent error propagation
+})
 
 onMounted(async () => {
   const authStore = useAuthStore()
@@ -22,5 +30,9 @@ onMounted(async () => {
 </script>
 
 <template>
-  <router-view />
+  <div v-if="renderError" style="padding:40px;color:red;font-family:monospace;white-space:pre-wrap;background:#fff;">
+    <h2>页面渲染错误</h2>
+    {{ renderError }}
+  </div>
+  <router-view v-else />
 </template>

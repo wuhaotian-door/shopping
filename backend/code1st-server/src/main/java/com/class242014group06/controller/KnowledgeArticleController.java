@@ -1,9 +1,12 @@
 package com.class242014group06.controller;
 
+import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.context.BaseContext;
+import com.class242014group06.dto.BatchIdsDTO;
 import com.class242014group06.dto.KnowledgeArticleDTO;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.KnowledgeArticleService;
+import com.class242014group06.service.OperationLogService;
 import com.class242014group06.vo.KnowledgeArticleVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -24,6 +27,9 @@ public class KnowledgeArticleController {
 
     @Autowired
     private KnowledgeArticleService articleService;
+
+    @Autowired
+    private OperationLogService operationLogService;
 
     /**
      * 传承人创建文章
@@ -89,9 +95,24 @@ public class KnowledgeArticleController {
     @DeleteMapping("/{id}/admin")
     @ApiOperation("管理员删除文章")
     public Result<String> deleteByAdmin(@PathVariable Long id) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员删除文章，id：{}", id);
         articleService.deleteByAdmin(id);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "DELETE_ARTICLE", "article", id, "删除文章ID=" + id);
         return Result.success("文章已删除");
+    }
+
+    @PostMapping("/batch")
+    @ApiOperation("管理员批量删除文章")
+    public Result<String> batchDelete(@RequestBody BatchIdsDTO dto) {
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("批量删除文章：{}", dto.getIds());
+        articleService.batchDelete(dto.getIds());
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "DELETE_ARTICLE", "article", null,
+                "批量删除" + dto.getIds().size() + "篇文章");
+        return Result.success("已删除" + dto.getIds().size() + "篇文章");
     }
 
     /**

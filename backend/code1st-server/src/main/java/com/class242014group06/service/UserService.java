@@ -29,4 +29,9 @@ public interface UserService {
      * 验证码校验通过后修改密码
      */
     void changePassword(Long id, String code, String newPassword);
+
+    /**
+     * 已登录用户用旧密码修改密码（无需验证码）
+     */
+    void changePasswordWithOld(Long id, String oldPassword, String newPassword);
 }

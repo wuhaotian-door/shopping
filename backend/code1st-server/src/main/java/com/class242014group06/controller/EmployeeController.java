@@ -1,6 +1,9 @@
 package com.class242014group06.controller;
 
 import com.class242014group06.constant.JwtClaimsConstant;
+import com.class242014group06.constant.RoleConstant;
+import com.class242014group06.context.BaseContext;
+import com.class242014group06.dto.BatchStatusDTO;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
 import com.class242014group06.dto.EmployeeRegisterDTO;
@@ -9,6 +12,7 @@ import com.class242014group06.entity.Employee;
 import com.class242014group06.properties.JwtProperties;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.EmployeeService;
+import com.class242014group06.service.OperationLogService;
 import com.class242014group06.utils.JwtUtil;
 import com.class242014group06.vo.EmployeeLoginVO;
 import io.swagger.annotations.Api;
@@ -34,6 +38,8 @@ public class EmployeeController {
 
     @Autowired
     private EmployeeService employeeService;
+    @Autowired
+    private OperationLogService operationLogService;
     @Autowired
     private JwtProperties jwtProperties;
 
@@ -88,8 +94,13 @@ public class EmployeeController {
     @PostMapping
     @ApiOperation("新增员工")
     public Result save(@RequestBody EmployeeDTO employeeDTO) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("新增员工{}", employeeDTO);
         employeeService.save(employeeDTO);
+        // 记录操作日志
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "CREATE_ADMIN", "admin", null,
+                "创建管理员「" + employeeDTO.getName() + "」");
         return Result.success();
     }
 
@@ -189,9 +200,28 @@ public class EmployeeController {
     @PutMapping("/{id}/status")
     @ApiOperation("修改用户状态")
     public Result<String> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("修改用户状态：id={}, status={}", id, status);
         employeeService.updateStatus(id, status);
+        // 记录操作日志
+        String statusText = status == 1 ? "启用" : "禁用";
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "TOGGLE_USER_STATUS", "user", id,
+                "将用户ID=" + id + " 状态改为" + statusText);
         return Result.success("状态已更新");
+    }
+
+    @PostMapping("/batch-status")
+    @ApiOperation("批量修改用户状态")
+    public Result<String> batchUpdateStatus(@RequestBody BatchStatusDTO dto) {
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("批量修改用户状态：ids={}, status={}, role={}", dto.getIds(), dto.getStatus(), dto.getRole());
+        employeeService.batchUpdateStatus(dto.getIds(), dto.getStatus(), dto.getRole());
+        String statusText = dto.getStatus() == 1 ? "启用" : "禁用";
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "TOGGLE_USER_STATUS", "user", null,
+                "批量" + statusText + dto.getIds().size() + "个用户");
+        return Result.success("已" + statusText + dto.getIds().size() + "个用户");
     }
 
     /**

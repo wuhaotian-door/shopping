@@ -280,4 +280,17 @@ public class EmployeeServiceImpl implements EmployeeService {
                 + adminMapper.countByStatus(StatusConstant.DISABLE));
         return stats;
     }
+
+    @Override
+    public void batchUpdateStatus(java.util.List<Long> ids, Integer status, String role) {
+        for (Long id : ids) {
+            if (RoleConstant.ADMIN.equals(role)) {
+                adminMapper.update(Admin.builder().id(id).status(status).build());
+            } else if (RoleConstant.INHERITOR.equals(role)) {
+                inheritorMapper.update(Inheritor.builder().id(id).status(status).build());
+            } else {
+                userMapper.update(User.builder().id(id).status(status).build());
+            }
+        }
+    }
 }
