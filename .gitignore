@@ -88,3 +88,4 @@ logs/
 *.log
 *.CLAUDE.md
 .workbuddy
+ai-server/.cache.db
