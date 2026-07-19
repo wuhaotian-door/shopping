@@ -157,37 +157,6 @@ onMounted(() => {
 
 <template>
   <div class="appointment-page">
-    <!-- ==================== 顶部导航 ==================== -->
-    <header class="page-header">
-      <div class="logo" @click="router.push('/')">码上非遗</div>
-
-      <nav class="nav-links">
-        <a class="nav-item" @click="router.push('/')">首页</a>
-        <a class="nav-item" @click="router.push('/news')">非遗资讯</a>
-        <a class="nav-item" @click="router.push('/inheritors')">传承人</a>
-        <a class="nav-item" @click="router.push('/store')">文创周边</a>
-        <a class="nav-item" @click="router.push('/')">智能问答</a>
-        <template v-if="isInheritor">
-          <span class="nav-separator"></span>
-          <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">我的工坊</a>
-        </template>
-      </nav>
-
-      <div class="header-right">
-        <template v-if="isLoggedIn">
-          <span class="user-role-tag" :class="isInheritor ? 'inheritor-tag' : 'user-tag'">
-            {{ isInheritor ? '非遗传承人' : '用户' }}
-          </span>
-          <span class="user-name">{{ userName }}</span>
-          <button v-if="!isInheritor" class="header-btn" @click="router.push('/profile')">👤 个人中心</button>
-          <button class="header-btn" @click="router.push('/chat')">💬 消息</button>
-          <button class="logout-btn" @click="handleLogout">退出</button>
-        </template>
-        <template v-else>
-          <button class="login-top-btn" @click="router.push('/login')">登录</button>
-        </template>
-      </div>
-    </header>
 
     <!-- ==================== 主体内容 ==================== -->
     <main class="appointment-main">
