@@ -15,6 +15,23 @@ spring:
       url: jdbc:mysql://${code1st.datasource.host}:${code1st.datasource.port}/${code1st.datasource.database}?serverTimezone=Asia/Shanghai&useUnicode=true&characterEncoding=utf-8&zeroDateTimeBehavior=convertToNull&useSSL=false&allowPublicKeyRetrieval=true
       username: ${code1st.datasource.username}
       password: ${code1st.datasource.password}
+  # 邮件发送配置（163邮箱 SMTP）
+  # 注意：password 为 163邮箱授权码，非登录密码
+  # 获取方式：163邮箱 → 设置 → POP3/SMTP/IMAP → 开启 SMTP 服务 → 新增授权码
+  mail:
+    host: smtp.163.com
+    port: 465
+    username: 18155255201@163.com
+    password: WFqUsu45XdAgxnxU
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          ssl:
+            enable: true
+          socketFactory:
+            class: javax.net.ssl.SSLSocketFactory
 
 mybatis:
   #mapper配置文件

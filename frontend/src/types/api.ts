@@ -20,6 +20,7 @@ export interface LoginResponse {
   userName: string
   name: string
   token: string
+  role: RoleType | 'ADMIN'
 }
 
 /** 角色类型 */
@@ -41,6 +42,19 @@ export interface RegisterRequest {
   password: string
   phone?: string
   sex?: string
+  email?: string
+}
+
+/** 忘记密码 — 发送验证码请求 */
+export interface ForgotPasswordRequest {
+  username: string
+}
+
+/** 忘记密码 — 重置密码请求 */
+export interface ResetPasswordRequest {
+  username: string
+  code: string
+  newPassword: string
 }
 
 /** 非遗传承人注册请求参数（公开接口，详细信息） */
@@ -51,4 +65,338 @@ export interface InheritorRegisterRequest {
   phone?: string
   sex?: string
   idNumber: string
+  /** 所属地区，如：江苏省苏州市 */
+  region: string
+}
+
+/** 待审核用户信息（管理员审核列表用） */
+export interface PendingUser {
+  id: number
+  username: string
+  name: string
+  phone: string
+  sex: string
+  idNumber: string
+  /** 所属地区 */
+  region?: string
+  role?: string
+  status: number
+  createTime: string
+}
+
+/** 用户列表信息（管理员用户管理用） */
+export interface UserInfo {
+  id: number
+  username: string
+  name: string
+  phone: string
+  sex: string
+  idNumber: string
+  role: string
+  status: number
+  createTime: string
+}
+
+/** 仪表盘统计数据 */
+export interface DashboardStats {
+  totalUsers: number
+  userCount: number
+  inheritorCount: number
+  adminCount: number
+  pendingCount: number
+  enabledCount: number
+  disabledCount: number
+}
+
+// ==================== 订单 ====================
+
+/** 订单状态 */
+export type OrderStatus = 0 | 1 | 2 | 3
+// 0-待确认, 1-已确认, 2-已完成, 3-已取消
+
+/** 订单提交请求 */
+export interface OrderSubmitRequest {
+  userName: string
+  phone: string
+  inheritorId: number
+  projectId?: number
+  appointmentDate: string // yyyy-MM-dd
+  timeSlot: string
+  peopleCount: number
+  remark: string
+}
+
+/** 订单返回对象 */
+export interface OrderVO {
+  id: number
+  inheritorId: number
+  projectId?: number
+  userName: string
+  phone: string
+  appointmentDate: string
+  timeSlot: string
+  peopleCount: number
+  remark: string
+  status: OrderStatus
+  createTime: string
+}
+
+// ==================== 传承人个人资料 ====================
+
+export interface InheritorProfileVO {
+  id: number
+  employeeId: number
+  name: string
+  phone: string
+  sex: string
+  region: string
+  honorTitle: string
+  selfIntro: string
+  craftTypes: string
+  address: string
+  avatarUrl: string
+}
+
+export interface InheritorProfileDTO {
+  honorTitle?: string
+  selfIntro?: string
+  craftTypes?: string
+  address?: string
+  avatarUrl?: string
+}
+
+// ==================== 非遗知识库 ====================
+
+export interface KnowledgeArticleVO {
+  id: number
+  authorId: number
+  authorName: string
+  title: string
+  category: string
+  content: string
+  coverUrl: string
+  status: number
+  viewCount: number
+  createTime: string
+}
+
+export interface KnowledgeArticleDTO {
+  title: string
+  category?: string
+  content: string
+  coverUrl?: string
+  status?: number
+}
+
+// ==================== 非遗项目 ====================
+
+export interface HeritageProjectVO {
+  id: number
+  inheritorId: number
+  inheritorName: string
+  title: string
+  category: string
+  description: string
+  coverUrl: string
+  location: string
+  startDate: string
+  endDate: string
+  maxPeople: number
+  currentPeople: number
+  status: number
+  projectType: number  // 0-公益(非盈利), 1-非公益(盈利)
+  price?: number       // 价格（非公益项目使用）
+  createTime: string
+}
+
+export interface HeritageProjectDTO {
+  title: string
+  category?: string
+  description?: string
+  coverUrl?: string
+  location?: string
+  startDate?: string
+  endDate?: string
+  maxPeople?: number
+  status?: number
+  projectType?: number  // 0-公益(非盈利), 1-非公益(盈利)
+  price?: number        // 价格（非公益项目使用）
+}
+
+// ==================== 商城商品 ====================
+
+export interface ProductVO {
+  id: number
+  name: string
+  description: string
+  price: number
+  stock: number
+  imageUrl: string
+  category: string
+  inheritorId: number
+  inheritorName: string
+  status: number
+  createTime: string
+  avgRating: number
+  reviewCount: number
+}
+
+// ==================== 商品评价 ====================
+
+export interface ProductReviewVO {
+  id: number
+  productId: number
+  userId: number
+  userName: string
+  rating: number
+  content: string
+  createTime: string
+}
+
+export interface ProductReviewDTO {
+  rating: number
+  content: string
+}
+
+// ==================== 商品订单 ====================
+
+export interface ProductOrderVO {
+  id: number
+  userName: string
+  phone: string
+  address: string
+  productId: number
+  productName: string
+  productImage: string
+  price: number
+  quantity: number
+  totalAmount: number
+  inheritorId: number
+  remark: string
+  status: number
+  createTime: string
+}
+
+export interface ProductOrderSubmitRequest {
+  phone: string
+  address: string
+  productId: number
+  quantity: number
+  remark: string
+}
+
+// ==================== 预约时段 ====================
+
+export interface AppointmentSlot {
+  id: number
+  inheritorId: number
+  slotDate: string
+  startTime: string       // "HH:mm"
+  endTime: string         // "HH:mm"
+  recurrenceType: string  // 'NONE' | 'WEEKLY' | 'MONTHLY'
+  recurrenceEndDate?: string
+  maxPeople: number
+  bookedCount: number
+  status: number
+  createTime?: string
+  updateTime?: string
+}
+
+export interface AppointmentSlotDTO {
+  slotDate: string
+  startTime: string
+  endTime: string
+  recurrenceType: string
+  recurrenceEndDate?: string
+  maxPeople: number
+  status: number
+}
+
+export interface SlotDateRange {
+  minDate?: string
+  maxDate?: string
+}
+
+// ==================== 聊天系统 ====================
+
+export interface ConversationVO {
+  conversationId: number
+  otherUserId: number
+  otherUserRole: string
+  otherUserName: string
+  otherName: string
+  lastMessage: string
+  lastMessageTime: string
+  unreadCount: number
+}
+
+export interface ChatMessageVO {
+  id: number
+  conversationId: number
+  senderId: number
+  senderRole: string
+  senderName: string
+  content: string
+  messageType: string
+  isRead: number
+  createdAt: string
+  mine: boolean
+}
+
+export interface ChatSendDTO {
+  conversationId?: number
+  receiverId?: number
+  receiverRole?: string
+  content: string
+}
+
+// ==================== 普通用户个人资料 ====================
+
+export interface UserProfileVO {
+  id: number
+  name: string
+  username: string
+  phone: string
+  email: string
+  sex: string
+}
+
+export interface UserProfileDTO {
+  username?: string
+  name?: string
+  phone?: string
+  email?: string
+  sex?: string
+}
+
+export interface ChangePasswordDTO {
+  code: string
+  newPassword: string
+}
+
+// ==================== 好友系统 ====================
+
+export interface FriendVO {
+  relationId: number
+  userId: number
+  userName: string
+  name: string
+  role: string
+  status: number
+  createdAt: string
+}
+
+// ==================== 文章评论 ====================
+
+export interface ArticleCommentVO {
+  id: number
+  articleId: number
+  userId: number
+  userName: string
+  content: string
+  createTime: string
+}
+
+export interface ArticleCommentDTO {
+  content: string
 }

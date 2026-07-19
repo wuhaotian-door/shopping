@@ -29,15 +29,15 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理SQL异常
+     * 处理SQL唯一约束冲突
      * @param ex
      * @return
      */
     @ExceptionHandler(SQLIntegrityConstraintViolationException.class)
     public Result exceptionHandler(SQLIntegrityConstraintViolationException ex){
-        // Duplicate entry 'zhangsan' for key 'employee.idx_username'
+        // Duplicate entry 'zhangsan' for key 'xxx.idx_xxx_username'
         String message = ex.getMessage();
-        if(message.contains("Duplicate entry")){
+        if(message.contains("Duplicate entry") && message.contains("username")){
             String[] split = message.split(" ");
             String username = split[2];
             String msg = username + MessageConstant.ALREADY_EXISTS;
@@ -47,5 +47,12 @@ public class GlobalExceptionHandler {
         }
     }
 
-
+    /**
+     * 兜底异常处理 — 防止未预期的异常直接返回 500
+     */
+    @ExceptionHandler(Exception.class)
+    public Result exceptionHandler(Exception ex) {
+        log.error("未预期的异常：", ex);
+        return Result.error("请求失败: " + ex.getMessage());
+    }
 }

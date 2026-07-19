@@ -65,7 +65,23 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
         log.info("开始注册自定义拦截器...");
         registry.addInterceptor(jwtTokenAdminInterceptor)
                 .addPathPatterns("/admin/**")
-                .excludePathPatterns("/admin/employee/login", "/admin/employee/register", "/admin/employee/register/inheritor");
+                .excludePathPatterns(
+                        "/admin/employee/login",
+                        "/admin/employee/register",
+                        "/admin/employee/register/inheritor",
+                        "/admin/auth/login",
+                        "/admin/auth/register",
+                        "/admin/auth/register/inheritor",
+                        "/admin/auth/forgot-password/send-code",
+                        "/admin/auth/forgot-password/reset",
+                        "/admin/inheritor/profile/public",
+                        "/admin/knowledge/public",
+                        "/admin/knowledge/public/**",
+                        "/admin/article-comment/public/**",
+                        "/admin/project/public",
+                        "/admin/slot/available",
+                        "/admin/product-review/public/**"
+                );
     }
     /**
      * 通过knife4j生成接口文档

@@ -27,10 +27,15 @@ public class JwtUtil {
         long expMillis = System.currentTimeMillis() + ttlMillis;
         Date exp = new Date(expMillis);
 
+        // 生成JWT的时间
+        Date iat = new Date(System.currentTimeMillis());
+
         // 设置jwt的body
         JwtBuilder builder = Jwts.builder()
                 // 如果有私有声明，一定要先设置这个自己创建的私有的声明，这个是给builder的claim赋值，一旦写在标准的声明赋值之后，就是覆盖了那些标准的声明的
                 .setClaims(claims)
+                // 设置签发时间（用于判断token是否在本次服务启动后签发）
+                .setIssuedAt(iat)
                 // 设置签名使用的签名算法和签名使用的秘钥
                 .signWith(signatureAlgorithm, secretKey.getBytes(StandardCharsets.UTF_8))
                 // 设置过期时间
