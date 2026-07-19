@@ -42,6 +42,7 @@ CREATE TABLE `inheritor` (
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `id_number`   VARCHAR(18)  DEFAULT NULL COMMENT '身份证号',
     `region`      VARCHAR(100) DEFAULT NULL COMMENT '所属地区（如：江苏省苏州市）',
+    `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于接收审核结果通知等）',
     `age`         INT          DEFAULT NULL COMMENT '年龄',
     `status`      INT          NOT NULL DEFAULT 2 COMMENT '状态 2:待审核 1:启用 0:禁用',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
@@ -586,6 +587,26 @@ CREATE TABLE friend_relation (
     INDEX idx_user (user_id),
     INDEX idx_friend (friend_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='好友关系表';
+
+-- =====================================================
+-- 管理员操作日志表
+-- =====================================================
+DROP TABLE IF EXISTS admin_operation_log;
+
+CREATE TABLE admin_operation_log (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    operator_id     BIGINT       NOT NULL COMMENT '操作人ID',
+    operator_name   VARCHAR(64)  NOT NULL COMMENT '操作人姓名',
+    operator_role   VARCHAR(32)  NOT NULL COMMENT '操作人角色',
+    operation_type  VARCHAR(64)  NOT NULL COMMENT '操作类型',
+    target_type     VARCHAR(32)  DEFAULT NULL COMMENT '操作目标类型',
+    target_id       BIGINT       DEFAULT NULL COMMENT '操作目标ID',
+    detail          VARCHAR(500) DEFAULT NULL COMMENT '操作详情描述',
+    create_time     DATETIME     DEFAULT NULL COMMENT '操作时间',
+    INDEX idx_operator (operator_id),
+    INDEX idx_type (operation_type),
+    INDEX idx_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员操作日志表';
 
 -- =====================================================
 -- RAG AI 对话会话表 — 存储用户与AI助手的对话记录

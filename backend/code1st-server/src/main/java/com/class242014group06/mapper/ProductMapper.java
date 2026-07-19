@@ -42,6 +42,12 @@ public interface ProductMapper {
     List<Product> listAll();
 
     /**
+     * 管理员查询所有商品（含上下架），按创建时间倒序
+     */
+    @Select("select * from product order by create_time desc")
+    List<Product> listAllAdmin();
+
+    /**
      * 根据分类查询上架商品
      */
     @Select("select * from product where status = 1 and category = #{category} order by create_time desc")

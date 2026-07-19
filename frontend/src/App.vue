@@ -12,6 +12,14 @@ const authStore = useAuthStore()
 const noHeaderNames = ['Login', 'Register', 'RegisterSuccess', 'ForgotPassword', 'Admin', 'Inheritor']
 const showHeader = computed(() => !noHeaderNames.includes(route.name as string))
 
+const renderError = ref<string>('')
+
+onErrorCaptured((err: unknown) => {
+  renderError.value = err instanceof Error ? (err.message + '\n' + err.stack) : String(err)
+  console.error('App error captured:', err)
+  return false // prevent error propagation
+})
+
 onMounted(async () => {
   const hadToken = !!authStore.token
   await authStore.initAuth()

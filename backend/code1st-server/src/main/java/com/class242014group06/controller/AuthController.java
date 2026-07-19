@@ -6,9 +6,12 @@ import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.EmployeeDTO;
 import com.class242014group06.dto.EmployeeLoginDTO;
 import com.class242014group06.dto.EmployeeRegisterDTO;
+import com.class242014group06.dto.BatchIdsDTO;
+import com.class242014group06.dto.BatchRejectDTO;
 import com.class242014group06.dto.ChangePasswordDTO;
 import com.class242014group06.dto.ForgotPasswordDTO;
 import com.class242014group06.dto.InheritorRegisterDTO;
+import com.class242014group06.dto.RejectInheritorDTO;
 import com.class242014group06.dto.ResetPasswordDTO;
 import com.class242014group06.entity.Admin;
 import com.class242014group06.entity.Inheritor;
@@ -21,6 +24,8 @@ import com.class242014group06.result.Result;
 import com.class242014group06.service.AdminService;
 import com.class242014group06.service.AuthService;
 import com.class242014group06.service.InheritorService;
+import com.class242014group06.service.OperationLogService;
+import com.class242014group06.service.UserService;
 import com.class242014group06.utils.JwtUtil;
 import com.class242014group06.vo.EmployeeLoginVO;
 import io.swagger.annotations.Api;
@@ -29,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import com.class242014group06.entity.OperationLog;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -48,6 +54,10 @@ public class AuthController {
     private InheritorService inheritorService;
     @Autowired
     private AdminService adminService;
+    @Autowired
+    private UserService userService;
+    @Autowired
+    private OperationLogService operationLogService;
     @Autowired
     private JwtProperties jwtProperties;
     @Autowired
@@ -153,24 +163,43 @@ public class AuthController {
     @PutMapping("/{id}/approve")
     @ApiOperation("审核通过传承人")
     public Result<String> approve(@PathVariable Long id) {
+        Long adminId = BaseContext.getCurrentId();
         log.info("审核通过传承人：{}", id);
         inheritorService.approve(id);
+        // 记录操作日志
+        Inheritor inheritor = inheritorMapper.getById(id);
+        String name = inheritor != null ? inheritor.getName() : "未知";
+        operationLogService.log(adminId, "管理员", RoleConstant.ADMIN,
+                "APPROVE_INHERITOR", "inheritor", id,
+                "审核通过传承人「" + name + "」的申请");
         return Result.success("审核通过");
     }
 
     /**
-     * 驳回传承人申请（管理员专用）
+     * 驳回传承人申请（管理员专用，含驳回原因并发送邮件通知）
      */
     @PutMapping("/{id}/reject")
     @ApiOperation("驳回传承人申请")
-    public Result<String> reject(@PathVariable Long id) {
-        log.info("驳回传承人申请：{}", id);
-        inheritorService.reject(id);
+    public Result<String> reject(@PathVariable Long id, @RequestBody(required = false) RejectInheritorDTO dto) {
+        Long adminId = BaseContext.getCurrentId();
+        String reason = dto != null ? dto.getReason() : null;
+        log.info("驳回传承人申请：id={}, reason={}", id, reason);
+        if (reason != null && !reason.isEmpty()) {
+            inheritorService.reject(id, reason);
+        } else {
+            inheritorService.reject(id);
+        }
+        // 记录操作日志
+        Inheritor inheritor = inheritorMapper.getById(id);
+        String name = inheritor != null ? inheritor.getName() : "未知";
+        operationLogService.log(adminId, "管理员", RoleConstant.ADMIN,
+                "REJECT_INHERITOR", "inheritor", id,
+                "驳回传承人「" + name + "」的申请，原因：" + (reason != null ? reason : "未提供"));
         return Result.success("已驳回");
     }
 
     /**
-     * 修改密码（登录后调用）
+     * 修改密码（登录后调用，支持三种角色）
      */
     @PutMapping("/change-password")
     @ApiOperation("修改密码")
@@ -178,10 +207,17 @@ public class AuthController {
         Long userId = BaseContext.getCurrentId();
         String role = BaseContext.getCurrentRole();
         log.info("修改密码：userId={}, role={}", userId, role);
-        if (!RoleConstant.ADMIN.equals(role)) {
-            return Result.error("仅管理员支持此操作");
+        if (RoleConstant.ADMIN.equals(role)) {
+            adminService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());
+        } else if (RoleConstant.INHERITOR.equals(role)) {
+            inheritorService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());
+        } else {
+            userService.changePasswordWithOld(userId, dto.getOldPassword(), dto.getNewPassword());
         }
-        adminService.changePassword(userId, dto.getOldPassword(), dto.getNewPassword());
+        // 记录操作日志
+        operationLogService.log(userId, "角色:" + role, role,
+                "CHANGE_PASSWORD", role.toLowerCase(), userId,
+                "修改密码");
         return Result.success("密码修改成功");
     }
 
@@ -205,5 +241,40 @@ public class AuthController {
         log.info("重置密码：{}", dto.getUsername());
         authService.resetPassword(dto);
         return Result.success("密码重置成功");
+    }
+
+    /**
+     * 获取操作日志列表（管理员专用）
+     */
+    @GetMapping("/operation-logs")
+    @ApiOperation("获取操作日志列表")
+    public Result<List<OperationLog>> getOperationLogs() {
+        log.info("获取操作日志列表");
+        List<OperationLog> logs = operationLogService.listRecent();
+        return Result.success(logs);
+    }
+
+    @PostMapping("/batch-approve")
+    @ApiOperation("批量审核通过传承人")
+    public Result<String> batchApprove(@RequestBody BatchIdsDTO dto) {
+        Long adminId = BaseContext.getCurrentId();
+        log.info("批量审核通过传承人：{}", dto.getIds());
+        int count = inheritorService.batchApprove(dto.getIds());
+        operationLogService.log(adminId, "管理员", RoleConstant.ADMIN,
+                "APPROVE_INHERITOR", "inheritor", null,
+                "批量审核通过" + count + "个传承人");
+        return Result.success("已通过" + count + "人");
+    }
+
+    @PostMapping("/batch-reject")
+    @ApiOperation("批量驳回传承人申请")
+    public Result<String> batchReject(@RequestBody BatchRejectDTO dto) {
+        Long adminId = BaseContext.getCurrentId();
+        log.info("批量驳回传承人申请：ids={}, reason={}", dto.getIds(), dto.getReason());
+        int count = inheritorService.batchReject(dto.getIds(), dto.getReason());
+        operationLogService.log(adminId, "管理员", RoleConstant.ADMIN,
+                "REJECT_INHERITOR", "inheritor", null,
+                "批量驳回" + count + "个传承人，原因：" + (dto.getReason() != null ? dto.getReason() : "未提供"));
+        return Result.success("已驳回" + count + "人");
     }
 }

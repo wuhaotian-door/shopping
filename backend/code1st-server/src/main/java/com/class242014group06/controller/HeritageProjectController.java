@@ -1,9 +1,12 @@
 package com.class242014group06.controller;
 
+import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.context.BaseContext;
+import com.class242014group06.dto.BatchIdsDTO;
 import com.class242014group06.dto.HeritageProjectDTO;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.HeritageProjectService;
+import com.class242014group06.service.OperationLogService;
 import com.class242014group06.vo.HeritageProjectVO;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiOperation;
@@ -24,6 +27,9 @@ public class HeritageProjectController {
 
     @Autowired
     private HeritageProjectService projectService;
+
+    @Autowired
+    private OperationLogService operationLogService;
 
     /**
      * 传承人创建项目
@@ -112,9 +118,36 @@ public class HeritageProjectController {
     @DeleteMapping("/{id}/admin")
     @ApiOperation("管理员删除项目")
     public Result<String> deleteByAdmin(@PathVariable Long id) {
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员删除项目，id：{}", id);
         projectService.deleteByAdmin(id);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "DELETE_PROJECT", "project", id, "删除项目ID=" + id);
         return Result.success("项目已删除");
+    }
+
+    @PutMapping("/{id}/admin/toggle")
+    @ApiOperation("管理员切换项目上下架")
+    public Result<String> toggleByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("管理员切换项目状态，id：{}，status：{}", id, status);
+        projectService.toggleByAdmin(id, status);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "TOGGLE_PROJECT", "project", id,
+                (status == 1 ? "上架" : "下架") + "项目ID=" + id);
+        return Result.success(status == 1 ? "项目已上架" : "项目已下架");
+    }
+
+    @PostMapping("/batch")
+    @ApiOperation("管理员批量删除项目")
+    public Result<String> batchDelete(@RequestBody BatchIdsDTO dto) {
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("批量删除项目：{}", dto.getIds());
+        projectService.batchDelete(dto.getIds());
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "DELETE_PROJECT", "project", null,
+                "批量删除" + dto.getIds().size() + "个项目");
+        return Result.success("已删除" + dto.getIds().size() + "个项目");
     }
 
     /**

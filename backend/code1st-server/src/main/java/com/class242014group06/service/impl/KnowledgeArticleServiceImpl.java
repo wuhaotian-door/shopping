@@ -96,6 +96,13 @@ public class KnowledgeArticleServiceImpl implements KnowledgeArticleService {
     }
 
     @Override
+    public void batchDelete(java.util.List<Long> ids) {
+        for (Long id : ids) {
+            deleteByAdmin(id);
+        }
+    }
+
+    @Override
     public KnowledgeArticleVO getById(Long id) {
         KnowledgeArticle article = articleMapper.getById(id);
         if (article == null) {

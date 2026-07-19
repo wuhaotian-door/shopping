@@ -28,6 +28,11 @@ public interface ProductService {
     List<ProductVO> listAll();
 
     /**
+     * 管理员查询所有商品（含已下架）
+     */
+    List<ProductVO> listAllAdmin();
+
+    /**
      * 按分类查询上架商品
      */
     List<ProductVO> listByCategory(String category);
@@ -43,4 +48,6 @@ public interface ProductService {
     List<ProductVO> listByInheritor(Long inheritorId);
     void deleteByAdmin(Long id);
     void toggleByAdmin(Long id, Integer status);
+    void batchToggle(java.util.List<Long> ids, Integer status);
+    void batchDelete(java.util.List<Long> ids);
 }

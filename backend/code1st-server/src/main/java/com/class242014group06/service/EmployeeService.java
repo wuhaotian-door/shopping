@@ -76,6 +76,11 @@ public interface EmployeeService {
     void updateStatus(Long id, Integer status);
 
     /**
+     * 批量修改用户状态
+     */
+    void batchUpdateStatus(java.util.List<Long> ids, Integer status, String role);
+
+    /**
      * 获取仪表盘统计数据
      * @return Map包含各维度统计数量
      */

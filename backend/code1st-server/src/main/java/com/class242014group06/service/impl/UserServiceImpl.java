@@ -138,4 +138,20 @@ public class UserServiceImpl implements UserService {
         // 清除验证码
         codeStore.remove(id);
     }
+
+    @Override
+    public void changePasswordWithOld(Long id, String oldPassword, String newPassword) {
+        User user = userMapper.getById(id);
+        if (user == null) {
+            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        }
+        // 校验旧密码
+        String oldMd5 = DigestUtils.md5DigestAsHex(oldPassword.getBytes());
+        if (!oldMd5.equals(user.getPassword())) {
+            throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
+        }
+        // 更新为新密码
+        String md5Password = DigestUtils.md5DigestAsHex(newPassword.getBytes());
+        userMapper.updatePassword(id, md5Password, LocalDateTime.now());
+    }
 }

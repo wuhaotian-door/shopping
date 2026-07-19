@@ -50,4 +50,6 @@ public interface HeritageProjectService {
 
     List<HeritageProjectVO> listAll();
     void deleteByAdmin(Long id);
+    void toggleByAdmin(Long id, Integer status);
+    void batchDelete(java.util.List<Long> ids);
 }

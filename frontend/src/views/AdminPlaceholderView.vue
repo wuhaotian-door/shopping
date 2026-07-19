@@ -1,43 +1,65 @@
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, watch, defineAsyncComponent } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import {
   adminCreate, getPendingList, approveInheritor, rejectInheritor,
   listAllUsers, searchUsers, updateUserStatus, getDashboardStats,
   changePassword,
+  getOperationLogs,
+  batchUpdateUserStatus, batchApprove, batchReject,
 } from '@/api/auth'
 import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, adminUpdateOrderFields } from '@/api/order'
-import { listAllArticles, adminDeleteArticle } from '@/api/knowledge'
-import { listProducts as listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress } from '@/api/product'
-import { listAllProjects, adminDeleteProject } from '@/api/project'
+import { listAllArticles, adminDeleteArticle, batchDeleteArticle, getArticleById } from '@/api/knowledge'
+import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct } from '@/api/product'
+import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject } from '@/api/project'
+import { useToast } from '@/composables/useToast'
 import ChatPanel from './components/ChatPanel.vue'
-import AdminMonitorPanel from './components/AdminMonitorPanel.vue'
-import type { PendingUser, UserInfo, DashboardStats, OrderVO, KnowledgeArticleVO, ProductVO, ProductOrderVO, HeritageProjectVO } from '@/types/api'
+const AdminMonitorPanel = defineAsyncComponent(() => import('./components/AdminMonitorPanel.vue'))
+import type { PendingUser, UserInfo, DashboardStats, OrderVO, KnowledgeArticleVO, ProductVO, ProductOrderVO, HeritageProjectVO, OperationLog } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const { toasts, showToast } = useToast()
+const userName = computed(() => authStore?.userInfo?.name ?? '')
+const userRole = computed(() => authStore?.userInfo?.role ?? '')
 
 onMounted(() => {
   document.title = '管理后台——码上非遗'
   loadDashboard()
 })
 
-// ==================== 侧边栏菜单 ====================
-type MenuKey = 'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'settings'
-const activeMenu = ref<MenuKey>('dashboard')
+// ==================== 页码状态 ====================
+const PAGE_SIZE = 10
+const userPage = ref(1)
+const pendingPage = ref(1)
+const articlePage = ref(1)
+const productPage = ref(1)
+const projectPage = ref(1)
+const orderPage = ref(1)
+const prodOrderPage = ref(1)
 
-const menuItems: { key: MenuKey; label: string; icon: string }[] = [
-  { key: 'dashboard', label: '仪表盘', icon: '📊' },
-  { key: 'users', label: '用户管理', icon: '👥' },
-  { key: 'pending', label: '审核管理', icon: '✅' },
-  { key: 'news', label: '资讯管理', icon: '📰' },
-  { key: 'products', label: '商品管理', icon: '🛍️' },
-  { key: 'projects', label: '项目管理', icon: '📋' },
-  { key: 'orders', label: '订单管理', icon: '🛒' },
-  { key: 'messages', label: '消息管理', icon: '💬' },
-  { key: 'settings', label: '系统设置', icon: '⚙️' },
+// ==================== 侧边栏菜单 ====================
+const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'logs' | 'settings'>('dashboard')
+
+const menuItems = [
+  { key: 'dashboard' as const, label: '仪表盘', icon: '📊' },
+  { key: 'users' as const, label: '用户管理', icon: '👥' },
+  { key: 'pending' as const, label: '审核管理', icon: '✅' },
+  { key: 'news' as const, label: '资讯管理', icon: '📰' },
+  { key: 'products' as const, label: '商品管理', icon: '🛍️' },
+  { key: 'projects' as const, label: '项目管理', icon: '📋' },
+  { key: 'orders' as const, label: '订单管理', icon: '🛒' },
+  { key: 'messages' as const, label: '消息管理', icon: '💬' },
+  { key: 'logs' as const, label: '操作日志', icon: '📝' },
+  { key: 'settings' as const, label: '系统设置', icon: '⚙️' },
 ]
+type MenuKey = typeof menuItems[number]['key']
+
+// Wrapped as computed for template safety
+const navItems = computed(() => menuItems)
+const pageTitle = computed(() => (menuItems as typeof menuItems | undefined)?.find(m => m.key === activeMenu.value)?.label ?? '')
+const pendingCount = computed(() => pendingList.value.length)
 
 function switchMenu(key: MenuKey) {
   activeMenu.value = key
@@ -48,6 +70,7 @@ function switchMenu(key: MenuKey) {
   else if (key === 'products') loadProducts()
   else if (key === 'projects') loadProjects()
   else if (key === 'orders') loadOrders()
+  else if (key === 'logs') loadLogs()
 }
 
 // ==================== 1. 仪表盘 ====================
@@ -101,7 +124,7 @@ async function handleToggleStatus(user: UserInfo) {
   try {
     await updateUserStatus(user.id, newStatus)
     user.status = newStatus
-  } catch { alert('操作失败') }
+  } catch { showToast('操作失败', 'error') }
   finally {
     const next = { ...userActionLoading.value }
     delete next[user.id]
@@ -135,16 +158,18 @@ async function handleApprove(id: number) {
   try {
     await approveInheritor(id)
     pendingList.value = pendingList.value.filter(u => u.id !== id)
-  } catch (e: unknown) { alert(e instanceof Error ? e.message : '操作失败') }
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
   finally { pendingActionLoading.value = {} }
 }
 
 async function handleReject(id: number) {
+  const reason = prompt('请输入驳回原因（将发送至申请人邮箱）：')
+  if (reason === null) return // 用户取消
   pendingActionLoading.value = { [id]: 'reject' }
   try {
-    await rejectInheritor(id)
+    await rejectInheritor(id, reason || undefined)
     pendingList.value = pendingList.value.filter(u => u.id !== id)
-  } catch (e: unknown) { alert(e instanceof Error ? e.message : '操作失败') }
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
   finally { pendingActionLoading.value = {} }
 }
 
@@ -161,7 +186,21 @@ async function loadArticles() {
 async function handleDeleteArticle(id: number) {
   if (!confirm('确定删除该文章吗？')) return
   try { await adminDeleteArticle(id); articles.value = articles.value.filter(a => a.id !== id) }
-  catch { alert('删除失败') }
+  catch { showToast('删除失败', 'error') }
+}
+
+// ---------- 查看文章详情（弹窗） ----------
+const viewingArticle = ref<KnowledgeArticleVO | null>(null)
+const viewingArticleLoading = ref(false)
+
+async function handleViewArticle(id: number) {
+  viewingArticleLoading.value = true
+  viewingArticle.value = null
+  try {
+    const res = await getArticleById(id)
+    viewingArticle.value = res.data
+  } catch { showToast('加载文章详情失败', 'error') }
+  finally { viewingArticleLoading.value = false }
 }
 
 const articleStatusLabel = (s: number) => s === 1 ? '已发布' : '草稿'
@@ -180,7 +219,7 @@ async function loadProducts() {
 async function handleDeleteProduct(id: number) {
   if (!confirm('确定删除该商品吗？')) return
   try { await adminDeleteProduct(id); products.value = products.value.filter(p => p.id !== id) }
-  catch (e: unknown) { alert(e instanceof Error ? e.message : '删除失败') }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
 }
 
 async function handleToggleProduct(product: ProductVO) {
@@ -188,8 +227,42 @@ async function handleToggleProduct(product: ProductVO) {
   try {
     await adminToggleProduct(product.id, newStatus)
     product.status = newStatus
-  } catch { alert('操作失败') }
+  } catch { showToast('操作失败', 'error') }
 }
+
+// ---------- 批量选择 ----------
+const selectedUsers = ref(new Set<number>())
+const selectedPending = ref(new Set<number>())
+const selectedArticles = ref(new Set<number>())
+const selectedProducts = ref(new Set<number>())
+const selectedProjects = ref(new Set<number>())
+const selectedOrders = ref(new Set<number>())
+const selectedProdOrders = ref(new Set<number>())
+
+function toggleSelect(set: Set<number>, id: number): Set<number> {
+  const s = new Set(set)
+  s.has(id) ? s.delete(id) : s.add(id)
+  return s
+}
+function toggleSelectAll(set: Set<number>, allItems: { id: number }[], pageItems: { id: number }[]): Set<number> {
+  const pageIds = new Set(pageItems.map(i => i.id))
+  const allSelected = pageItems.every(i => set.has(i.id))
+  const s = new Set(set)
+  if (allSelected) { pageIds.forEach(id => s.delete(id)) }
+  else { pageIds.forEach(id => s.add(id)) }
+  return s
+}
+function isAllSelected(set: Set<number>, items: { id: number }[]) {
+  return items.length > 0 && items.every(i => set.has(i.id))
+}
+function clearSelect(): Set<number> { return new Set() }
+
+// ---------- 分页辅助 ----------
+function paginate<T>(arr: T[], page: number): T[] {
+  const start = (page - 1) * PAGE_SIZE
+  return arr.slice(start, start + PAGE_SIZE)
+}
+function totalPages(arr: unknown[]) { return Math.max(1, Math.ceil(arr.length / PAGE_SIZE)) }
 
 // ---------- 搜索 ----------
 const newsKeyword = ref('')
@@ -197,6 +270,11 @@ const productKeyword = ref('')
 const projectKeyword = ref('')
 const orderKeyword = ref('')
 const prodOrderKeyword = ref('')
+
+// 搜索时重置页码
+watch([newsKeyword, productKeyword, projectKeyword, orderKeyword, prodOrderKeyword], () => {
+  articlePage.value = 1; productPage.value = 1; projectPage.value = 1; orderPage.value = 1; prodOrderPage.value = 1
+})
 
 const filteredArticles = computed(() =>
   !newsKeyword.value ? articles.value : articles.value.filter(a =>
@@ -214,6 +292,107 @@ const filteredProdOrders = computed(() =>
   !prodOrderKeyword.value ? productOrderList.value : productOrderList.value.filter(o =>
     o.userName.includes(prodOrderKeyword.value) || o.productName.includes(prodOrderKeyword.value) || String(o.id).includes(prodOrderKeyword.value)))
 
+// ---------- 分页数据 ----------
+const pagedUsers = computed(() => paginate(userList.value, userPage.value))
+const pagedPending = computed(() => paginate(pendingList.value, pendingPage.value))
+const pagedArticles = computed(() => paginate(filteredArticles.value, articlePage.value))
+const pagedProducts = computed(() => paginate(filteredProducts.value, productPage.value))
+const pagedProjects = computed(() => paginate(filteredProjects.value, projectPage.value))
+const pagedOrders = computed(() => paginate(filteredOrders.value, orderPage.value))
+const pagedProdOrders = computed(() => paginate(filteredProdOrders.value, prodOrderPage.value))
+
+// ---------- 批量操作 ----------
+async function handleBatchToggleUsers(status: number) {
+  const ids = Array.from(selectedUsers.value)
+  if (!ids.length) { showToast('请先选择用户', 'warning'); return }
+  const label = status === 1 ? '启用' : '禁用'
+  if (!confirm(`确定批量${label} ${ids.length} 个用户吗？`)) return
+  try {
+    // 按角色分组，确保更新正确的表
+    const byRole = new Map<string, number[]>()
+    for (const id of ids) {
+      const u = userList.value.find(u => u.id === id)
+      const role = u?.role || 'USER'
+      if (!byRole.has(role)) byRole.set(role, [])
+      byRole.get(role)!.push(id)
+    }
+    for (const [role, roleIds] of byRole) {
+      await batchUpdateUserStatus(roleIds, status, role)
+    }
+    showToast(`已${label} ${ids.length} 个用户`)
+    selectedUsers.value = new Set()
+    loadUsers()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '批量操作失败', 'error') }
+}
+
+async function handleBatchApprove() {
+  const ids = Array.from(selectedPending.value)
+  if (!ids.length) { showToast('请先选择申请人', 'warning'); return }
+  if (!confirm(`确定批量通过 ${ids.length} 个申请吗？`)) return
+  try {
+    await batchApprove(ids)
+    showToast(`已通过 ${ids.length} 人`)
+    selectedPending.value = new Set()
+    loadPendingList()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '批量操作失败', 'error') }
+}
+
+async function handleBatchReject() {
+  const ids = Array.from(selectedPending.value)
+  if (!ids.length) { showToast('请先选择申请人', 'warning'); return }
+  const reason = prompt('请输入驳回原因（将发送至各申请人邮箱）：')
+  if (reason === null) return
+  if (!confirm(`确定驳回 ${ids.length} 个申请吗？`)) return
+  try {
+    await batchReject(ids, reason || '')
+    showToast(`已驳回 ${ids.length} 人`)
+    selectedPending.value = new Set()
+    loadPendingList()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '批量操作失败', 'error') }
+}
+
+async function handleBatchDeleteArticles() {
+  const ids = Array.from(selectedArticles.value)
+  if (!ids.length) { showToast('请先选择文章', 'warning'); return }
+  if (!confirm(`确定删除 ${ids.length} 篇文章吗？`)) return
+  try { await batchDeleteArticle(ids); showToast(`已删除 ${ids.length} 篇`); selectedArticles.value = new Set(); loadArticles() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
+}
+
+async function handleBatchToggleProducts(status: number) {
+  const ids = Array.from(selectedProducts.value)
+  if (!ids.length) { showToast('请先选择商品', 'warning'); return }
+  const label = status === 1 ? '上架' : '下架'
+  if (!confirm(`确定批量${label} ${ids.length} 个商品吗？`)) return
+  try { await batchToggleProduct(ids, status); showToast(`已${label} ${ids.length} 个`); selectedProducts.value = new Set(); loadProducts() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
+
+async function handleBatchDeleteProducts() {
+  const ids = Array.from(selectedProducts.value)
+  if (!ids.length) { showToast('请先选择商品', 'warning'); return }
+  if (!confirm(`确定删除 ${ids.length} 个商品吗？`)) return
+  try { await batchDeleteProduct(ids); showToast(`已删除 ${ids.length} 个`); selectedProducts.value = new Set(); loadProducts() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
+}
+
+async function handleBatchDeleteProjects() {
+  const ids = Array.from(selectedProjects.value)
+  if (!ids.length) { showToast('请先选择项目', 'warning'); return }
+  if (!confirm(`确定删除 ${ids.length} 个项目吗？`)) return
+  try { await batchDeleteProject(ids); showToast(`已删除 ${ids.length} 个`); selectedProjects.value = new Set(); loadProjects() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
+}
+
+async function handleToggleProject(p: HeritageProjectVO) {
+  const newStatus = p.status === 1 ? 0 : 1
+  try {
+    await adminToggleProject(p.id, newStatus)
+    p.status = newStatus
+    showToast(newStatus === 1 ? '项目已上架' : '项目已下架')
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
+
 // ==================== 6. 项目管理 ====================
 const projects = ref<HeritageProjectVO[]>([])
 const projectLoading = ref(false)
@@ -227,7 +406,7 @@ async function loadProjects() {
 async function handleDeleteProject(id: number) {
   if (!confirm('确定删除该项目吗？')) return
   try { await adminDeleteProject(id); projects.value = projects.value.filter(p => p.id !== id) }
-  catch { alert('删除失败') }
+  catch { showToast('删除失败', 'error') }
 }
 
 const projectStatusLabel = (s: number) => s === 1 ? '上架' : '下架'
@@ -268,21 +447,21 @@ async function handleCancelOrder(id: number) {
   try {
     await cancelOrderApi(id)
     loadOrders()
-  } catch { alert('操作失败') }
+  } catch { showToast('操作失败', 'error') }
 }
 
 async function handleUpdateOrderStatus(order: OrderVO, newStatus: number) {
   try {
     await adminUpdateOrderStatus(order.id, newStatus)
     order.status = newStatus as OrderVO['status']
-  } catch { alert('操作失败') }
+  } catch { showToast('操作失败', 'error') }
 }
 
 async function handleUpdateProdOrderStatus(order: ProductOrderVO, newStatus: number) {
   try {
     await adminUpdateProductOrderStatus(order.id, newStatus)
     order.status = newStatus
-  } catch { alert('操作失败') }
+  } catch { showToast('操作失败', 'error') }
 }
 
 // ---------- 预约订单字段编辑 ----------
@@ -302,7 +481,7 @@ async function saveAppField(order: OrderVO, field: string, value: string) {
     await adminUpdateOrderFields(order.id,
       field === 'appointmentDate' ? value : undefined,
       field === 'timeSlot' ? value : undefined)
-  } catch { alert('保存失败'); loadOrders() }
+  } catch { showToast('保存失败', 'error'); loadOrders() }
 }
 
 // ---------- 商品订单地址编辑 ----------
@@ -373,9 +552,36 @@ async function handleChangePassword() {
 }
 
 function handleLogout() {
-  authStore.logout()
+  authStore?.logout()
   router.push('/')
 }
+
+// ==================== 操作日志 ====================
+const logList = ref<OperationLog[]>([])
+const logLoading = ref(false)
+
+async function loadLogs() {
+  logLoading.value = true
+  try {
+    const res = await getOperationLogs()
+    logList.value = res.data || []
+  } catch { logList.value = [] }
+  finally { logLoading.value = false }
+}
+
+const opTypeLabel = (t: string) => ({
+  'APPROVE_INHERITOR': '通过审核', 'REJECT_INHERITOR': '驳回申请',
+  'TOGGLE_USER_STATUS': '启用/禁用', 'CREATE_ADMIN': '创建管理员',
+  'CHANGE_PASSWORD': '修改密码', 'DELETE_PRODUCT': '删除商品',
+  'TOGGLE_PRODUCT': '上下架', 'DELETE_PROJECT': '删除项目',
+  'DELETE_ARTICLE': '删除资讯', 'UPDATE_ORDER_STATUS': '改订单状态',
+  'CANCEL_ORDER': '取消订单',
+} as Record<string, string>)[t] || t
+
+const opTargetTypeLabel = (t: string) => ({
+  'inheritor': '传承人', 'user': '用户', 'admin': '管理员',
+  'product': '商品', 'project': '项目', 'article': '资讯', 'order': '订单',
+} as Record<string, string>)[t] || t
 
 // ==================== 仪表盘鼠标互动效果 ====================
 function onStatCardMouseMove(e: MouseEvent) {
@@ -418,6 +624,14 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 </script>
 
 <template>
+  <!-- Toast 通知 -->
+  <div class="toast-container">
+    <div v-for="t in toasts" :key="t.id" class="toast-item" :class="'toast-' + t.type">
+      <span class="toast-icon">{{ t.type === 'success' ? '✅' : t.type === 'error' ? '❌' : '⚠️' }}</span>
+      <span class="toast-msg">{{ t.message }}</span>
+    </div>
+  </div>
+
   <div class="admin-layout">
     <!-- ==================== 侧边栏 ==================== -->
     <aside class="sidebar">
@@ -428,7 +642,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 
       <nav class="sidebar-nav">
         <a
-          v-for="item in menuItems"
+          v-for="item in navItems"
           :key="item.key"
           class="nav-item"
           :class="{ active: activeMenu === item.key }"
@@ -436,14 +650,14 @@ function onQuickCardMouseLeave(e: MouseEvent) {
         >
           <span class="nav-icon">{{ item.icon }}</span>
           <span class="nav-label">{{ item.label }}</span>
-          <span v-if="item.key === 'pending' && pendingList.length > 0" class="nav-badge">
-            {{ pendingList.length }}
+          <span v-if="item.key === 'pending' && pendingCount > 0" class="nav-badge">
+            {{ pendingCount }}
           </span>
         </a>
       </nav>
 
       <div class="sidebar-footer">
-        <span class="sidebar-user">{{ authStore.userInfo?.name }}</span>
+        <span class="sidebar-user">{{ userName }}</span>
         <span class="sidebar-role">管理员</span>
       </div>
     </aside>
@@ -452,7 +666,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
     <div class="main-area">
       <header class="top-bar">
         <h2 class="page-title">
-          {{ menuItems.find(m => m.key === activeMenu)?.label }}
+          {{ pageTitle }}
         </h2>
         <div class="top-actions">
           <button class="top-btn" @click="switchMenu('dashboard')">仪表盘</button>
@@ -532,9 +746,17 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 
           <div v-if="userLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
+            <!-- batch toolbar -->
+            <div v-if="selectedUsers.size > 0" class="batch-bar">
+              <span>已选 {{ selectedUsers.size }} 项</span>
+              <button class="btn-sm btn-success" @click="handleBatchToggleUsers(1)">批量启用</button>
+              <button class="btn-sm btn-danger" @click="handleBatchToggleUsers(0)">批量禁用</button>
+              <button class="btn-sm btn-clear" @click="selectedUsers = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedUsers, pagedUsers)" @change="selectedUsers = toggleSelectAll(selectedUsers, userList, pagedUsers)" /></th>
                   <th>ID</th>
                   <th>姓名</th>
                   <th>用户名</th>
@@ -546,7 +768,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="u in userList" :key="u.id">
+                <tr v-for="u in pagedUsers" :key="u.id">
+                  <td><input type="checkbox" :checked="selectedUsers.has(u.id)" @change="selectedUsers = toggleSelect(selectedUsers, u.id)" /></td>
                   <td>{{ u.id }}</td>
                   <td>{{ u.name }}</td>
                   <td>{{ u.username }}</td>
@@ -570,6 +793,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="userList.length === 0" class="empty-text">暂无用户数据</div>
+            <div v-else class="page-bar">
+              <button :disabled="userPage <= 1" @click="userPage--">上一页</button>
+              <span>第 {{ userPage }} / {{ totalPages(userList) }} 页，共 {{ userList.length }} 条</span>
+              <button :disabled="userPage >= totalPages(userList)" @click="userPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -581,9 +809,16 @@ function onQuickCardMouseLeave(e: MouseEvent) {
             <button class="btn-sm btn-primary" @click="loadPendingList">重试</button>
           </div>
           <div v-else class="table-wrap">
+            <div v-if="selectedPending.size > 0" class="batch-bar">
+              <span>已选 {{ selectedPending.size }} 项</span>
+              <button class="btn-sm btn-success" @click="handleBatchApprove">批量通过</button>
+              <button class="btn-sm btn-danger" @click="handleBatchReject">批量驳回</button>
+              <button class="btn-sm btn-clear" @click="selectedPending = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedPending, pagedPending)" @change="selectedPending = toggleSelectAll(selectedPending, pendingList, pagedPending)" /></th>
                   <th>姓名</th>
                   <th>用户名</th>
                   <th>手机号</th>
@@ -595,7 +830,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="user in pendingList" :key="user.id">
+                <tr v-for="user in pagedPending" :key="user.id">
+                  <td><input type="checkbox" :checked="selectedPending.has(user.id)" @change="selectedPending = toggleSelect(selectedPending, user.id)" /></td>
                   <td>{{ user.name }}</td>
                   <td>{{ user.username }}</td>
                   <td>{{ user.phone || '-' }}</td>
@@ -615,6 +851,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="pendingList.length === 0" class="empty-text">暂无待审核的传承人申请</div>
+            <div v-else class="page-bar">
+              <button :disabled="pendingPage <= 1" @click="pendingPage--">上一页</button>
+              <span>第 {{ pendingPage }} / {{ totalPages(pendingList) }} 页，共 {{ pendingList.length }} 条</span>
+              <button :disabled="pendingPage >= totalPages(pendingList)" @click="pendingPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -628,9 +869,15 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           </div>
           <div v-if="articleLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
+            <div v-if="selectedArticles.size > 0" class="batch-bar">
+              <span>已选 {{ selectedArticles.size }} 项</span>
+              <button class="btn-sm btn-danger" @click="handleBatchDeleteArticles">批量删除</button>
+              <button class="btn-sm btn-clear" @click="selectedArticles = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedArticles, pagedArticles)" @change="selectedArticles = toggleSelectAll(selectedArticles, filteredArticles, pagedArticles)" /></th>
                   <th>ID</th>
                   <th>标题</th>
                   <th>分类</th>
@@ -642,7 +889,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="a in filteredArticles" :key="a.id">
+                <tr v-for="a in pagedArticles" :key="a.id">
+                  <td><input type="checkbox" :checked="selectedArticles.has(a.id)" @change="selectedArticles = toggleSelect(selectedArticles, a.id)" /></td>
                   <td>{{ a.id }}</td>
                   <td class="ellipsis-cell">{{ a.title }}</td>
                   <td>{{ a.category || '-' }}</td>
@@ -651,12 +899,43 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <td>{{ a.viewCount }}</td>
                   <td>{{ a.createTime?.slice(0, 10) }}</td>
                   <td>
+                    <button class="btn-sm btn-primary" @click="handleViewArticle(a.id)">查看</button>
                     <button class="btn-sm btn-danger" @click="handleDeleteArticle(a.id)">删除</button>
                   </td>
                 </tr>
               </tbody>
             </table>
             <div v-if="filteredArticles.length === 0 && !articleLoading" class="empty-text">{{ newsKeyword ? '无匹配结果' : '暂无资讯' }}</div>
+            <div v-else-if="filteredArticles.length > 0" class="page-bar">
+              <button :disabled="articlePage <= 1" @click="articlePage--">上一页</button>
+              <span>第 {{ articlePage }} / {{ totalPages(filteredArticles) }} 页，共 {{ filteredArticles.length }} 条</span>
+              <button :disabled="articlePage >= totalPages(filteredArticles)" @click="articlePage++">下一页</button>
+            </div>
+          </div>
+
+          <!-- 文章详情弹窗 -->
+          <div v-if="viewingArticle !== null || viewingArticleLoading" class="modal-overlay" @click.self="viewingArticle = null">
+            <div class="modal-content article-detail-modal">
+              <div class="modal-header">
+                <h3>资讯详情</h3>
+                <button class="modal-close" @click="viewingArticle = null">✕</button>
+              </div>
+              <div v-if="viewingArticleLoading" class="loading-text">加载中...</div>
+              <template v-else-if="viewingArticle">
+                <h2 class="article-title">{{ viewingArticle.title }}</h2>
+                <div class="article-meta">
+                  <span>作者：{{ viewingArticle.authorName || '-' }}</span>
+                  <span>分类：{{ viewingArticle.category || '-' }}</span>
+                  <span>状态：{{ articleStatusLabel(viewingArticle.status) }}</span>
+                  <span>浏览量：{{ viewingArticle.viewCount }}</span>
+                  <span>发布时间：{{ viewingArticle.createTime?.slice(0, 10) }}</span>
+                </div>
+                <div v-if="viewingArticle.coverUrl" class="article-cover">
+                  <img :src="viewingArticle.coverUrl" alt="封面" />
+                </div>
+                <div class="article-body" v-html="viewingArticle.content"></div>
+              </template>
+            </div>
           </div>
         </section>
 
@@ -670,9 +949,17 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           </div>
           <div v-if="productLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
+            <div v-if="selectedProducts.size > 0" class="batch-bar">
+              <span>已选 {{ selectedProducts.size }} 项</span>
+              <button class="btn-sm btn-success" @click="handleBatchToggleProducts(1)">批量上架</button>
+              <button class="btn-sm btn-danger" @click="handleBatchToggleProducts(0)">批量下架</button>
+              <button class="btn-sm btn-danger" style="background:#c0392b" @click="handleBatchDeleteProducts">批量删除</button>
+              <button class="btn-sm btn-clear" @click="selectedProducts = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedProducts, pagedProducts)" @change="selectedProducts = toggleSelectAll(selectedProducts, filteredProducts, pagedProducts)" /></th>
                   <th>ID</th>
                   <th>商品名称</th>
                   <th>分类</th>
@@ -686,7 +973,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="p in filteredProducts" :key="p.id">
+                <tr v-for="p in pagedProducts" :key="p.id">
+                  <td><input type="checkbox" :checked="selectedProducts.has(p.id)" @change="selectedProducts = toggleSelect(selectedProducts, p.id)" /></td>
                   <td>{{ p.id }}</td>
                   <td class="ellipsis-cell">{{ p.name }}</td>
                   <td>{{ p.category || '-' }}</td>
@@ -704,6 +992,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="filteredProducts.length === 0 && !productLoading" class="empty-text">{{ productKeyword ? '无匹配结果' : '暂无商品' }}</div>
+            <div v-else-if="filteredProducts.length > 0" class="page-bar">
+              <button :disabled="productPage <= 1" @click="productPage--">上一页</button>
+              <span>第 {{ productPage }} / {{ totalPages(filteredProducts) }} 页，共 {{ filteredProducts.length }} 条</span>
+              <button :disabled="productPage >= totalPages(filteredProducts)" @click="productPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -717,9 +1010,15 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           </div>
           <div v-if="projectLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
+            <div v-if="selectedProjects.size > 0" class="batch-bar">
+              <span>已选 {{ selectedProjects.size }} 项</span>
+              <button class="btn-sm btn-danger" @click="handleBatchDeleteProjects">批量删除</button>
+              <button class="btn-sm btn-clear" @click="selectedProjects = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedProjects, pagedProjects)" @change="selectedProjects = toggleSelectAll(selectedProjects, filteredProjects, pagedProjects)" /></th>
                   <th>ID</th>
                   <th>项目名称</th>
                   <th>分类</th>
@@ -734,7 +1033,8 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="p in filteredProjects" :key="p.id">
+                <tr v-for="p in pagedProjects" :key="p.id">
+                  <td><input type="checkbox" :checked="selectedProjects.has(p.id)" @change="selectedProjects = toggleSelect(selectedProjects, p.id)" /></td>
                   <td>{{ p.id }}</td>
                   <td class="ellipsis-cell">{{ p.title }}</td>
                   <td>{{ p.category || '-' }}</td>
@@ -747,13 +1047,19 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                   <td>{{ (p.projectType === 1 && p.price != null) ? '¥' + p.price.toFixed(2) : '-' }}</td>
                   <td><span class="status-dot" :class="p.status === 1 ? 's-enabled' : 's-disabled'">{{ projectStatusLabel(p.status) }}</span></td>
                   <td>{{ p.createTime?.slice(0, 10) }}</td>
-                  <td>
+                  <td class="action-col">
+                    <button class="btn-sm" :class="p.status === 1 ? 'btn-danger' : 'btn-success'" @click="handleToggleProject(p)">{{ p.status === 1 ? '下架' : '上架' }}</button>
                     <button class="btn-sm btn-danger" @click="handleDeleteProject(p.id)">删除</button>
                   </td>
                 </tr>
               </tbody>
             </table>
             <div v-if="filteredProjects.length === 0 && !projectLoading" class="empty-text">{{ projectKeyword ? '无匹配结果' : '暂无项目' }}</div>
+            <div v-else-if="filteredProjects.length > 0" class="page-bar">
+              <button :disabled="projectPage <= 1" @click="projectPage--">上一页</button>
+              <span>第 {{ projectPage }} / {{ totalPages(filteredProjects) }} 页，共 {{ filteredProjects.length }} 条</span>
+              <button :disabled="projectPage >= totalPages(filteredProjects)" @click="projectPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -773,15 +1079,21 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           <div v-if="orderLoading" class="loading-text">加载中...</div>
           <!-- 预约订单表 -->
           <div v-else-if="orderTab === 'appointment'" class="table-wrap">
+            <div v-if="selectedOrders.size > 0" class="batch-bar">
+              <span>已选 {{ selectedOrders.size }} 项</span>
+              <button class="btn-sm btn-danger" @click="selectedOrders = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedOrders, pagedOrders)" @change="selectedOrders = toggleSelectAll(selectedOrders, filteredOrders, pagedOrders)" /></th>
                   <th>ID</th><th>用户</th><th>电话</th><th>预约日期</th><th>时段</th>
                   <th>人数</th><th>传承人ID</th><th>状态</th><th>提交时间</th><th>操作</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="o in filteredOrders" :key="o.id">
+                <tr v-for="o in pagedOrders" :key="o.id">
+                  <td><input type="checkbox" :checked="selectedOrders.has(o.id)" @change="selectedOrders = toggleSelect(selectedOrders, o.id)" /></td>
                   <td>{{ o.id }}</td><td>{{ o.userName }}</td><td>{{ o.phone }}</td>
                   <td class="editable-cell" @click="startEditAppField(o.id, 'appointmentDate')">
                     <template v-if="editingAppFields[o.id] === 'appointmentDate'">
@@ -813,18 +1125,29 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="filteredOrders.length === 0 && !orderLoading" class="empty-text">{{ orderKeyword ? '无匹配结果' : '暂无预约订单' }}</div>
+            <div v-else-if="filteredOrders.length > 0" class="page-bar">
+              <button :disabled="orderPage <= 1" @click="orderPage--">上一页</button>
+              <span>第 {{ orderPage }} / {{ totalPages(filteredOrders) }} 页，共 {{ filteredOrders.length }} 条</span>
+              <button :disabled="orderPage >= totalPages(filteredOrders)" @click="orderPage++">下一页</button>
+            </div>
           </div>
           <!-- 商城订单表 -->
           <div v-else class="table-wrap">
+            <div v-if="selectedProdOrders.size > 0" class="batch-bar">
+              <span>已选 {{ selectedProdOrders.size }} 项</span>
+              <button class="btn-sm btn-danger" @click="selectedProdOrders = clearSelect()">取消选择</button>
+            </div>
             <table>
               <thead>
                 <tr>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedProdOrders, pagedProdOrders)" @change="selectedProdOrders = toggleSelectAll(selectedProdOrders, filteredProdOrders, pagedProdOrders)" /></th>
                   <th>ID</th><th>用户</th><th>电话</th><th>地址</th><th>商品</th>
                   <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="o in filteredProdOrders" :key="o.id">
+                <tr v-for="o in pagedProdOrders" :key="o.id">
+                  <td><input type="checkbox" :checked="selectedProdOrders.has(o.id)" @change="selectedProdOrders = toggleSelect(selectedProdOrders, o.id)" /></td>
                   <td>{{ o.id }}</td><td>{{ o.userName }}</td><td>{{ o.phone }}</td>
                   <td class="editable-cell ellipsis-cell" @click="startEditProdAddr(o.id)">
                     <template v-if="editingProdAddr === o.id">
@@ -847,6 +1170,37 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="filteredProdOrders.length === 0 && !orderLoading" class="empty-text">{{ prodOrderKeyword ? '无匹配结果' : '暂无商城订单' }}</div>
+            <div v-else-if="filteredProdOrders.length > 0" class="page-bar">
+              <button :disabled="prodOrderPage <= 1" @click="prodOrderPage--">上一页</button>
+              <span>第 {{ prodOrderPage }} / {{ totalPages(filteredProdOrders) }} 页，共 {{ filteredProdOrders.length }} 条</span>
+              <button :disabled="prodOrderPage >= totalPages(filteredProdOrders)" @click="prodOrderPage++">下一页</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 8.5 操作日志 ===== -->
+        <section v-if="activeMenu === 'logs'" class="panel">
+          <div v-if="logLoading" class="loading-text">加载中...</div>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>时间</th>
+                  <th>操作类型</th>
+                  <th>目标类型</th>
+                  <th>操作详情</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="l in logList" :key="l.id">
+                  <td>{{ l.createTime?.replace('T', ' ').slice(0, 19) }}</td>
+                  <td><span class="status-dot" :class="l.operationType === 'APPROVE_INHERITOR' ? 's-enabled' : l.operationType === 'REJECT_INHERITOR' ? 's-disabled' : 's-pending'">{{ opTypeLabel(l.operationType) }}</span></td>
+                  <td>{{ opTargetTypeLabel(l.targetType) }}</td>
+                  <td>{{ l.detail }}</td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="logList.length === 0 && !logLoading" class="empty-text">暂无操作日志</div>
           </div>
         </section>
 
@@ -901,7 +1255,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 
           <div class="settings-card" style="margin-top: 20px">
             <h3>修改密码</h3>
-            <p class="settings-desc">修改当前管理员 <strong>{{ authStore.userInfo?.name }}</strong> 的登录密码</p>
+            <p class="settings-desc">修改当前管理员 <strong>{{ userName }}</strong> 的登录密码</p>
             <form class="settings-form" @submit.prevent="handleChangePassword">
               <div class="form-g">
                 <label>旧密码</label>
@@ -1371,6 +1725,48 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 .form-msg.success { color: #27ae60; }
 .form-msg.error { color: #e74c3c; }
 
+/* ==================== Toast ==================== */
+.toast-container {
+  position: fixed; top: 20px; right: 20px; z-index: 10000;
+  display: flex; flex-direction: column; gap: 10px; pointer-events: none;
+}
+.toast-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 20px; border-radius: 10px; font-size: 14px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.12);
+  animation: toastIn 0.3s ease-out; pointer-events: auto; max-width: 400px;
+}
+.toast-success { background: #d4edda; color: #155724; border-left: 4px solid #27ae60; }
+.toast-error   { background: #f8d7da; color: #721c24; border-left: 4px solid #e74c3c; }
+.toast-warning { background: #fff3cd; color: #856404; border-left: 4px solid #f39c12; }
+.toast-icon { font-size: 16px; flex-shrink: 0; }
+.toast-msg { flex: 1; }
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* ==================== 批量操作栏 ==================== */
+.batch-bar {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 16px; background: #fff8e1; border-bottom: 2px solid #ffc107;
+  font-size: 13px; color: #856404;
+}
+.batch-bar span { font-weight: 600; margin-right: 8px; }
+
+/* ==================== 分页栏 ==================== */
+.page-bar {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  padding: 14px 16px; border-top: 1px solid #f5f0f0;
+  font-size: 13px; color: #666;
+}
+.page-bar button {
+  padding: 5px 16px; font-size: 12px; border: 1px solid #ddd;
+  background: #fff; border-radius: 6px; cursor: pointer; transition: 0.2s;
+}
+.page-bar button:hover:not(:disabled) { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+.page-bar button:disabled { opacity: 0.4; cursor: not-allowed; }
+
 /* ==================== 响应式 ==================== */
 @media (max-width: 768px) {
   .sidebar { width: 200px; }
@@ -1379,5 +1775,47 @@ function onQuickCardMouseLeave(e: MouseEvent) {
   .top-bar { padding: 0 16px; }
   .stat-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
   .form-row { flex-direction: column; gap: 0; }
+}
+
+/* ==================== 文章详情弹窗 ==================== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.modal-content {
+  background: #fff; border-radius: 14px; box-shadow: 0 8px 32px rgba(0,0,0,0.25);
+  max-width: 800px; width: 90vw; max-height: 85vh; overflow-y: auto;
+}
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 20px 28px; border-bottom: 1px solid #ffe9ec;
+  position: sticky; top: 0; background: #fff; border-radius: 14px 14px 0 0; z-index: 1;
+}
+.modal-header h3 { margin: 0; font-size: 18px; color: #c41e3a; }
+.modal-close {
+  width: 32px; height: 32px; border: none; background: #f5f5f5;
+  border-radius: 50%; cursor: pointer; font-size: 16px; color: #999;
+  display: flex; align-items: center; justify-content: center; transition: 0.2s;
+}
+.modal-close:hover { background: #e74c3c; color: #fff; }
+.article-detail-modal { padding: 0 0 28px 0; }
+.article-detail-modal .article-title {
+  font-size: 22px; color: #333; margin: 24px 28px 16px;
+}
+.article-detail-modal .article-meta {
+  display: flex; flex-wrap: wrap; gap: 16px; padding: 0 28px 16px;
+  border-bottom: 1px solid #f0f0f0; font-size: 13px; color: #999;
+}
+.article-detail-modal .article-cover {
+  margin: 20px 28px; border-radius: 10px; overflow: hidden;
+}
+.article-detail-modal .article-cover img {
+  width: 100%; max-height: 400px; object-fit: cover;
+}
+.article-detail-modal .article-body {
+  padding: 0 28px; font-size: 15px; line-height: 1.8; color: #444;
+}
+.article-detail-modal .article-body :deep(img) {
+  max-width: 100%; border-radius: 8px; margin: 12px 0;
 }
 </style>
