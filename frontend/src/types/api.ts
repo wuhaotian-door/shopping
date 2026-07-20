@@ -253,14 +253,19 @@ export interface ProductReviewVO {
   productId: number
   userId: number
   userName: string
-  rating: number
+  rating: number | null
   content: string
+  parentId: number | null
+  replyToUserName: string | null
+  isDeleted: number
+  children: ProductReviewVO[]
   createTime: string
 }
 
 export interface ProductReviewDTO {
-  rating: number
+  rating?: number
   content: string
+  parentId?: number
 }
 
 // ==================== 商品订单 ====================
@@ -400,11 +405,16 @@ export interface ArticleCommentVO {
   userId: number
   userName: string
   content: string
+  parentId: number | null
+  replyToUserName: string | null
+  isDeleted: number
+  children: ArticleCommentVO[]
   createTime: string
 }
 
 export interface ArticleCommentDTO {
   content: string
+  parentId?: number
 }
 
 // ==================== 操作日志 ====================

@@ -15,3 +15,8 @@ export function submitComment(articleId: number, data: ArticleCommentDTO): Promi
 export function getCommentCount(articleId: number): Promise<Result<number>> {
   return request.get(`/article-comment/public/${articleId}/count`)
 }
+
+/** 删除自己的评论（需登录） */
+export function deleteComment(commentId: number): Promise<Result<string>> {
+  return request.delete(`/article-comment/${commentId}`)
+}

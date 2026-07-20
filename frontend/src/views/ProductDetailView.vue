@@ -3,8 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getProductById } from '@/api/product'
-import { listReviews, submitReview } from '@/api/review'
+import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
+import CommentItem from '@/components/CommentItem.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -74,6 +75,31 @@ const showReviewForm = ref(false)
 const reviewForm = ref({ rating: 5, content: '' })
 const submitLoading = ref(false)
 const submitMsg = ref('')
+
+// ===== 回复处理 =====
+async function handleReplyClick(parentId: number, content: string) {
+  if (!product.value) return
+  try {
+    await submitReview(product.value.id, {
+      content,
+      parentId,
+    })
+    await loadReviews(product.value.id)
+    await loadProduct(product.value.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '回复失败')
+  }
+}
+
+async function handleDeleteReview(reviewId: number) {
+  try {
+    await deleteReview(reviewId)
+    await loadReviews(product.value!.id)
+    await loadProduct(product.value!.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '删除失败')
+  }
+}
 
 async function handleSubmitReview() {
   if (!reviewForm.value.content.trim()) {
@@ -197,17 +223,19 @@ async function handleSubmitReview() {
           <div v-if="reviewLoading" class="loading-state">加载评价中...</div>
           <div v-else-if="reviews.length === 0" class="empty-reviews">暂无评价，快来写下第一条评价吧</div>
           <div v-else class="review-list">
-            <div v-for="review in reviews" :key="review.id" class="review-card">
-              <div class="review-top">
-                <div class="review-user-avatar">{{ (review.userName || '用')[0] }}</div>
-                <div class="review-user-info">
-                  <span class="review-user-name">{{ review.userName || '匿名用户' }}</span>
-                  <span class="review-time">{{ review.createTime?.slice(0, 10) }}</span>
-                </div>
-                <span class="review-stars">{{ renderStars(review.rating) }}</span>
-              </div>
-              <p class="review-content">{{ review.content }}</p>
-            </div>
+            <CommentItem
+              v-for="review in reviews"
+              :key="review.id"
+              :comment="review"
+              :current-user-id="authStore.userInfo?.id ?? null"
+              :depth="0"
+              @reply="handleReplyClick"
+              @delete="handleDeleteReview"
+            >
+              <template #extra="{ comment }">
+                <span v-if="(comment as ProductReviewVO).rating != null" class="review-stars">{{ renderStars((comment as ProductReviewVO).rating!) }}</span>
+              </template>
+            </CommentItem>
           </div>
         </div>
       </template>
@@ -426,45 +454,12 @@ async function handleSubmitReview() {
 .submit-msg.error { color: #dc3545; }
 
 /* ---- 评价列表 ---- */
-.review-list { display: flex; flex-direction: column; gap: 16px; }
-.review-card {
-  padding: 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.review-card:hover { border-color: #f0c0c8; background: #fffafa; }
-.review-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.review-user-avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e8647a, #c41e3a);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700;
-  flex-shrink: 0;
-}
-.review-user-info {
-  flex: 1;
-  display: flex; flex-direction: column;
-}
-.review-user-name { font-size: 15px; color: #333; font-weight: 600; }
-.review-time { font-size: 12px; color: #999; margin-top: 2px; }
+.review-list { display: flex; flex-direction: column; gap: 4px; }
+
 .review-stars {
   color: #f5a623;
   font-size: 16px;
   letter-spacing: 1px;
-}
-.review-content {
-  font-size: 14px;
-  color: #555;
-  line-height: 1.7;
-  padding-left: 52px;
 }
 
 .empty-reviews {

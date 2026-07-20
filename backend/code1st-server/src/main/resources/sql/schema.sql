@@ -237,12 +237,15 @@ CREATE TABLE `product_review` (
     `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
     `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
     `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
-    `rating`      INT          NOT NULL COMMENT '评分 1-5',
+    `rating`      INT          DEFAULT NULL COMMENT '评分 1-5，顶级评价必填，回复时为 NULL',
     `content`     TEXT         NOT NULL COMMENT '评价内容',
+    `parent_id`   BIGINT       DEFAULT NULL COMMENT '父评价ID，NULL表示顶级评价',
+    `is_deleted`  TINYINT      DEFAULT 0 COMMENT '软删除：0正常 1已删除',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (`id`),
     INDEX `idx_pr_product_id` (`product_id`),
-    INDEX `idx_pr_user_id` (`user_id`)
+    INDEX `idx_pr_user_id` (`user_id`),
+    INDEX `idx_pr_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
 
 -- =====================================================
@@ -475,10 +478,13 @@ CREATE TABLE article_comment (
     user_id     BIGINT NOT NULL COMMENT '评论用户ID',
     user_name   VARCHAR(32) NOT NULL COMMENT '评论用户名',
     content     TEXT NOT NULL COMMENT '评论内容',
+    parent_id   BIGINT DEFAULT NULL COMMENT '父评论ID，NULL表示顶级评论',
+    is_deleted  TINYINT DEFAULT 0 COMMENT '软删除：0正常 1已删除',
     create_time DATETIME DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_ac_article_id (article_id),
-    INDEX idx_ac_user_id (user_id)
+    INDEX idx_ac_user_id (user_id),
+    INDEX idx_ac_parent_id (parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章评论表';
 
 -- =====================================================
@@ -634,16 +640,3 @@ CREATE TABLE rag_chat_message (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
-DROP TABLE IF EXISTS `product_review`;
-CREATE TABLE `product_review` (
-                                  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
-                                  `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
-                                  `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
-                                  `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
-                                  `rating`      INT          NOT NULL COMMENT '评分 1-5',
-                                  `content`     TEXT         NOT NULL COMMENT '评价内容',
-                                  `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
-                                  PRIMARY KEY (`id`),
-                                  INDEX `idx_pr_product_id` (`product_id`),
-                                  INDEX `idx_pr_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';

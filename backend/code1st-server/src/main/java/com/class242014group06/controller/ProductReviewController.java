@@ -64,4 +64,16 @@ public class ProductReviewController {
         stats.put("reviewCount", reviewCount);
         return Result.success(stats);
     }
+
+    /**
+     * 用户删除自己的评价（需登录）
+     */
+    @DeleteMapping("/{reviewId}")
+    @ApiOperation("删除自己的评价")
+    public Result<String> deleteReview(@PathVariable Long reviewId) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户删除评价，userId：{}，reviewId：{}", userId, reviewId);
+        reviewService.deleteReview(userId, reviewId);
+        return Result.success("评价删除成功");
+    }
 }
