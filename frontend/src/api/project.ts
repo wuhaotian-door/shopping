@@ -64,3 +64,8 @@ export function adminToggleProject(id: number, status: number): Promise<Result<s
 export function batchDeleteProject(ids: number[]): Promise<Result<string>> {
   return request.post('/project/batch', { ids })
 }
+
+/** 管理员批量切换项目上下架 */
+export function batchToggleProject(ids: number[], status: number): Promise<Result<string>> {
+  return request.put('/project/batch-toggle', { ids, status })
+}

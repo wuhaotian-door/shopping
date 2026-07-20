@@ -128,3 +128,8 @@ export function listAllProducts(): Promise<Result<ProductVO[]>> {
 export function batchDeleteProduct(ids: number[]): Promise<Result<string>> {
   return request.post('/product/batch', { ids })
 }
+
+/** 管理员取消商品订单 */
+export function adminCancelProductOrder(id: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/admin/cancel`)
+}

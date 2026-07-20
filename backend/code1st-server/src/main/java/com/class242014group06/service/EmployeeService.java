@@ -69,11 +69,9 @@ public interface EmployeeService {
     List<Employee> search(String keyword);
 
     /**
-     * 修改员工状态
-     * @param id
-     * @param status
+     * 修改员工状态（需指定角色以防ID跨表重叠）
      */
-    void updateStatus(Long id, Integer status);
+    void updateStatus(Long id, Integer status, String role);
 
     /**
      * 批量修改用户状态

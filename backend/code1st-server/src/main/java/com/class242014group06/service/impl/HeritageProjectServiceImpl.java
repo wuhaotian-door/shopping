@@ -153,6 +153,13 @@ public class HeritageProjectServiceImpl implements HeritageProjectService {
     }
 
     @Override
+    public void batchToggle(java.util.List<Long> ids, Integer status) {
+        for (Long id : ids) {
+            toggleByAdmin(id, status);
+        }
+    }
+
+    @Override
     public List<HeritageProjectVO> listPublished() {
         List<HeritageProject> projects = projectMapper.listPublished();
         return projects.stream()

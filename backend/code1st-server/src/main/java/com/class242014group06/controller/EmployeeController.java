@@ -94,6 +94,7 @@ public class EmployeeController {
     @PostMapping
     @ApiOperation("新增员工")
     public Result save(@RequestBody EmployeeDTO employeeDTO) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("新增员工{}", employeeDTO);
         employeeService.save(employeeDTO);
@@ -199,10 +200,12 @@ public class EmployeeController {
      */
     @PutMapping("/{id}/status")
     @ApiOperation("修改用户状态")
-    public Result<String> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+    public Result<String> updateStatus(@PathVariable Long id, @RequestParam Integer status,
+            @RequestParam(required = false) String role) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
-        log.info("修改用户状态：id={}, status={}", id, status);
-        employeeService.updateStatus(id, status);
+        log.info("修改用户状态：id={}, status={}, role={}", id, status, role);
+        employeeService.updateStatus(id, status, role);
         // 记录操作日志
         String statusText = status == 1 ? "启用" : "禁用";
         operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
@@ -214,6 +217,7 @@ public class EmployeeController {
     @PostMapping("/batch-status")
     @ApiOperation("批量修改用户状态")
     public Result<String> batchUpdateStatus(@RequestBody BatchStatusDTO dto) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("批量修改用户状态：ids={}, status={}, role={}", dto.getIds(), dto.getStatus(), dto.getRole());
         employeeService.batchUpdateStatus(dto.getIds(), dto.getStatus(), dto.getRole());

@@ -3,6 +3,7 @@ package com.class242014group06.controller;
 import com.class242014group06.constant.RoleConstant;
 import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.BatchIdsDTO;
+import com.class242014group06.dto.BatchStatusDTO;
 import com.class242014group06.dto.HeritageProjectDTO;
 import com.class242014group06.result.Result;
 import com.class242014group06.service.HeritageProjectService;
@@ -118,6 +119,7 @@ public class HeritageProjectController {
     @DeleteMapping("/{id}/admin")
     @ApiOperation("管理员删除项目")
     public Result<String> deleteByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员删除项目，id：{}", id);
         projectService.deleteByAdmin(id);
@@ -129,6 +131,7 @@ public class HeritageProjectController {
     @PutMapping("/{id}/admin/toggle")
     @ApiOperation("管理员切换项目上下架")
     public Result<String> toggleByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员切换项目状态，id：{}，status：{}", id, status);
         projectService.toggleByAdmin(id, status);
@@ -141,6 +144,7 @@ public class HeritageProjectController {
     @PostMapping("/batch")
     @ApiOperation("管理员批量删除项目")
     public Result<String> batchDelete(@RequestBody BatchIdsDTO dto) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("批量删除项目：{}", dto.getIds());
         projectService.batchDelete(dto.getIds());
@@ -148,6 +152,19 @@ public class HeritageProjectController {
                 "DELETE_PROJECT", "project", null,
                 "批量删除" + dto.getIds().size() + "个项目");
         return Result.success("已删除" + dto.getIds().size() + "个项目");
+    }
+
+    @PutMapping("/batch-toggle")
+    @ApiOperation("管理员批量切换项目上下架")
+    public Result<String> batchToggle(@RequestBody BatchStatusDTO dto) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("批量切换项目状态：ids={}, status={}", dto.getIds(), dto.getStatus());
+        projectService.batchToggle(dto.getIds(), dto.getStatus());
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "TOGGLE_PROJECT", "project", null,
+                "批量" + (dto.getStatus() == 1 ? "上架" : "下架") + dto.getIds().size() + "个项目");
+        return Result.success("已" + (dto.getStatus() == 1 ? "上架" : "下架") + dto.getIds().size() + "个项目");
     }
 
     /**

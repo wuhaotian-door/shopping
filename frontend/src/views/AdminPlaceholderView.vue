@@ -11,8 +11,8 @@ import {
 } from '@/api/auth'
 import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, adminUpdateOrderFields } from '@/api/order'
 import { listAllArticles, adminDeleteArticle, batchDeleteArticle, getArticleById } from '@/api/knowledge'
-import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct } from '@/api/product'
-import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject } from '@/api/project'
+import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct, adminCancelProductOrder } from '@/api/product'
+import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject, batchToggleProject } from '@/api/project'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from './components/ChatPanel.vue'
 const AdminMonitorPanel = defineAsyncComponent(() => import('./components/AdminMonitorPanel.vue'))
@@ -38,6 +38,7 @@ const productPage = ref(1)
 const projectPage = ref(1)
 const orderPage = ref(1)
 const prodOrderPage = ref(1)
+const logPage = ref(1)
 
 // ==================== 侧边栏菜单 ====================
 const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'logs' | 'settings'>('dashboard')
@@ -62,6 +63,7 @@ const pageTitle = computed(() => (menuItems as typeof menuItems | undefined)?.fi
 const pendingCount = computed(() => pendingList.value.length)
 
 function switchMenu(key: MenuKey) {
+  if (activeMenu.value === key) return
   activeMenu.value = key
   if (key === 'dashboard') loadDashboard()
   else if (key === 'users') loadUsers()
@@ -122,7 +124,7 @@ async function handleToggleStatus(user: UserInfo) {
   const newStatus = user.status === 1 ? 0 : 1
   userActionLoading.value = { ...userActionLoading.value, [user.id]: true }
   try {
-    await updateUserStatus(user.id, newStatus)
+    await updateUserStatus(user.id, newStatus, user.role)
     user.status = newStatus
   } catch { showToast('操作失败', 'error') }
   finally {
@@ -300,6 +302,7 @@ const pagedProducts = computed(() => paginate(filteredProducts.value, productPag
 const pagedProjects = computed(() => paginate(filteredProjects.value, projectPage.value))
 const pagedOrders = computed(() => paginate(filteredOrders.value, orderPage.value))
 const pagedProdOrders = computed(() => paginate(filteredProdOrders.value, prodOrderPage.value))
+const pagedLogs = computed(() => paginate(logList.value, logPage.value))
 
 // ---------- 批量操作 ----------
 async function handleBatchToggleUsers(status: number) {
@@ -384,6 +387,15 @@ async function handleBatchDeleteProjects() {
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
 }
 
+async function handleBatchToggleProjects(status: number) {
+  const ids = Array.from(selectedProjects.value)
+  if (!ids.length) { showToast('请先选择项目', 'warning'); return }
+  const label = status === 1 ? '上架' : '下架'
+  if (!confirm(`确定批量${label} ${ids.length} 个项目吗？`)) return
+  try { await batchToggleProject(ids, status); showToast(`已${label} ${ids.length} 个`); selectedProjects.value = new Set(); loadProjects() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
+
 async function handleToggleProject(p: HeritageProjectVO) {
   const newStatus = p.status === 1 ? 0 : 1
   try {
@@ -464,6 +476,15 @@ async function handleUpdateProdOrderStatus(order: ProductOrderVO, newStatus: num
   } catch { showToast('操作失败', 'error') }
 }
 
+async function handleCancelProductOrder(id: number) {
+  if (!confirm('确定取消该商品订单吗？已发货的订单取消不会恢复库存。')) return
+  try {
+    await adminCancelProductOrder(id)
+    showToast('订单已取消')
+    loadOrders()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
+
 // ---------- 预约订单字段编辑 ----------
 const editingAppFields = ref<Record<number, string>>({}) // 'date' | 'timeSlot'
 
@@ -493,7 +514,7 @@ async function saveProdAddr(order: ProductOrderVO, value: string) {
   editingProdAddr.value = 0
   order.address = value
   try { await adminUpdateProductOrderAddress(order.id, value) }
-  catch { alert('保存失败'); loadOrders() }
+  catch { showToast('保存失败', 'error'); loadOrders() }
 }
 
 // ==================== 8. 系统设置 ====================
@@ -571,16 +592,18 @@ async function loadLogs() {
 
 const opTypeLabel = (t: string) => ({
   'APPROVE_INHERITOR': '通过审核', 'REJECT_INHERITOR': '驳回申请',
-  'TOGGLE_USER_STATUS': '启用/禁用', 'CREATE_ADMIN': '创建管理员',
+  'TOGGLE_USER_STATUS': '启禁用户', 'CREATE_ADMIN': '创建管理员',
   'CHANGE_PASSWORD': '修改密码', 'DELETE_PRODUCT': '删除商品',
-  'TOGGLE_PRODUCT': '上下架', 'DELETE_PROJECT': '删除项目',
-  'DELETE_ARTICLE': '删除资讯', 'UPDATE_ORDER_STATUS': '改订单状态',
-  'CANCEL_ORDER': '取消订单',
+  'TOGGLE_PRODUCT': '商品上下架', 'DELETE_PROJECT': '删除项目',
+  'TOGGLE_PROJECT': '项目上下架', 'DELETE_ARTICLE': '删除资讯',
+  'UPDATE_ORDER_STATUS': '改订单状态', 'UPDATE_ORDER_FIELDS': '改订单字段',
+  'UPDATE_ORDER_ADDRESS': '改收货地址', 'CANCEL_ORDER': '取消订单',
 } as Record<string, string>)[t] || t
 
 const opTargetTypeLabel = (t: string) => ({
   'inheritor': '传承人', 'user': '用户', 'admin': '管理员',
-  'product': '商品', 'project': '项目', 'article': '资讯', 'order': '订单',
+  'product': '商品', 'project': '项目', 'article': '资讯',
+  'order': '预约订单', 'product_order': '商城订单',
 } as Record<string, string>)[t] || t
 
 // ==================== 仪表盘鼠标互动效果 ====================
@@ -1012,7 +1035,9 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           <div v-else class="table-wrap">
             <div v-if="selectedProjects.size > 0" class="batch-bar">
               <span>已选 {{ selectedProjects.size }} 项</span>
-              <button class="btn-sm btn-danger" @click="handleBatchDeleteProjects">批量删除</button>
+              <button class="btn-sm btn-success" @click="handleBatchToggleProjects(1)">批量上架</button>
+              <button class="btn-sm btn-danger" @click="handleBatchToggleProjects(0)">批量下架</button>
+              <button class="btn-sm btn-danger" style="background:#c0392b" @click="handleBatchDeleteProjects">批量删除</button>
               <button class="btn-sm btn-clear" @click="selectedProjects = clearSelect()">取消选择</button>
             </div>
             <table>
@@ -1142,7 +1167,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 <tr>
                   <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedProdOrders, pagedProdOrders)" @change="selectedProdOrders = toggleSelectAll(selectedProdOrders, filteredProdOrders, pagedProdOrders)" /></th>
                   <th>ID</th><th>用户</th><th>电话</th><th>地址</th><th>商品</th>
-                  <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th>
+                  <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th><th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1166,6 +1191,10 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                     </select>
                   </td>
                   <td>{{ o.createTime?.slice(0, 10) }}</td>
+                  <td>
+                    <button v-if="o.status !== 3 && o.status !== 2" class="btn-sm btn-danger" @click="handleCancelProductOrder(o.id)">取消</button>
+                    <span v-else class="no-op">—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -1186,14 +1215,16 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               <thead>
                 <tr>
                   <th>时间</th>
+                  <th>操作人</th>
                   <th>操作类型</th>
                   <th>目标类型</th>
                   <th>操作详情</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="l in logList" :key="l.id">
+                <tr v-for="l in pagedLogs" :key="l.id">
                   <td>{{ l.createTime?.replace('T', ' ').slice(0, 19) }}</td>
+                  <td>{{ l.operatorName }}</td>
                   <td><span class="status-dot" :class="l.operationType === 'APPROVE_INHERITOR' ? 's-enabled' : l.operationType === 'REJECT_INHERITOR' ? 's-disabled' : 's-pending'">{{ opTypeLabel(l.operationType) }}</span></td>
                   <td>{{ opTargetTypeLabel(l.targetType) }}</td>
                   <td>{{ l.detail }}</td>
@@ -1201,6 +1232,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </tbody>
             </table>
             <div v-if="logList.length === 0 && !logLoading" class="empty-text">暂无操作日志</div>
+            <div v-else-if="logList.length > 0" class="page-bar">
+              <button :disabled="logPage <= 1" @click="logPage--">上一页</button>
+              <span>第 {{ logPage }} / {{ totalPages(logList) }} 页，共 {{ logList.length }} 条</span>
+              <button :disabled="logPage >= totalPages(logList)" @click="logPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -1333,7 +1369,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
   align-items: center;
   padding: 13px 24px;
   margin: 2px 10px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.9);
   cursor: pointer;
   transition: all 0.25s;
   font-size: 14px;
