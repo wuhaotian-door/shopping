@@ -30,9 +30,10 @@ const currentProvince = ref('')
 const provinceCityData = ref<StatItem[]>([])
 const drilling = ref(false)
 
-// 中国红主题色阶梯
-const RED_RAMP = ['#fef0f2', '#fadde2', '#f0a0af', '#e8647a', '#c41e3a', '#8b0e1e']
-const PIE_COLORS = ['#c41e3a', '#e8647a', '#f0a0af', '#fadde2', '#fef0f2']
+// 暖珊瑚陶土色阶梯（与朱砂红和谐不违和）
+const CORAL_RAMP = ['#ffe8e0', '#f8c8b8', '#f09878', '#e07050', '#c05038', '#8b2a18']
+const PIE_COLORS = ['#e07050', '#c05038', '#d07078', '#f8c8b8', '#ffe8e0']
+const HEAT_RED = ['#ffe9ec', '#c41e3a']  // 热力图保留红色
 
 // 中国全部34个省级行政区（与GeoJSON名称一致）
 const ALL_PROVINCES = [
@@ -79,49 +80,11 @@ const provinceMapData = computed(() =>
   provinceCityData.value.map(d => ({ name: d.name, value: d.value }))
 )
 
-// 城市柱状图数据
-const cityBarOption = computed(() => {
-  if (!stats.value?.cities?.length) return {}
-  const data = [...stats.value.cities]
-  return {
-    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-    grid: { left: 80, right: 50, top: 10, bottom: 24 },
-    xAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
-    yAxis: { type: 'category', data: data.map(d => d.city), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#666', fontSize: 13 } },
-    series: [{
-      type: 'bar', data: data.map((d, i) => ({ value: d.value, itemStyle: { color: RED_RAMP[Math.min(i + 1, RED_RAMP.length - 1)], borderRadius: [0, 4, 4, 0] } })),
-      barWidth: 20, label: { show: true, position: 'right', color: '#999', fontSize: 12, formatter: '{c}人' }
-    }]
-  }
-})
-
-// 地域柱状图数据
-const regionBarData = computed(() => {
-  if (!stats.value?.region) return { names: [], values: [] }
-  const sorted = [...stats.value.region].sort((a, b) => a.value - b.value)
-  return {
-    names: sorted.map(d => d.name),
-    values: sorted.map((d, i) => ({
-      value: d.value,
-      itemStyle: { color: RED_RAMP[Math.min(i, RED_RAMP.length - 1)], borderRadius: [0, 4, 4, 0] }
-    }))
-  }
-})
-
-// 地域柱状图配置
-const regionBarOption = computed(() => ({
-  tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
-  grid: { left: 100, right: 50, top: 10, bottom: 24 },
-  xAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
-  yAxis: { type: 'category', data: regionBarData.value.names, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#666', fontSize: 13 } },
-  series: [{ type: 'bar', data: regionBarData.value.values, barWidth: 18, label: { show: true, position: 'right', color: '#999', fontSize: 12 } }]
-}))
-
 // 全国省级热力图配置
 const countryMapOption = computed(() => ({
   title: { text: '已入驻中国非遗传承人全国热力图', subtext: '点击省份下钻查看市级明细 | 滚轮缩放', left: 'center', top: 6, textStyle: { color: '#c41e3a', fontSize: 16 }, subtextStyle: { color: '#bbb', fontSize: 12 } },
   tooltip: { trigger: 'item', formatter: (p: { name: string; value: number }) => `${p.name}: ${p.value || 0}人` },
-  visualMap: { min: 0, max: Math.max(...countryMapData.value.map(d => d.value), 1), left: 20, bottom: 30, inRange: { color: ['#ffe9ec', '#c41e3a'] }, text: ['多', '少'], textStyle: { color: '#666', fontSize: 12 }, calculable: true },
+  visualMap: { min: 0, max: Math.max(...countryMapData.value.map(d => d.value), 1), left: 20, bottom: 30, inRange: { color: HEAT_RED }, text: ['多', '少'], textStyle: { color: '#666', fontSize: 12 }, calculable: true },
   geo: { map: 'china', roam: true, scaleLimit: { min: 1, max: 10 }, label: { show: false }, emphasis: { label: { show: true, color: '#c41e3a', fontSize: 14, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffe9ec' } }, itemStyle: { borderColor: '#e0e0e0', borderWidth: 0.5, areaColor: '#fafafa' } },
   series: [{ type: 'map', map: 'china', geoIndex: 0, data: countryMapData.value, selectedMode: false }]
 }))
@@ -130,7 +93,7 @@ const countryMapOption = computed(() => ({
 const provinceMapOption = computed(() => ({
   title: { text: `${currentProvince.value}非遗传承人各市分布`, subtext: '双击地图或点击按钮返回全国视图', left: 'center', top: 6, textStyle: { color: '#c41e3a', fontSize: 16 }, subtextStyle: { color: '#bbb', fontSize: 12 } },
   tooltip: { trigger: 'item', formatter: (p: { name: string; value: number }) => `${p.name}: ${p.value || 0}人` },
-  visualMap: { min: 0, max: Math.max(...provinceMapData.value.map(d => d.value), 1), left: 20, bottom: 30, inRange: { color: ['#ffe9ec', '#c41e3a'] }, text: ['多', '少'], textStyle: { color: '#666', fontSize: 12 }, calculable: true },
+  visualMap: { min: 0, max: Math.max(...provinceMapData.value.map(d => d.value), 1), left: 20, bottom: 30, inRange: { color: HEAT_RED }, text: ['多', '少'], textStyle: { color: '#666', fontSize: 12 }, calculable: true },
   geo: { map: currentProvince.value, roam: true, scaleLimit: { min: 1, max: 10 }, label: { show: true, color: '#888', fontSize: 11 }, emphasis: { label: { show: true, color: '#c41e3a', fontSize: 14, fontWeight: 'bold' }, itemStyle: { areaColor: '#ffe9ec' } }, itemStyle: { borderColor: '#e0e0e0', borderWidth: 0.5, areaColor: '#fafafa' } },
   series: [
     { type: 'map', map: currentProvince.value, geoIndex: 0, data: provinceMapData.value, selectedMode: false },
@@ -188,7 +151,7 @@ const craftOption = computed(() => {
     xAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
     yAxis: { type: 'category', data: data.map(d => d.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#666', fontSize: 13 } },
     series: [{
-      type: 'bar', data: data.map((d, i) => ({ value: d.value, itemStyle: { color: RED_RAMP[Math.min(i, RED_RAMP.length - 1)], borderRadius: [0, 4, 4, 0] } })),
+      type: 'bar', data: data.map((d, i) => ({ value: d.value, itemStyle: { color: CORAL_RAMP[Math.min(i, CORAL_RAMP.length - 1)], borderRadius: [0, 4, 4, 0] } })),
       barWidth: 16, label: { show: true, position: 'right', color: '#999', fontSize: 12 }
     }]
   }
@@ -269,9 +232,9 @@ onMounted(async () => {
       </div>
 
       <!-- 中国地图热力图（省-市下钻） -->
-      <div class="chart-card chart-full map-wrapper">
+      <div class="chart-card chart-full map-wrapper heatmap-card">
         <div class="map-top-row">
-          <h3>{{ mapLevel === 'country' ? '已入驻中国非遗传承人全国热力图' : `${currentProvince}非遗传承人各市分布` }}</h3>
+          <h3 class="heatmap-title">{{ mapLevel === 'country' ? '已入驻中国非遗传承人全国热力图' : `${currentProvince}非遗传承人各市分布` }}</h3>
           <span class="map-hint">{{ mapLevel === 'country' ? '点击省份下钻到市 | 滚轮缩放' : '双击地图或点击按钮返回全国' }}</span>
         </div>
         <button v-if="mapLevel === 'province'" class="back-btn" @click="backToCountry">← 返回全国视图</button>
@@ -281,24 +244,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 城市分布柱状图 -->
-      <div v-if="stats.cities?.length" class="chart-card chart-full">
-        <h3>各城市传承人数量</h3>
-        <div class="chart-box" style="height: 320px">
-          <VChart :option="cityBarOption" autoresize />
-        </div>
-      </div>
-
       <!-- 图表网格 -->
       <div class="charts-grid">
-        <!-- 地域分布柱状图 -->
-        <div class="chart-card">
-          <h3>各省传承人数量</h3>
-          <div class="chart-box">
-            <VChart :option="regionBarOption" autoresize />
-          </div>
-        </div>
-
         <!-- 年龄饼图 -->
         <div class="chart-card">
           <h3>传承人年龄分布</h3>
@@ -326,6 +273,9 @@ onMounted(async () => {
 /* ===== 标题 ===== */
 .section-header { display: flex; align-items: baseline; gap: 14px; margin-bottom: 28px; }
 .section-header h2 { font-size: 22px; color: #c41e3a; padding-left: 14px; border-left: 4px solid #c41e3a; margin: 0; }
+
+/* 热力图卡片保留红色标题 */
+.heatmap-title { color: #c41e3a !important; border-left-color: #c41e3a !important; }
 .header-sub { font-size: 13px; color: #bbb; }
 
 /* ===== 加载动画 ===== */
@@ -335,25 +285,54 @@ onMounted(async () => {
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* ===== 概览卡片 ===== */
+/* ===== 概览卡片（3D立体） ===== */
 .overview-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 28px; }
 .overview-card {
-  background: #fff; border-radius: 14px; padding: 28px 20px; text-align: center;
-  box-shadow: 0 2px 12px rgba(196,30,58,0.06); border-top: 4px solid #c41e3a;
-  transition: transform 0.2s, box-shadow 0.2s;
+  background: linear-gradient(145deg, #fff 0%, #fefaf5 100%);
+  border-radius: 16px; padding: 28px 20px; text-align: center;
+  border: 1px solid rgba(196, 30, 58, 0.1);
+  box-shadow:
+    0 4px 6px rgba(139, 26, 43, 0.06),
+    0 10px 20px rgba(139, 26, 43, 0.04),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+  transform: perspective(500px) rotateX(0deg);
+  transition: transform 0.35s cubic-bezier(0.22,0.61,0.36,1),
+              box-shadow 0.35s ease;
 }
-.overview-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(196,30,58,0.12); }
-.ov-icon { font-size: 28px; margin-bottom: 8px; }
-.ov-num { font-size: 36px; font-weight: bold; color: #c41e3a; }
+.overview-card:hover {
+  transform: perspective(500px) rotateX(2deg) translateY(-6px);
+  box-shadow:
+    0 8px 16px rgba(139, 26, 43, 0.12),
+    0 16px 32px rgba(139, 26, 43, 0.06),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+}
+.ov-icon { font-size: 30px; margin-bottom: 8px; filter: drop-shadow(0 2px 2px rgba(0,0,0,0.1)); }
+.ov-num { font-size: 38px; font-weight: 800; color: #c41e3a; text-shadow: 0 1px 2px rgba(196,30,58,0.15); }
 .ov-label { font-size: 13px; color: #999; margin-top: 4px; }
 
-/* ===== 图表卡片 ===== */
+/* ===== 图表卡片（3D立体） ===== */
 .charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
 .chart-card {
-  background: #fff; border-radius: 14px; padding: 24px;
-  box-shadow: 0 2px 12px rgba(196,30,58,0.06);
+  background: linear-gradient(145deg, #fff 0%, #fefaf5 100%);
+  border-radius: 16px; padding: 24px;
+  border: 1px solid rgba(196, 30, 58, 0.08);
+  box-shadow:
+    0 4px 6px rgba(139, 26, 43, 0.05),
+    0 8px 16px rgba(139, 26, 43, 0.03);
+  transform: perspective(600px) rotateX(0deg);
+  transition: transform 0.4s cubic-bezier(0.22,0.61,0.36,1),
+              box-shadow 0.4s ease;
 }
-.chart-card h3 { font-size: 15px; color: #c41e3a; margin: 0 0 16px; padding-left: 10px; border-left: 3px solid #c41e3a; }
+.chart-card:hover {
+  transform: perspective(600px) rotateX(2deg) translateY(-4px);
+  box-shadow:
+    0 8px 20px rgba(139, 26, 43, 0.1),
+    0 20px 40px rgba(139, 26, 43, 0.05);
+}
+.chart-card h3 {
+  font-size: 15px; color: #8b6914; margin: 0 0 16px;
+  padding-left: 10px; border-left: 3px solid #d4a030;
+}
 .chart-box { width: 100%; height: 340px; }
 .map-wrapper { position: relative; }
 .map-top-row { display: flex; align-items: baseline; gap: 14px; margin-bottom: 4px; }

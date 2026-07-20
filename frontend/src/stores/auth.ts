@@ -21,6 +21,12 @@ export const useAuthStore = defineStore('auth', () => {
   /** 是否为非遗传承人 */
   const isInheritor = computed(() => userInfo.value?.role === 'INHERITOR')
 
+  /** 全局唯一标识：role_id，确保不同角色表 ID 不冲突 */
+  const uid = computed(() => {
+    if (!userInfo.value) return ''
+    return `${userInfo.value.role}_${userInfo.value.id}`
+  })
+
   /** 登录 */
   async function login(username: string, password: string) {
     const res = await loginApi({ username, password })
@@ -28,6 +34,8 @@ export const useAuthStore = defineStore('auth', () => {
     userInfo.value = res.data
     localStorage.setItem(TOKEN_KEY, res.data.token)
     localStorage.setItem(USER_KEY, JSON.stringify(res.data))
+    // 恢复该用户的购物车（使用全局唯一 uid）
+    import('@/stores/cart').then(m => m.useCartStore().loadForUser(`${res.data.role}_${res.data.id}`))
   }
 
   /** 登出 */
@@ -36,24 +44,20 @@ export const useAuthStore = defineStore('auth', () => {
     userInfo.value = null
     localStorage.removeItem(TOKEN_KEY)
     localStorage.removeItem(USER_KEY)
+    import('@/stores/cart').then(m => m.useCartStore().clear())
   }
 
-  /**
-   * 应用启动时校验 localStorage 中的 token 是否仍然有效。
-   * 如果后端已重启，旧 token 会被拦截器拒绝（iat < 服务启动时间），
-   * 返回 401 → 触发 response 拦截器 → 自动清除登录状态。
-   */
   async function initAuth() {
     if (!token.value) return
     try {
       const res = await checkAuth()
-      // token 有效，用后端返回的最新用户信息更新本地存储
       userInfo.value = res.data
       localStorage.setItem(USER_KEY, JSON.stringify(res.data))
+      import('@/stores/cart').then(m => m.useCartStore().loadForUser(`${res.data.role}_${res.data.id}`))
     } catch {
-      // token 失效（后端重启或过期），response 拦截器已自动处理 logout
+      // token 失效
     }
   }
 
-  return { token, userInfo, isLoggedIn, isAdmin, isInheritor, login, logout, initAuth }
+  return { token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, logout, initAuth }
 })
