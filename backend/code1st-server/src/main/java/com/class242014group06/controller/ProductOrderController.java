@@ -117,6 +117,7 @@ public class ProductOrderController {
     @PutMapping("/{id}/admin/status")
     @ApiOperation("管理员修改商品订单状态")
     public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改商品订单状态，orderId：{}，status：{}", id, status);
         productOrderService.updateStatusByAdmin(id, status);
@@ -132,13 +133,33 @@ public class ProductOrderController {
     @PutMapping("/{id}/admin/address")
     @ApiOperation("管理员修改商品订单收货地址")
     public Result<String> updateAddressByAdmin(@PathVariable Long id, @RequestParam String address) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改商品订单地址，orderId：{}，address：{}", id, address);
         productOrderService.updateAddressByAdmin(id, address);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "UPDATE_ORDER_ADDRESS", "product_order", id,
+                "修改商品订单ID=" + id + "收货地址");
         return Result.success("地址已更新");
     }
 
     /**
-     * 取消订单
+     * 管理员取消商品订单
+     */
+    @PutMapping("/{id}/admin/cancel")
+    @ApiOperation("管理员取消商品订单")
+    public Result<String> cancelByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("管理员取消商品订单，orderId：{}", id);
+        productOrderService.cancelByAdmin(id);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "CANCEL_ORDER", "product_order", id, "取消商品订单ID=" + id);
+        return Result.success("订单已取消");
+    }
+
+    /**
+     * 取消订单（用户/传承人）
      */
     @PutMapping("/{id}/cancel")
     @ApiOperation("取消商品订单")

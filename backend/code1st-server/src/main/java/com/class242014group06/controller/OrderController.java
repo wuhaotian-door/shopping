@@ -118,6 +118,7 @@ public class OrderController {
     @PutMapping("/{id}/cancel")
     @ApiOperation("管理员取消订单")
     public Result<String> cancelByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员取消订单，orderId：{}", id);
         orderService.cancelByAdmin(id);
@@ -132,6 +133,7 @@ public class OrderController {
     @PutMapping("/{id}/admin/status")
     @ApiOperation("管理员修改订单状态")
     public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改订单状态，orderId：{}，status：{}", id, status);
         orderService.updateStatusByAdmin(id, status);
@@ -149,8 +151,13 @@ public class OrderController {
     public Result<String> updateFieldsByAdmin(@PathVariable Long id,
             @RequestParam(required = false) String appointmentDate,
             @RequestParam(required = false) String timeSlot) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改预约订单，id：{}，date：{}，slot：{}", id, appointmentDate, timeSlot);
         orderService.updateFieldsByAdmin(id, appointmentDate, timeSlot);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "UPDATE_ORDER_FIELDS", "order", id,
+                "修改预约订单ID=" + id + "，日期=" + appointmentDate + "，时段=" + timeSlot);
         return Result.success("订单已更新");
     }
 }

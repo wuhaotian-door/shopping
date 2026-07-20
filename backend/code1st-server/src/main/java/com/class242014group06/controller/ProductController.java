@@ -119,6 +119,7 @@ public class ProductController {
     @DeleteMapping("/{id}/admin")
     @ApiOperation("管理员删除商品")
     public Result<String> deleteByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员删除商品，id：{}", id);
         productService.deleteByAdmin(id);
@@ -133,6 +134,7 @@ public class ProductController {
     @PutMapping("/{id}/admin/toggle")
     @ApiOperation("管理员切换商品上下架")
     public Result<String> toggleByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员切换商品状态，id：{}，status：{}", id, status);
         productService.toggleByAdmin(id, status);
@@ -145,6 +147,7 @@ public class ProductController {
     @PutMapping("/batch-toggle")
     @ApiOperation("管理员批量切换商品上下架")
     public Result<String> batchToggle(@RequestBody BatchStatusDTO dto) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("批量切换商品状态：ids={}, status={}", dto.getIds(), dto.getStatus());
         productService.batchToggle(dto.getIds(), dto.getStatus());
@@ -157,6 +160,7 @@ public class ProductController {
     @PostMapping("/batch")
     @ApiOperation("管理员批量删除商品")
     public Result<String> batchDelete(@RequestBody BatchIdsDTO dto) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("批量删除商品：{}", dto.getIds());
         productService.batchDelete(dto.getIds());

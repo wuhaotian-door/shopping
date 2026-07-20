@@ -236,22 +236,12 @@ public class EmployeeServiceImpl implements EmployeeService {
      * 简单策略：逐个表尝试更新
      */
     @Override
-    public void updateStatus(Long id, Integer status) {
-        // 尝试在 admin 表更新
-        Admin admin = adminMapper.getById(id);
-        if (admin != null) {
+    public void updateStatus(Long id, Integer status, String role) {
+        if (RoleConstant.ADMIN.equals(role)) {
             adminMapper.update(Admin.builder().id(id).status(status).build());
-            return;
-        }
-        // 尝试在 inheritor 表更新
-        Inheritor inheritor = inheritorMapper.getById(id);
-        if (inheritor != null) {
+        } else if (RoleConstant.INHERITOR.equals(role)) {
             inheritorMapper.update(Inheritor.builder().id(id).status(status).build());
-            return;
-        }
-        // 尝试在 user 表更新
-        User user = userMapper.getById(id);
-        if (user != null) {
+        } else {
             userMapper.update(User.builder().id(id).status(status).build());
         }
     }

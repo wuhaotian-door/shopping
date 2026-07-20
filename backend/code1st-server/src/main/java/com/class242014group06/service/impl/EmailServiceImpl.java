@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 /**
@@ -24,6 +25,7 @@ public class EmailServiceImpl implements EmailService {
     @Value("${spring.mail.username:18155255201@163.com}")
     private String fromEmail;
 
+    @Async
     @Override
     public void sendVerificationCode(String toEmail, String code) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -44,6 +46,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Async
     @Override
     public void sendRejectNotification(String toEmail, String name, String reason) {
         SimpleMailMessage message = new SimpleMailMessage();
@@ -65,6 +68,7 @@ public class EmailServiceImpl implements EmailService {
         }
     }
 
+    @Async
     @Override
     public void sendApprovalNotification(String toEmail, String name) {
         SimpleMailMessage message = new SimpleMailMessage();

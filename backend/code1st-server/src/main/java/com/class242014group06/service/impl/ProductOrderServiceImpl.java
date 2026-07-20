@@ -116,6 +116,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
     }
 
     @Override
+    @Transactional
     public void cancel(Long orderId, Long userId) {
         ProductOrder order = productOrderMapper.getById(orderId);
         if (order == null) {
@@ -153,6 +154,37 @@ public class ProductOrderServiceImpl implements ProductOrderService {
         }
         ProductOrder update = ProductOrder.builder().id(orderId).address(address).build();
         productOrderMapper.update(update);
+    }
+
+    @Override
+    @Transactional
+    public void cancelByAdmin(Long orderId) {
+        ProductOrder order = productOrderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
+        }
+        // 只能取消待发货或已发货的订单
+        if (order.getStatus().equals(ProductOrderStatusConstant.COMPLETED)
+                || order.getStatus().equals(ProductOrderStatusConstant.CANCELLED)) {
+            throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
+        }
+        ProductOrder update = ProductOrder.builder()
+                .id(orderId)
+                .status(ProductOrderStatusConstant.CANCELLED)
+                .build();
+        productOrderMapper.update(update);
+
+        // 恢复库存（未发货的订单取消后恢复）
+        if (order.getStatus().equals(ProductOrderStatusConstant.PENDING)) {
+            Product product = productMapper.getById(order.getProductId());
+            if (product != null) {
+                Product stockUpdate = Product.builder()
+                        .id(product.getId())
+                        .stock(product.getStock() + order.getQuantity())
+                        .build();
+                productMapper.update(stockUpdate);
+            }
+        }
     }
 
     @Override

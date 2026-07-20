@@ -52,4 +52,5 @@ public interface HeritageProjectService {
     void deleteByAdmin(Long id);
     void toggleByAdmin(Long id, Integer status);
     void batchDelete(java.util.List<Long> ids);
+    void batchToggle(java.util.List<Long> ids, Integer status);
 }

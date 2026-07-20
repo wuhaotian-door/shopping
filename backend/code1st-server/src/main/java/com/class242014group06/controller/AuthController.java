@@ -163,6 +163,7 @@ public class AuthController {
     @PutMapping("/{id}/approve")
     @ApiOperation("审核通过传承人")
     public Result<String> approve(@PathVariable Long id) {
+        BaseContext.requireAdmin();
         Long adminId = BaseContext.getCurrentId();
         log.info("审核通过传承人：{}", id);
         inheritorService.approve(id);
@@ -181,6 +182,7 @@ public class AuthController {
     @PutMapping("/{id}/reject")
     @ApiOperation("驳回传承人申请")
     public Result<String> reject(@PathVariable Long id, @RequestBody(required = false) RejectInheritorDTO dto) {
+        BaseContext.requireAdmin();
         Long adminId = BaseContext.getCurrentId();
         String reason = dto != null ? dto.getReason() : null;
         log.info("驳回传承人申请：id={}, reason={}", id, reason);
@@ -257,6 +259,7 @@ public class AuthController {
     @PostMapping("/batch-approve")
     @ApiOperation("批量审核通过传承人")
     public Result<String> batchApprove(@RequestBody BatchIdsDTO dto) {
+        BaseContext.requireAdmin();
         Long adminId = BaseContext.getCurrentId();
         log.info("批量审核通过传承人：{}", dto.getIds());
         int count = inheritorService.batchApprove(dto.getIds());
@@ -269,6 +272,7 @@ public class AuthController {
     @PostMapping("/batch-reject")
     @ApiOperation("批量驳回传承人申请")
     public Result<String> batchReject(@RequestBody BatchRejectDTO dto) {
+        BaseContext.requireAdmin();
         Long adminId = BaseContext.getCurrentId();
         log.info("批量驳回传承人申请：ids={}, reason={}", dto.getIds(), dto.getReason());
         int count = inheritorService.batchReject(dto.getIds(), dto.getReason());

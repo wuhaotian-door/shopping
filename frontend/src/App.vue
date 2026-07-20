@@ -71,7 +71,11 @@ function startRipple() {
   <Transition name="page-enter">
     <div v-if="showContent" class="app-main">
       <AppHeader v-if="showHeader" />
-      <router-view />
+      <div v-if="renderError" style="padding:40px;color:red;font-family:monospace;white-space:pre-wrap;background:#fff;min-height:100vh;">
+        <h2>页面渲染错误</h2>
+        {{ renderError }}
+      </div>
+      <router-view v-else />
     </div>
   </Transition>
 </template>

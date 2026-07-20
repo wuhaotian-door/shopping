@@ -39,4 +39,6 @@ public interface ProductOrderService {
     List<ProductOrderVO> listAll();
     void updateStatusByAdmin(Long orderId, Integer status);
     void updateAddressByAdmin(Long orderId, String address);
+    /** 管理员取消商品订单（恢复库存） */
+    void cancelByAdmin(Long orderId);
 }
