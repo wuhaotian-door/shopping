@@ -28,6 +28,7 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from tenacity import retry, stop_after_attempt, wait_exponential
+import threading
 
 load_dotenv()
 
@@ -105,13 +106,17 @@ def load_knowledge_base():
     )
 
 
-# 启动时加载
+# 启动时加载（加锁，防止并行访问时多线程同时初始化 Chroma）
 _vector_store = None
+_vector_store_lock = threading.Lock()
 
 def get_vector_store():
     global _vector_store
     if _vector_store is None:
-        _vector_store = load_knowledge_base()
+        with _vector_store_lock:
+            # 双重检查：拿到锁后再次确认（可能其他线程已经初始化了）
+            if _vector_store is None:
+                _vector_store = load_knowledge_base()
     return _vector_store
 
 

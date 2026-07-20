@@ -389,6 +389,7 @@ const MODES = {
   subgraph: { label: '🧩 子图',    cls: 'toggle graph' },
   eval:     { label: '📊 评估',    cls: 'toggle rag' },
   multi:    { label: '👥 多Agent', cls: 'toggle agent' },
+  parallel: { label: '⚡ 并行搜索', cls: 'toggle graph' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -412,6 +413,8 @@ async function send() {
 
   if (mode === 'hitl') {
     await sendHITL(question);
+  } else if (mode === 'parallel') {
+    await sendParallel(question);
   } else if (mode === 'multi') {
     await sendMulti(question);
   } else if (mode === 'subgraph') {
@@ -750,6 +753,94 @@ function showSubgraphApprovalDialog(threadId, interruptInfo) {
 
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
+}
+
+// =============================================
+// Level 5: Send API — 动态并行搜索，一句话查多个项目
+// =============================================
+async function sendParallel(question) {
+  const loading = addBubble('⚡ 解析问题 → 并行搜索中…', 'ai loading');
+  try {
+    const res = await fetch('/ai/agent/advanced', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, thread_id: 'parallel-' + Date.now() }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    const bubble = document.createElement('div');
+    bubble.className = 'bubble ai';
+    bubble.style.maxWidth = '90%';
+
+    let html = '<div class="section-label">⚡ Send API 并行结果</div>';
+
+    // ---- Trace 时间线 ----
+    if (data.trace && data.trace.length > 0) {
+      html += '<div class="section-label">📋 执行过程</div>';
+      for (const t of data.trace) {
+        const color = t.step.startsWith('①') ? '#6a1b9a'
+                    : t.step.startsWith('🔍') ? '#1565c0'
+                    : '#2e7d32';
+        html += `<div style="margin:6px 0;padding:8px 12px;background:#fafaf5;
+          border-left:3px solid ${color};border-radius:4px;font-size:12px">
+          <div style="font-weight:600;color:${color};margin-bottom:4px">
+            ${escapeHtml(t.step)} <span style="font-weight:400;color:#999;font-size:11px">${escapeHtml(t.time || '')} · ${t.elapsed_s || '?'}s</span>
+          </div>`;
+
+        // Parser 展示输入输出
+        if (t.input) {
+          html += `<div style="color:#888;margin:2px 0">📥 ${escapeHtml(t.input)}</div>`;
+        }
+        if (t.detail) {
+          html += `<div style="color:#6a1b9a;margin:2px 0">💡 ${escapeHtml(t.detail)}</div>`;
+        }
+        if (t.output) {
+          html += `<div style="color:#555;margin:2px 0;max-height:80px;overflow:hidden">📤 ${escapeHtml(t.output)}</div>`;
+        }
+        // 工具调用
+        if (t.tool_calls && t.tool_calls.length > 0) {
+          if (typeof t.tool_calls[0] === 'string') {
+            html += `<div style="color:#888;font-size:11px">🔧 ${escapeHtml(t.tool_calls[0])}</div>`;
+          } else {
+            for (const tc of t.tool_calls) {
+              html += `<div style="color:#888;font-size:11px;margin:2px 0">
+                🔧 <b>${escapeHtml(tc.tool)}</b>(${escapeHtml(JSON.stringify(tc.args))})
+                ${tc.result_preview ? '<br>→ ' + escapeHtml(tc.result_preview) : ''}
+              </div>`;
+            }
+          }
+        }
+        html += '</div>';
+      }
+    }
+
+    // ---- 各 Searcher 初步结果 ----
+    if (data.searcher_results && data.searcher_results.length > 0) {
+      html += '<div class="section-label">📖 各项目搜索结果</div>';
+      for (const sr of data.searcher_results) {
+        html += `<div style="margin:4px 0;padding:6px 10px;background:#f0f4ff;
+          border-radius:6px;font-size:12px;color:#555;max-height:120px;overflow:hidden">
+          ${escapeHtml(sr)}</div>`;
+      }
+    }
+
+    // ---- 最终答案 ----
+    html += '<div class="section-label">📝 最终对比总结</div>';
+    html += '<div style="margin:8px 0;font-size:14px;line-height:1.8">'
+      + escapeHtml(data.answer || '(未返回文本)').replace(/\n/g, '<br>')
+      + '</div>';
+
+    html += `<div style="font-size:11px;color:#999;margin-top:12px;text-align:center">
+      共 ${data.messages_count || 0} 条消息 · 总耗时 ${data.total_elapsed_s || '?'}s · Send API 并行执行</div>`;
+
+    bubble.innerHTML = html;
+    chat.appendChild(bubble);
+    chat.scrollTop = chat.scrollHeight;
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败', 'ai');
+  }
 }
 
 // =============================================

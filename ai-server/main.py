@@ -41,6 +41,7 @@ from agent_graph import graph_ask, graph_ask_stream
 from agent_human import human_agent_start, human_agent_resume, human_agent_get_state
 from agent_subgraph import subgraph_agent_start, subgraph_agent_resume, subgraph_agent_get_state
 from agent_multi import multi_agent_start, multi_agent_resume, multi_agent_get_state
+from agent_advanced import advanced_agent_ask
 from production import setup_cache, create_rate_limit_middleware, get_usage, get_cache_stats
 
 app = FastAPI(title="码上非遗 AI 服务")
@@ -393,3 +394,18 @@ async def ai_agent_multi_resume(req: ResumeRequest):
 async def ai_agent_multi_state(thread_id: str):
     """查询 Multi-Agent 当前状态"""
     return multi_agent_get_state(thread_id)
+
+
+# ============================================================
+# Level 5: 高级 LangGraph — Send API 动态并行
+# ============================================================
+
+@app.post("/ai/agent/advanced")
+async def ai_agent_advanced(req: ThreadRequest):
+    """Send API 动态并行
+
+    用户一句话查多个非遗项目 → Parser 拆 topic → Send ×N 并行搜索 → 汇总对比。
+
+    示例: "对比分析紫砂壶、景泰蓝和蜀绣的艺术特点"
+    """
+    return advanced_agent_ask(req.question, req.thread_id)
