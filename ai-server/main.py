@@ -40,6 +40,7 @@ from tools import agent_chat
 from agent_graph import graph_ask, graph_ask_stream
 from agent_human import human_agent_start, human_agent_resume, human_agent_get_state
 from agent_subgraph import subgraph_agent_start, subgraph_agent_resume, subgraph_agent_get_state
+from agent_multi import multi_agent_start, multi_agent_resume, multi_agent_get_state
 from production import setup_cache, create_rate_limit_middleware, get_usage, get_cache_stats
 
 app = FastAPI(title="码上非遗 AI 服务")
@@ -365,3 +366,30 @@ async def ai_usage():
 async def ai_cache_stats():
     """LLM 缓存统计 — 命中率等"""
     return get_cache_stats()
+
+
+# ============================================================
+# Level 5: Multi-Agent 端点
+# ============================================================
+
+@app.post("/ai/agent/multi/start")
+async def ai_agent_multi_start(req: ThreadRequest):
+    """启动 Multi-Agent 协作
+
+    Supervisor 自动判断交给 Researcher 还是 Writer:
+      - Researcher: 查资料（search_knowledge_base / list_documents）
+      - Writer:    保存内容（add_knowledge，需审批）
+    """
+    return multi_agent_start(req.question, req.thread_id)
+
+
+@app.post("/ai/agent/multi/resume")
+async def ai_agent_multi_resume(req: ResumeRequest):
+    """审批后恢复 Multi-Agent"""
+    return multi_agent_resume(req.thread_id, req.approved)
+
+
+@app.get("/ai/agent/multi/state/{thread_id}")
+async def ai_agent_multi_state(thread_id: str):
+    """查询 Multi-Agent 当前状态"""
+    return multi_agent_get_state(thread_id)

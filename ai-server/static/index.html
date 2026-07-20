@@ -388,6 +388,7 @@ const MODES = {
   hitl:     { label: '👤 HITL',    cls: 'toggle hitl' },
   subgraph: { label: '🧩 子图',    cls: 'toggle graph' },
   eval:     { label: '📊 评估',    cls: 'toggle rag' },
+  multi:    { label: '👥 多Agent', cls: 'toggle agent' },
 };
 
 modeToggle.addEventListener('click', () => {
@@ -411,6 +412,8 @@ async function send() {
 
   if (mode === 'hitl') {
     await sendHITL(question);
+  } else if (mode === 'multi') {
+    await sendMulti(question);
   } else if (mode === 'subgraph') {
     await sendSubgraph(question);
   } else if (mode === 'eval') {
@@ -747,6 +750,95 @@ function showSubgraphApprovalDialog(threadId, interruptInfo) {
 
   chat.appendChild(div);
   chat.scrollTop = chat.scrollHeight;
+}
+
+// =============================================
+// Level 5: Multi-Agent — Supervisor + Researcher + Writer 协作
+// =============================================
+async function sendMulti(question) {
+  const threadId = 'multi-' + Date.now();
+  const loading = addBubble('👥 Supervisor 正在调度中…', 'ai loading');
+
+  try {
+    const res = await fetch('/ai/agent/multi/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, thread_id: threadId }),
+    });
+    const data = await res.json();
+    loading.remove();
+
+    if (data.status === 'done') {
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ai';
+      bubble.style.maxWidth = '90%';
+
+      let html = '<div class="section-label">👥 Multi-Agent 协作结果</div>';
+      html += '<div>' + escapeHtml(data.answer || '(未返回文本)') + '</div>';
+
+      if (data.agent_trace && data.agent_trace.length > 0) {
+        html += '<div class="section-label">🔧 Agent 调用记录</div>';
+        for (const t of data.agent_trace) {
+          html += `<div class="tool-call">
+            <div class="tc-name">⚙ ${escapeHtml(t.tool)}</div>
+            <div class="tc-args">参数: ${escapeHtml(JSON.stringify(t.args))}</div>
+          </div>`;
+        }
+      }
+      bubble.innerHTML = html;
+      chat.appendChild(bubble);
+      chat.scrollTop = chat.scrollHeight;
+
+    } else if (data.status === 'interrupted') {
+      const interrupts = data.interrupts || [];
+      for (const iv of interrupts) {
+        const v = iv.value || iv;
+        const div = document.createElement('div');
+        div.className = 'approval-dialog';
+        div.style.borderColor = '#1565c0';
+        div.innerHTML = `
+          <div class="ad-title" style="color:#1565c0">👥 [Multi-Agent] Writer 请求保存文档</div>
+          <div class="ad-detail">
+            <strong>工具:</strong> ${escapeHtml(v.tool_name)}<br>
+            <strong>参数:</strong> ${escapeHtml(JSON.stringify(v.tool_args, null, 2))}<br>
+            <span style="font-size:11px;color:#999">调度路径: Supervisor → Writer → 审批</span>
+          </div>
+          <div class="ad-btns">
+            <button class="btn-approve" data-action="approve" style="background:#1565c0">✅ 批准</button>
+            <button class="btn-reject" data-action="reject">❌ 拒绝</button>
+          </div>
+        `;
+
+        div.querySelector('.btn-approve').onclick = async () => {
+          div.querySelectorAll('button').forEach(b => b.disabled = true);
+          div.innerHTML = '<div style="color:#2e7d32">✅ 已批准，Writer 继续…</div>';
+          const r2 = await fetch('/ai/agent/multi/resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thread_id: threadId, approved: true }),
+          });
+          const d2 = await r2.json();
+          renderHITLAnswer(d2);
+        };
+        div.querySelector('.btn-reject').onclick = async () => {
+          div.querySelectorAll('button').forEach(b => b.disabled = true);
+          div.innerHTML = '<div style="color:#c62828">❌ 已拒绝，Writer 继续…</div>';
+          const r2 = await fetch('/ai/agent/multi/resume', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ thread_id: threadId, approved: false }),
+          });
+          const d2 = await r2.json();
+          renderHITLAnswer(d2);
+        };
+        chat.appendChild(div);
+        chat.scrollTop = chat.scrollHeight;
+      }
+    }
+  } catch (err) {
+    loading.remove();
+    addBubble('请求失败', 'ai');
+  }
 }
 
 // =============================================
