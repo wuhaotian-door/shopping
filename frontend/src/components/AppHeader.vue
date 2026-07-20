@@ -35,7 +35,7 @@ function handleLogout() {
 <template>
   <header class="page-header">
     <div class="logo" @click="router.push('/')">
-      <span class="logo-seal">非</span>
+      <img src="/logo.png" alt="码上非遗" class="logo-img" />
       <span class="logo-text">码上非遗</span>
     </div>
 
@@ -66,8 +66,8 @@ function handleLogout() {
           {{ isInheritor ? '非遗传承人' : isAdmin ? '管理员' : '用户' }}
         </span>
         <span class="user-name">{{ userName }}</span>
-        <button v-if="!isInheritor && !isAdmin" class="header-profile-btn" @click="router.push('/profile')">个人中心</button>
-        <button class="header-chat-btn" @click="router.push('/chat')">消息</button>
+        <button v-if="!isInheritor && !isAdmin" class="header-btn" @click="router.push('/profile')">个人中心</button>
+        <button class="header-btn" @click="router.push('/chat')">消息</button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -94,21 +94,9 @@ function handleLogout() {
   box-shadow: 0 2px 16px rgba(139, 26, 43, 0.35);
 }
 
-.logo {
-  display: flex; align-items: center; gap: 10px;
-  cursor: pointer; white-space: nowrap;
-}
-.logo-seal {
-  display: flex; align-items: center; justify-content: center;
-  width: 36px; height: 36px;
-  background: #fff; color: #c41e3a;
-  font-size: 20px; font-weight: 900;
-  border-radius: 4px;
-}
-.logo-text {
-  font-size: 24px; font-weight: 700;
-  letter-spacing: 4px; color: #fff;
-}
+.logo { display: flex; align-items: center; gap: 10px; cursor: pointer; white-space: nowrap; }
+.logo-img { height: 42px; width: auto; }
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: 4px; color: #fff; }
 
 .nav-links { display: flex; align-items: center; gap: 4px; }
 .nav-item {
@@ -117,71 +105,43 @@ function handleLogout() {
   cursor: pointer; padding: 8px 18px; border-radius: 6px;
   transition: all 0.25s; white-space: nowrap;
   letter-spacing: 2px; font-weight: 400;
-  position: relative;
 }
 .nav-item:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
-.nav-item.active {
-  color: #fff;
-  background: rgba(255, 255, 255, 0.2);
-  font-weight: 700;
-}
-.nav-item.active::after {
-  content: ""; position: absolute;
-  bottom: 4px; left: 50%; transform: translateX(-50%);
-  width: 20px; height: 2px; background: #ffd700; border-radius: 1px;
-}
-
-.nav-separator {
-  width: 1px; height: 24px;
-  background: rgba(255, 255, 255, 0.25);
-  margin: 0 6px;
-}
-
-.nav-inheritor {
-  color: #ffd700 !important;
-  background: rgba(255, 215, 0, 0.12) !important;
-}
+.nav-item.active { color: #fff; background: rgba(255, 255, 255, 0.2); font-weight: 700; }
+.nav-separator { width: 1px; height: 24px; background: rgba(255, 255, 255, 0.25); margin: 0 6px; }
+.nav-inheritor { color: #ffd700 !important; background: rgba(255, 215, 0, 0.12) !important; }
 .nav-inheritor:hover { background: rgba(255, 215, 0, 0.25) !important; }
 .nav-inheritor.active { background: rgba(255, 215, 0, 0.28) !important; color: #fff !important; }
-
-.nav-admin {
-  color: #fff !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-}
+.nav-admin { color: #fff !important; background: rgba(255, 255, 255, 0.1) !important; }
 .nav-admin:hover { background: rgba(255, 255, 255, 0.2) !important; }
 
 .header-right { display: flex; align-items: center; gap: 10px; }
-
-.user-role-tag {
-  font-size: 11px; padding: 2px 10px; border-radius: 10px;
-  font-weight: 700; white-space: nowrap; letter-spacing: 1px;
-}
+.user-role-tag { font-size: 11px; padding: 2px 10px; border-radius: 10px; font-weight: 700; white-space: nowrap; letter-spacing: 1px; }
 .inheritor-tag { background: #ffd700; color: #8b4513; }
-.admin-tag    { background: #fff; color: #c41e3a; }
-.user-tag     { background: rgba(255, 255, 255, 0.2); color: #fff; }
-
+.admin-tag { background: #fff; color: #c41e3a; }
+.user-tag { background: rgba(255, 255, 255, 0.2); color: #fff; }
 .user-name { font-size: 14px; white-space: nowrap; }
 
-.header-profile-btn, .header-chat-btn, .logout-btn {
+.header-btn {
   padding: 6px 14px; font-size: 12px;
-  color: #fff;
-  background: rgba(255, 255, 255, 0.12);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-  border-radius: 4px; cursor: pointer;
-  transition: 0.2s; white-space: nowrap;
-  font-family: inherit;
+  color: #fff; background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px;
+  cursor: pointer; transition: 0.2s; white-space: nowrap; font-family: inherit;
 }
-.header-profile-btn:hover, .header-chat-btn:hover, .logout-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
+.header-btn:hover { background: rgba(255, 255, 255, 0.25); }
+
+.logout-btn {
+  padding: 6px 14px; font-size: 12px;
+  color: #fff; background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px;
+  cursor: pointer; transition: 0.2s; white-space: nowrap; font-family: inherit;
 }
+.logout-btn:hover { background: rgba(255, 255, 255, 0.25); }
 
 .login-top-btn {
   padding: 8px 24px; font-size: 14px;
-  color: #c41e3a;
-  background: #fff;
-  border: none; border-radius: 4px;
-  cursor: pointer; letter-spacing: 2px;
-  font-weight: 600; font-family: inherit;
+  color: #c41e3a; background: #fff; border: none; border-radius: 4px;
+  cursor: pointer; letter-spacing: 2px; font-weight: 600; font-family: inherit;
   transition: 0.2s;
 }
 .login-top-btn:hover { background: #ffe9ec; }
@@ -191,6 +151,6 @@ function handleLogout() {
   .nav-item { padding: 6px 10px; font-size: 13px; }
   .page-header { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
   .logo-text { font-size: 18px; }
-  .logo-seal { width: 28px; height: 28px; font-size: 16px; }
+  .logo-img { height: 32px; }
 }
 </style>

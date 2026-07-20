@@ -48,7 +48,10 @@ async function handleLogin() {
 
 <template>
   <header class="page-header">
-    <div class="logo">码上非遗</div>
+    <div class="logo" @click="$router.push('/')">
+      <img src="/logo.png" alt="码上非遗" class="logo-img" />
+      <span class="logo-text">码上非遗</span>
+    </div>
     <a @click="$router.push('/')" class="back-link">返回首页</a>
   </header>
 
@@ -183,25 +186,31 @@ export default {
 
 <style scoped>
 .page-header {
-  background-color: #c41e3a;
+  background: linear-gradient(135deg, #8b1a2b 0%, #a01e35 40%, #c41e3a 100%);
   color: #fff;
-  padding: 0 5%;
-  height: 64px;
+  padding: 0 6%;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'STSong', serif;
+  box-shadow: 0 2px 16px rgba(139, 26, 43, 0.35);
 }
 .logo {
-  font-size: 20px;
-  font-weight: bold;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; white-space: nowrap;
 }
+.logo-img { height: 42px; width: auto; }
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: 4px; color: #fff; }
 .back-link {
-  color: #fff;
-  cursor: pointer;
+  color: rgba(255,255,255,0.85); cursor: pointer; font-size: 15px;
+  letter-spacing: 2px; text-decoration: none;
+  transition: color 0.2s;
 }
-.back-link:hover {
-  text-decoration: underline;
-}
+.back-link:hover { color: #fff; text-decoration: underline; }
 
 .page-wrap {
   min-height: calc(100vh - 64px - 120px);
