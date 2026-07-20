@@ -92,7 +92,10 @@ function onTabSwitch(key: TabKey) {
   <!-- ==================== 顶部导航 ==================== -->
   <header class="page-header">
     <div class="header-left">
-      <div class="logo" @click="router.push('/')">码上非遗</div>
+      <div class="logo" @click="router.push('/')">
+        <img src="/logo.png" alt="码上非遗" class="logo-img" />
+        <span class="logo-text">码上非遗</span>
+      </div>
       <span class="workspace-tag">传承人工坊</span>
     </div>
 
@@ -224,16 +227,19 @@ function onTabSwitch(key: TabKey) {
 <style scoped>
 /* ==================== 顶部导航 ==================== */
 .page-header {
-  background-color: #c41e3a;
+  background: linear-gradient(135deg, #8b1a2b 0%, #a01e35 40%, #c41e3a 100%);
   color: #fff;
-  padding: 0 5%;
-  height: 64px;
+  padding: 0 6%;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 100;
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'STSong', serif;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 16px rgba(139, 26, 43, 0.35);
 }
 .header-left {
   display: flex;
@@ -241,11 +247,11 @@ function onTabSwitch(key: TabKey) {
   gap: 14px;
 }
 .logo {
-  font-size: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; white-space: nowrap;
 }
+.logo-img { height: 42px; width: auto; }
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: 4px; color: #fff; }
 .workspace-tag {
   font-size: 12px;
   background: #ffd700;
