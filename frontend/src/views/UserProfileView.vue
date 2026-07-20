@@ -361,6 +361,7 @@ async function resendCode() {
         <!-- ========== 我的预约 ========== -->
         <div class="section-header" style="margin-top: 40px">
           <h2>我的预约</h2>
+          <button class="btn-outline" @click="$router.push('/orders')">查看全部订单 →</button>
         </div>
 
         <div class="profile-card">

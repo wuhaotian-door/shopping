@@ -4,6 +4,7 @@ import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
+import HeritageBg from '@/components/HeritageBg.vue'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,7 +12,7 @@ const authStore = useAuthStore()
 
 const showSplash = ref(!sessionStorage.getItem('splash_done'))
 
-const noHeaderNames = ['Login', 'Register', 'RegisterSuccess', 'ForgotPassword', 'Admin', 'Inheritor']
+const noHeaderNames = ['Login', 'Register', 'RegisterSuccess', 'ForgotPassword', 'Admin', 'Inheritor', 'Cart', 'Orders']
 const showHeader = computed(() => !noHeaderNames.includes(route.name as string))
 
 /* ===== 朱砂水波过渡 ===== */
@@ -70,6 +71,7 @@ function startRipple() {
   <!-- ===== 主内容 ===== -->
   <Transition name="page-enter">
     <div v-if="showContent" class="app-main">
+      <HeritageBg />
       <AppHeader v-if="showHeader" />
       <div v-if="renderError" style="padding:40px;color:red;font-family:monospace;white-space:pre-wrap;background:#fff;min-height:100vh;">
         <h2>页面渲染错误</h2>
@@ -149,6 +151,9 @@ function startRipple() {
   40%  { opacity: 0.5; }
   100% { transform: translate(-50%, -50%) scale(200); opacity: 0; }
 }
+
+/* ===== 全局内容层 ===== */
+.app-main { position: relative; z-index: 1; }
 
 /* ===== 主页入场 ===== */
 .page-enter-enter-active {

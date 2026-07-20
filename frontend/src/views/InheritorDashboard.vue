@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import OrderManager from './components/OrderManager.vue'
@@ -26,25 +26,50 @@ const userName = computed(() => authStore.userInfo?.name)
 type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
 const activeTab = ref<TabKey>('orders')
 
-const tabs: { key: TabKey; label: string }[] = [
-  { key: 'orders', label: '预约订单' },
-  { key: 'slots', label: '时段管理' },
-  { key: 'knowledge', label: '非遗资讯' },
-  { key: 'projects', label: '非遗项目' },
-  { key: 'products', label: '商品设置' },
-  { key: 'productOrders', label: '订单管理' },
+// 下拉菜单分组
+interface MenuGroup {
+  label: string
+  children: { key: TabKey; label: string }[]
+}
+const menuGroups: (MenuGroup | { key: TabKey; label: string })[] = [
+  { label: '工坊运营', children: [
+    { key: 'orders', label: '预约订单' },
+    { key: 'slots', label: '时段管理' },
+  ]},
+  { label: '内容管理', children: [
+    { key: 'knowledge', label: '非遗资讯' },
+    { key: 'projects', label: '非遗项目' },
+    { key: 'products', label: '商品设置' },
+  ]},
+  { label: '交易管理', children: [
+    { key: 'productOrders', label: '订单管理' },
+  ]},
   { key: 'stats', label: '数据统计' },
   { key: 'consultation', label: '咨询消息' },
   { key: 'profile', label: '个人中心' },
 ]
 
-function switchTab(key: TabKey) {
-  activeTab.value = key
-}
+const openMenu = ref<string>('')
+const navRef = ref<HTMLElement | null>(null)
 
-function handleLogout() {
-  authStore.logout()
-  router.push('/')
+function toggleMenu(label: string) {
+  openMenu.value = openMenu.value === label ? '' : label
+}
+function closeMenu() {
+  openMenu.value = ''
+}
+function onDocClick(e: MouseEvent) {
+  if (navRef.value && !navRef.value.contains(e.target as Node)) {
+    closeMenu()
+  }
+}
+onMounted(() => document.addEventListener('click', onDocClick))
+onUnmounted(() => document.removeEventListener('click', onDocClick))
+
+function selectTab(key: TabKey) {
+  activeTab.value = key
+  openMenu.value = ''
+  if (key === 'productOrders') loadProductOrders()
 }
 
 // ==================== 商品订单（内联） ====================
@@ -81,10 +106,9 @@ async function handlePOAction(order: ProductOrderVO, action: 'ship' | 'complete'
   }
 }
 
-// 切换到商品订单 tab 时加载数据
-function onTabSwitch(key: TabKey) {
-  activeTab.value = key
-  if (key === 'productOrders') loadProductOrders()
+function handleLogout() {
+  authStore.logout()
+  router.push('/')
 }
 </script>
 
@@ -99,16 +123,32 @@ function onTabSwitch(key: TabKey) {
       <span class="workspace-tag">传承人工坊</span>
     </div>
 
-    <nav class="nav-tabs">
-      <a
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="nav-tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="onTabSwitch(tab.key)"
-      >
-        {{ tab.label }}
-      </a>
+    <nav ref="navRef" class="nav-tabs">
+      <template v-for="item in menuGroups" :key="'label' in item ? item.label : (item as {key:TabKey;label:string}).label">
+        <!-- 下拉菜单项 -->
+        <div v-if="'children' in item" class="nav-dropdown" :class="{ open: openMenu === item.label }">
+          <button class="nav-tab nav-has-sub" :class="{ active: (item as MenuGroup).children.some(c => activeTab === c.key) }" @click="toggleMenu(item.label)">
+            {{ item.label }}
+            <span class="arrow">▾</span>
+          </button>
+          <div class="dropdown-menu">
+            <a
+              v-for="child in (item as MenuGroup).children"
+              :key="child.key"
+              class="dropdown-item"
+              :class="{ active: activeTab === child.key }"
+              @click="selectTab(child.key)"
+            >{{ child.label }}</a>
+          </div>
+        </div>
+        <!-- 直接跳转项 -->
+        <a
+          v-else
+          class="nav-tab"
+          :class="{ active: activeTab === (item as {key:TabKey;label:string}).key }"
+          @click="selectTab((item as {key:TabKey;label:string}).key)"
+        >{{ (item as {key:TabKey;label:string}).label }}</a>
+      </template>
     </nav>
 
     <div class="header-right">
@@ -263,30 +303,68 @@ function onTabSwitch(key: TabKey) {
 }
 
 .nav-tabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
+  display: flex; align-items: center; gap: 4px;
 }
-.nav-tab {
-  color: rgba(255,255,255,0.8);
-  text-decoration: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px 16px;
+
+/* 下拉菜单容器 */
+.nav-dropdown { position: relative; }
+.nav-has-sub {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; font-family: inherit;
+}
+.arrow { font-size: 10px; transition: transform 0.2s; }
+.nav-dropdown.open .arrow { transform: rotate(180deg); }
+
+/* 下拉菜单面板（朱砂红主题） */
+.dropdown-menu {
+  position: absolute; top: 100%; left: 0;
+  margin-top: 4px;
+  min-width: 140px;
+  background: linear-gradient(180deg, #fffaf8 0%, #fff5f2 100%);
+  border: 1px solid rgba(196, 30, 58, 0.15);
   border-radius: 6px;
-  transition: all 0.2s;
-  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(139, 26, 43, 0.18);
+  padding: 4px 0;
+  opacity: 0; visibility: hidden;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  z-index: 200;
 }
-.nav-tab:hover {
-  color: #fff;
-  background: rgba(255,255,255,0.12);
+.nav-dropdown.open .dropdown-menu {
+  opacity: 1; visibility: visible;
+  transform: translateY(0);
 }
-.nav-tab.active {
+.dropdown-item {
+  display: block;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #5c3030;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.dropdown-item:hover {
+  background: rgba(196, 30, 58, 0.06);
   color: #c41e3a;
-  background: #fff;
-  font-weight: bold;
+  border-left-color: #c41e3a;
 }
+.dropdown-item.active {
+  color: #c41e3a;
+  font-weight: 700;
+  background: rgba(196, 30, 58, 0.08);
+  border-left-color: #c41e3a;
+}
+
+/* 基础 tab 样式 */
+.nav-tab {
+  color: rgba(255,255,255,0.85);
+  text-decoration: none; font-size: 14px;
+  cursor: pointer; padding: 8px 16px; border-radius: 6px;
+  transition: all 0.2s; white-space: nowrap;
+  letter-spacing: 1px;
+}
+.nav-tab:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.nav-tab.active { color: #c41e3a; background: #fff; font-weight: 700; }
 
 .header-right {
   display: flex;
