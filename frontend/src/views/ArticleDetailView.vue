@@ -3,8 +3,9 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getArticleById } from '@/api/knowledge'
-import { listComments, submitComment } from '@/api/comment'
+import { listComments, submitComment, deleteComment } from '@/api/comment'
 import type { KnowledgeArticleVO, ArticleCommentVO } from '@/types/api'
+import CommentItem from '@/components/CommentItem.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -66,6 +67,20 @@ const commentForm = ref({ content: '' })
 const submitLoading = ref(false)
 const submitMsg = ref('')
 
+// ===== 回复处理 =====
+async function handleReplyClick(parentId: number, content: string) {
+  if (!article.value) return
+  try {
+    await submitComment(article.value.id, {
+      content,
+      parentId,
+    })
+    await loadComments(article.value.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '回复失败')
+  }
+}
+
 async function handleSubmitComment() {
   if (!commentForm.value.content.trim()) {
     submitMsg.value = '请输入评论内容'
@@ -86,6 +101,15 @@ async function handleSubmitComment() {
     submitMsg.value = e instanceof Error ? e.message : '提交失败'
   } finally {
     submitLoading.value = false
+  }
+}
+
+async function handleDeleteComment(commentId: number) {
+  try {
+    await deleteComment(commentId)
+    await loadComments(article.value!.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '删除失败')
   }
 }
 </script>
@@ -155,16 +179,15 @@ async function handleSubmitComment() {
           <div v-if="commentLoading" class="loading-state">加载评论中...</div>
           <div v-else-if="comments.length === 0" class="empty-comments">暂无评论，快来发表第一条评论吧</div>
           <div v-else class="comment-list">
-            <div v-for="comment in comments" :key="comment.id" class="comment-card">
-              <div class="comment-top">
-                <div class="comment-user-avatar">{{ (comment.userName || '用')[0] }}</div>
-                <div class="comment-user-info">
-                  <span class="comment-user-name">{{ comment.userName || '匿名用户' }}</span>
-                  <span class="comment-time">{{ comment.createTime?.slice(0, 10) }}</span>
-                </div>
-              </div>
-              <p class="comment-content">{{ comment.content }}</p>
-            </div>
+            <CommentItem
+              v-for="comment in comments"
+              :key="comment.id"
+              :comment="comment"
+              :current-user-id="authStore.userInfo?.id ?? null"
+              :depth="0"
+              @reply="handleReplyClick"
+              @delete="handleDeleteComment"
+            />
           </div>
         </div>
       </template>
@@ -318,41 +341,7 @@ async function handleSubmitComment() {
 .submit-msg.error { color: #dc3545; }
 
 /* ---- 评论列表 ---- */
-.comment-list { display: flex; flex-direction: column; gap: 16px; }
-.comment-card {
-  padding: 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.comment-card:hover { border-color: #f0c0c8; background: #fffafa; }
-.comment-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.comment-user-avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e8647a, #c41e3a);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700;
-  flex-shrink: 0;
-}
-.comment-user-info {
-  flex: 1;
-  display: flex; flex-direction: column;
-}
-.comment-user-name { font-size: 15px; color: #333; font-weight: 600; }
-.comment-time { font-size: 12px; color: #999; margin-top: 2px; }
-.comment-content {
-  font-size: 14px;
-  color: #555;
-  line-height: 1.7;
-  padding-left: 52px;
-}
+.comment-list { display: flex; flex-direction: column; gap: 4px; }
 
 .empty-comments {
   text-align: center;

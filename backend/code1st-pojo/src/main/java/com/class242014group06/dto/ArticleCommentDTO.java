@@ -17,4 +17,7 @@ public class ArticleCommentDTO implements Serializable {
 
     @ApiModelProperty(value = "评论内容", required = true)
     private String content;
+
+    @ApiModelProperty(value = "父评论ID，回复评论时传入")
+    private Long parentId;
 }

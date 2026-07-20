@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 文章评论返回视图
@@ -32,6 +33,18 @@ public class ArticleCommentVO implements Serializable {
 
     /** 评论内容 */
     private String content;
+
+    /** 父评论ID */
+    private Long parentId;
+
+    /** 被回复的用户名 */
+    private String replyToUserName;
+
+    /** 子评论列表 */
+    private List<ArticleCommentVO> children;
+
+    /** 软删除标记：0正常 1已删除 */
+    private Integer isDeleted;
 
     /** 评论时间 */
     private LocalDateTime createTime;

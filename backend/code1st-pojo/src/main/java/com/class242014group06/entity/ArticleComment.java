@@ -33,6 +33,12 @@ public class ArticleComment implements Serializable {
     /** 评论内容 */
     private String content;
 
+    /** 父评论ID，NULL表示顶级评论 */
+    private Long parentId;
+
+    /** 软删除标记：0正常 1已删除 */
+    private Integer isDeleted;
+
     /** 创建时间 */
     private LocalDateTime createTime;
 }

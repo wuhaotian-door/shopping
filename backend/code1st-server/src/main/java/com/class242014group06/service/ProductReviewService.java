@@ -16,7 +16,7 @@ public interface ProductReviewService {
     void addReview(Long userId, Long productId, ProductReviewDTO dto);
 
     /**
-     * 查询某商品的所有评价
+     * 查询某商品的所有评价（树形结构）
      */
     List<ProductReviewVO> listByProductId(Long productId);
 
@@ -29,4 +29,9 @@ public interface ProductReviewService {
      * 获取商品评价数量
      */
     Long countByProductId(Long productId);
+
+    /**
+     * 删除自己的评价（软删除）
+     */
+    void deleteReview(Long userId, Long reviewId);
 }

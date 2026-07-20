@@ -57,4 +57,16 @@ public class ArticleCommentController {
         log.info("获取文章评论数（公开），articleId：{}", articleId);
         return Result.success(commentService.countByArticleId(articleId));
     }
+
+    /**
+     * 用户删除自己的评论（需登录）
+     */
+    @DeleteMapping("/{commentId}")
+    @ApiOperation("删除自己的评论")
+    public Result<String> deleteComment(@PathVariable Long commentId) {
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户删除评论，userId：{}，commentId：{}", userId, commentId);
+        commentService.deleteComment(userId, commentId);
+        return Result.success("评论删除成功");
+    }
 }
