@@ -9,14 +9,14 @@ const router = useRouter()
 const route = useRoute()
 const authStore = useAuthStore()
 
-// 开屏动画：每次会话只播放一次
 const showSplash = ref(!sessionStorage.getItem('splash_done'))
 
-// 不需要公共导航栏的页面
 const noHeaderNames = ['Login', 'Register', 'RegisterSuccess', 'ForgotPassword', 'Admin', 'Inheritor']
 const showHeader = computed(() => !noHeaderNames.includes(route.name as string))
 
-// 主页内容是否显示（用于过渡动画）
+/* ===== 朱砂水波过渡 ===== */
+const ripplePhase = ref<'idle' | 'emit' | 'spread' | 'done'>('idle')
+
 const showContent = computed(() => !showSplash.value || route.name === 'Login')
 
 const renderError = ref<string>('')
@@ -42,11 +42,32 @@ onMounted(async () => {
 function onSplashDone() {
   showSplash.value = false
   sessionStorage.setItem('splash_done', '1')
+  if (route.name !== 'Login') {
+    startRipple()
+  }
+}
+
+function startRipple() {
+  ripplePhase.value = 'emit'   // 红点从太阳位置出现
+  setTimeout(() => { ripplePhase.value = 'spread' }, 200)
+  setTimeout(() => { ripplePhase.value = 'done'  }, 900)
 }
 </script>
 
 <template>
   <SplashScreen v-if="showSplash" @done="onSplashDone" />
+
+  <!-- ===== 朱砂水波过渡 ===== -->
+  <div v-if="ripplePhase !== 'idle' && ripplePhase !== 'done'" class="ripple-overlay" :class="'ripple-' + ripplePhase">
+    <!-- 中心红日原点（太阳位置在页面正上方） -->
+    <div class="ripple-center"></div>
+    <!-- 水波圈层 -->
+    <div class="ripple-ring ring-1"></div>
+    <div class="ripple-ring ring-2"></div>
+    <div class="ripple-ring ring-3"></div>
+  </div>
+
+  <!-- ===== 主内容 ===== -->
   <Transition name="page-enter">
     <div v-if="showContent" class="app-main">
       <AppHeader v-if="showHeader" />
@@ -56,16 +77,85 @@ function onSplashDone() {
 </template>
 
 <style>
-/* 主页入场过渡：从下方微微上移 + 淡入 */
+/* ===== 朱砂水波过渡覆盖层 ===== */
+.ripple-overlay {
+  position: fixed; inset: 0; z-index: 9998;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+/* 中心红日原点（位于页面正上方，对应太阳最终位置） */
+.ripple-center {
+  position: absolute;
+  top: 4%; left: 50%;
+  width: 0; height: 0;
+}
+
+/* 水波圈 */
+.ripple-ring {
+  position: absolute;
+  top: 4%; left: 50%;
+  width: 20px; height: 20px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  border: 2px solid rgba(196, 30, 58, 0.6);
+  background: transparent;
+  opacity: 0;
+}
+
+/* 发射阶段 */
+.ripple-emit .ripple-center {
+  width: 12px; height: 12px;
+  background: #c41e3a;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: rippleCenterAppear 0.2s ease-out forwards;
+}
+@keyframes rippleCenterAppear {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* 扩散阶段 */
+.ripple-spread .ripple-center {
+  width: 12px; height: 12px;
+  background: #c41e3a;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(1);
+  animation: rippleCenterFade 0.7s ease-out forwards;
+}
+@keyframes rippleCenterFade {
+  0%   { opacity: 1; }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(3); }
+}
+
+/* 水波圈依次扩散 */
+.ripple-spread .ring-1 {
+  animation: rippleOut 0.7s ease-out 0s forwards;
+}
+.ripple-spread .ring-2 {
+  animation: rippleOut 0.7s ease-out 0.15s forwards;
+}
+.ripple-spread .ring-3 {
+  animation: rippleOut 0.7s ease-out 0.3s forwards;
+}
+
+@keyframes rippleOut {
+  0%   { transform: translate(-50%, -50%) scale(0); opacity: 0.7; }
+  40%  { opacity: 0.5; }
+  100% { transform: translate(-50%, -50%) scale(200); opacity: 0; }
+}
+
+/* ===== 主页入场 ===== */
 .page-enter-enter-active {
-  transition: opacity 0.55s ease, transform 0.55s cubic-bezier(0.22, 0.61, 0.36, 1);
+  transition: opacity 0.5s ease 0.3s, transform 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) 0.3s;
 }
 .page-enter-leave-active {
-  transition: opacity 0.25s ease;
+  transition: opacity 0.2s ease;
 }
 .page-enter-enter-from {
   opacity: 0;
-  transform: translateY(18px);
+  transform: translateY(10px);
 }
 .page-enter-leave-to {
   opacity: 0;
