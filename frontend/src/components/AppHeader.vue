@@ -34,7 +34,10 @@ function handleLogout() {
 
 <template>
   <header class="page-header">
-    <div class="logo" @click="router.push('/')">码上非遗</div>
+    <div class="logo" @click="router.push('/')">
+      <span class="logo-seal">非</span>
+      <span class="logo-text">码上非遗</span>
+    </div>
 
     <nav class="nav-links">
       <a
@@ -42,32 +45,29 @@ function handleLogout() {
         :key="item.label"
         class="nav-item"
         :class="{ active: isActive(item.path) }"
-        @click="item.hash ? router.push(item.path + item.hash) : router.push(item.path)"
+        @click="router.push(item.path)"
       >
         {{ item.label }}
       </a>
 
-      <!-- 传承人专属入口 -->
       <template v-if="isInheritor">
         <span class="nav-separator"></span>
         <a class="nav-item nav-inheritor" @click="router.push('/inheritor')">我的工坊</a>
       </template>
-      <!-- 管理员入口 -->
       <template v-if="isAdmin">
         <span class="nav-separator"></span>
         <a class="nav-item nav-admin" @click="router.push('/admin')">管理后台</a>
       </template>
     </nav>
 
-    <!-- 右侧用户区 -->
     <div class="header-right">
       <template v-if="isLoggedIn">
         <span class="user-role-tag" :class="isInheritor ? 'inheritor-tag' : isAdmin ? 'admin-tag' : 'user-tag'">
           {{ isInheritor ? '非遗传承人' : isAdmin ? '管理员' : '用户' }}
         </span>
         <span class="user-name">{{ userName }}</span>
-        <button v-if="!isInheritor && !isAdmin" class="header-profile-btn" @click="router.push('/profile')">👤 个人中心</button>
-        <button class="header-chat-btn" @click="router.push('/chat')">💬 消息</button>
+        <button v-if="!isInheritor && !isAdmin" class="header-profile-btn" @click="router.push('/profile')">个人中心</button>
+        <button class="header-chat-btn" @click="router.push('/chat')">消息</button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -78,10 +78,8 @@ function handleLogout() {
 </template>
 
 <style scoped>
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;700&display=swap');
-
 .page-header {
-  background-color: #c41e3a;
+  background: linear-gradient(135deg, #8b1a2b 0%, #a01e35 40%, #c41e3a 100%);
   color: #fff;
   padding: 0 6%;
   height: 72px;
@@ -91,58 +89,108 @@ function handleLogout() {
   position: sticky;
   top: 0;
   z-index: 100;
-  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'FangSong', '仿宋', 'STSong', '宋体', serif;
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'STSong', serif;
   letter-spacing: 1px;
+  box-shadow: 0 2px 16px rgba(139, 26, 43, 0.35);
 }
-.logo {
-  font-size: 26px; font-weight: 700; cursor: pointer; white-space: nowrap;
-  letter-spacing: 4px;
-}
-.nav-links { display: flex; align-items: center; gap: 10px; }
-.nav-item {
-  color: rgba(255,255,255,0.85); text-decoration: none; font-size: 16px;
-  cursor: pointer; padding: 10px 20px; border-radius: 8px; transition: all 0.25s; white-space: nowrap;
-  letter-spacing: 2px; font-weight: 400;
-}
-.nav-item:hover { color: #fff; background: rgba(255,255,255,0.12); }
-.nav-item.active { color: #fff; background: rgba(255,255,255,0.22); font-weight: 700; }
-.nav-separator { width: 1px; height: 26px; background: rgba(255,255,255,0.2); margin: 0 6px; }
-.nav-inheritor { background: rgba(255,215,0,0.15) !important; color: #ffd700 !important; }
-.nav-inheritor:hover { background: rgba(255,215,0,0.28) !important; }
-.nav-inheritor.active { background: #ffd700 !important; color: #8b4513 !important; }
-.nav-admin { background: rgba(255,255,255,0.12) !important; }
-.nav-admin:hover { background: rgba(255,255,255,0.28) !important; }
 
-.header-right { display: flex; align-items: center; gap: 12px; }
-.user-role-tag { font-size: 12px; padding: 3px 12px; border-radius: 12px; font-weight: 700; white-space: nowrap; letter-spacing: 1px; }
+.logo {
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; white-space: nowrap;
+}
+.logo-seal {
+  display: flex; align-items: center; justify-content: center;
+  width: 36px; height: 36px;
+  background: #fff; color: #c41e3a;
+  font-size: 20px; font-weight: 900;
+  border-radius: 4px;
+}
+.logo-text {
+  font-size: 24px; font-weight: 700;
+  letter-spacing: 4px; color: #fff;
+}
+
+.nav-links { display: flex; align-items: center; gap: 4px; }
+.nav-item {
+  color: rgba(255, 255, 255, 0.85);
+  text-decoration: none; font-size: 15px;
+  cursor: pointer; padding: 8px 18px; border-radius: 6px;
+  transition: all 0.25s; white-space: nowrap;
+  letter-spacing: 2px; font-weight: 400;
+  position: relative;
+}
+.nav-item:hover { color: #fff; background: rgba(255, 255, 255, 0.12); }
+.nav-item.active {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.2);
+  font-weight: 700;
+}
+.nav-item.active::after {
+  content: ""; position: absolute;
+  bottom: 4px; left: 50%; transform: translateX(-50%);
+  width: 20px; height: 2px; background: #ffd700; border-radius: 1px;
+}
+
+.nav-separator {
+  width: 1px; height: 24px;
+  background: rgba(255, 255, 255, 0.25);
+  margin: 0 6px;
+}
+
+.nav-inheritor {
+  color: #ffd700 !important;
+  background: rgba(255, 215, 0, 0.12) !important;
+}
+.nav-inheritor:hover { background: rgba(255, 215, 0, 0.25) !important; }
+.nav-inheritor.active { background: rgba(255, 215, 0, 0.28) !important; color: #fff !important; }
+
+.nav-admin {
+  color: #fff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+.nav-admin:hover { background: rgba(255, 255, 255, 0.2) !important; }
+
+.header-right { display: flex; align-items: center; gap: 10px; }
+
+.user-role-tag {
+  font-size: 11px; padding: 2px 10px; border-radius: 10px;
+  font-weight: 700; white-space: nowrap; letter-spacing: 1px;
+}
 .inheritor-tag { background: #ffd700; color: #8b4513; }
-.admin-tag { background: #fff; color: #c41e3a; }
-.user-tag { background: rgba(255,255,255,0.2); color: #fff; }
-.user-name { font-size: 15px; white-space: nowrap; font-weight: 500; }
-.header-profile-btn {
-  padding: 7px 16px; font-size: 13px; color: #fff; background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap;
+.admin-tag    { background: #fff; color: #c41e3a; }
+.user-tag     { background: rgba(255, 255, 255, 0.2); color: #fff; }
+
+.user-name { font-size: 14px; white-space: nowrap; }
+
+.header-profile-btn, .header-chat-btn, .logout-btn {
+  padding: 6px 14px; font-size: 12px;
+  color: #fff;
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  border-radius: 4px; cursor: pointer;
+  transition: 0.2s; white-space: nowrap;
+  font-family: inherit;
 }
-.header-profile-btn:hover { background: rgba(255,255,255,0.3); }
-.header-chat-btn {
-  padding: 7px 16px; font-size: 13px; color: #fff; background: rgba(255,255,255,0.2);
-  border: 1px solid rgba(255,255,255,0.5); border-radius: 6px; cursor: pointer; transition: 0.2s;
+.header-profile-btn:hover, .header-chat-btn:hover, .logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
 }
-.header-chat-btn:hover { background: rgba(255,255,255,0.35); }
-.logout-btn {
-  padding: 7px 16px; font-size: 13px; color: #fff; background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; cursor: pointer; transition: 0.2s; white-space: nowrap;
-}
-.logout-btn:hover { background: rgba(255,255,255,0.3); }
+
 .login-top-btn {
-  padding: 9px 26px; font-size: 15px; color: #fff; background: rgba(255,255,255,0.15);
-  border: 1px solid rgba(255,255,255,0.4); border-radius: 6px; cursor: pointer; letter-spacing: 2px;
+  padding: 8px 24px; font-size: 14px;
+  color: #c41e3a;
+  background: #fff;
+  border: none; border-radius: 4px;
+  cursor: pointer; letter-spacing: 2px;
+  font-weight: 600; font-family: inherit;
+  transition: 0.2s;
 }
+.login-top-btn:hover { background: #ffe9ec; }
 
 @media (max-width: 768px) {
-  .nav-links { gap: 4px; }
-  .nav-item { padding: 8px 12px; font-size: 13px; }
-  .page-header { height: auto; padding: 10px 20px; flex-wrap: wrap; gap: 8px; }
-  .logo { font-size: 20px; }
+  .nav-links { gap: 2px; }
+  .nav-item { padding: 6px 10px; font-size: 13px; }
+  .page-header { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
+  .logo-text { font-size: 18px; }
+  .logo-seal { width: 28px; height: 28px; font-size: 16px; }
 }
 </style>
