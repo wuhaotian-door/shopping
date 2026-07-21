@@ -587,7 +587,9 @@ DROP TABLE IF EXISTS friend_relation;
 CREATE TABLE friend_relation (
     id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
     user_id      BIGINT       NOT NULL COMMENT '发起方用户ID',
+    user_role    VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '发起方角色(USER/INHERITOR/ADMIN)',
     friend_id    BIGINT       NOT NULL COMMENT '接收方用户ID',
+    friend_role  VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '接收方角色(USER/INHERITOR/ADMIN)',
     status       TINYINT      NOT NULL DEFAULT 0 COMMENT '状态: 0-待接受, 1-已接受, 2-已拒绝',
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',

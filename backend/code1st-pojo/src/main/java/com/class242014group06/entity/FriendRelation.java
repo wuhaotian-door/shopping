@@ -17,7 +17,9 @@ public class FriendRelation implements Serializable {
 
     private Long id;
     private Long userId;
+    private String userRole;
     private Long friendId;
+    private String friendRole;
     private Integer status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
