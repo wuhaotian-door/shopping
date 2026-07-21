@@ -3,6 +3,8 @@ import { ref, onMounted, nextTick, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { listConversations, getMessages, sendMessage, searchUser } from '@/api/chat'
 import { listFriends, listPendingRequests, listMyRequests, applyFriend, acceptFriend, rejectFriend } from '@/api/friend'
+import { listPublicProfiles } from '@/api/profile'
+import { listAllUsers } from '@/api/auth'
 import type { ConversationVO, ChatMessageVO, FriendVO } from '@/types/api'
 import { unreadCount } from '@/composables/useUnread'
 import { notifyRecipient } from '@/api/notify'
@@ -29,8 +31,15 @@ const msgContainer = ref<HTMLElement | null>(null)
 // 新建对话
 const showNewChat = ref(false)
 const searchUsername = ref('')
-const searchResult = ref<{ id: number; name: string; username: string; role: string; isFriend: number } | null>(null)
+const searchResults = ref<{ id: number; name: string; username: string; role: string; isFriend: number }[]>([])
 const searchError = ref('')
+const inheritorCache = ref<{ employeeId: number; name: string }[]>([])
+
+// 预加载传承人列表（用于角色校验）
+async function loadInheritorCache() {
+  try { inheritorCache.value = (await listPublicProfiles()).data || [] } catch { /* */ }
+}
+onMounted(() => { loadConversations(); loadInheritorCache() })
 
 // 好友
 const showFriendPanel = ref(false)
@@ -105,57 +114,119 @@ async function handleSend() {
 // ==================== 新建对话 ====================
 async function handleSearchUser() {
   const u = searchUsername.value.trim()
-  if (!u) { searchError.value = '请输入关键词搜索'; searchResult.value = null; return }
+  if (!u) { searchError.value = '请输入关键词搜索'; searchResults.value = []; return }
   searchError.value = ''
+  // 先加载好友列表（用于交叉校验 isFriend）
+  if (canFriend.value) await loadFriendData()
   try {
-    // 先确保好友列表已加载（用于交叉校验）
-    if (canFriend.value && friends.value.length === 0) await loadFriendData()
     const res = (await searchUser(u)).data
-    // 前端二次校验：用好友列表交叉验证 isFriend
-    if (res && canFriend.value && res.role === currentRole.value) {
-      const inFriendList = friends.value.some(f => f.userId === res.id && f.role === res.role)
-      res.isFriend = inFriendList ? 1 : 0
+    const raw = Array.isArray(res) ? res : (res ? [res] : [])
+    // 去重 + 修正角色
+    const out: typeof searchResults.value = []
+    const seenNames = new Set<string>()
+    for (const r of raw) {
+      // 用公开传承人列表 + 启发式规则校验真实角色
+      let role = r.role
+      const isInh = inheritorCache.value.some(ih =>
+        // 不使用 employeeId 比对（跨角色 id 可能碰撞）
+
+        (r.name && ih.name === r.name) ||
+        (r.username && ih.name === r.username)
+      ) || (r.username || '').startsWith('inheritor_')
+      if (isInh) role = 'INHERITOR'
+      if (!role) role = 'USER'
+
+      // 去重：按 name 去重（USER 和 INHERITOR 表可能返回同一人不同 id）
+      const dedupKey = r.name || r.username || ''
+      if (dedupKey && seenNames.has(dedupKey)) continue
+      if (dedupKey) seenNames.add(dedupKey)
+
+      out.push({
+        ...r, role,
+        isFriend: canFriend.value && role === currentRole.value
+          ? (friends.value.some(f => f.userId === r.id && f.role === role) ? 1 : 0)
+          : 0,
+      })
     }
-    searchResult.value = res
+    // 二次合并：同一 name 只保留传承人版本
+    const merged: typeof out = []
+    for (const r of out) {
+      const exist = merged.find(m => m.name && r.name && m.name === r.name)
+      if (exist) {
+        if (r.role === 'INHERITOR') { Object.assign(exist, r) }
+      } else {
+        merged.push(r)
+      }
+    }
+    searchResults.value = merged
+    if (merged.length === 0) searchError.value = '未找到匹配用户'
   } catch {
-    // API 搜索失败 → 本地模糊搜索：好友列表 + 会话列表
+    // API 失败 → 加载全量数据本地模糊搜索
     await loadConversations()
     if (canFriend.value) await loadFriendData()
     const kw = u.toLowerCase()
+    const myRole = currentRole.value
+    const local: any[] = []
+    const seen = new Set<string>()
 
-    // 先查好友列表
-    let match = friends.value.find(f =>
-      f.name?.toLowerCase().includes(kw) || f.userName?.toLowerCase().includes(kw)
-    )
-    if (match) {
-      searchResult.value = { id: match.userId, name: match.name, username: match.userName, role: match.role, isFriend: 1 }
-      return
-    }
-
-    // 再查会话列表（非好友但有过对话的用户）
-    const convMatch = conversations.value.find(c =>
-      c.otherUserName?.toLowerCase().includes(kw)
-    )
-    if (convMatch) {
-      // 从会话中提取对方信息（只能拿到 name，id/role 可能不全）
-      searchResult.value = {
-        id: convMatch.otherUserId || 0,
-        name: convMatch.otherUserName,
-        username: convMatch.otherUserName,
-        role: convMatch.otherUserRole || 'USER',
-        isFriend: 0,
+    function addResult(r: any) {
+      // 校正角色
+      if (!r.role || r.role === 'USER') {
+        if (inheritorCache.value.some(ih => // 不使用 employeeId 比对（跨角色 id 可能碰撞）
+ (r.name && ih.name === r.name) || (r.username && ih.name === r.username))
+          || (r.username || '').startsWith('inheritor_')) r.role = 'INHERITOR'
       }
-      return
+      if (!r.role) r.role = 'USER'
+      // 按 name 去重（同一人不同来源只保留第一条）
+      const dedupKey = r.name || r.username || ''
+      if (dedupKey && seen.has(dedupKey)) return
+      if (dedupKey) seen.add(dedupKey)
+      r.isFriend = canFriend.value && r.role === myRole
+        ? (friends.value.some(f => f.userId === r.id && f.role === r.role) ? 1 : 0)
+        : 0
+      local.push(r)
     }
 
-    searchError.value = '未找到该用户'; searchResult.value = null
+    // 来源1: 好友列表
+    for (const f of friends.value) {
+      if (f.name?.toLowerCase().includes(kw) || f.userName?.toLowerCase().includes(kw)) {
+        addResult({ id: f.userId, name: f.name, username: f.userName, role: f.role })
+      }
+    }
+    // 来源2: 会话列表
+    for (const c of conversations.value) {
+      if (c.otherUserName?.toLowerCase().includes(kw)) {
+        addResult({ id: c.otherUserId, name: c.otherUserName, username: c.otherUserName, role: c.otherUserRole || 'USER' })
+      }
+    }
+    // 来源3: 全量用户表
+    try {
+      const users = (await listAllUsers()).data || []
+      for (const uu of users) {
+        if (uu.name?.toLowerCase().includes(kw) || uu.username?.toLowerCase().includes(kw)) {
+          addResult({ id: uu.id, name: uu.name, username: uu.username, role: 'USER' })
+        }
+      }
+    } catch { /* */ }
+    // 来源4: 全量传承人
+    try {
+      const inheritors = (await listPublicProfiles()).data || []
+      for (const ih of inheritors) {
+        if (ih.name?.toLowerCase().includes(kw)) {
+          addResult({ id: ih.employeeId, name: ih.name, username: ih.name, role: 'INHERITOR' })
+        }
+      }
+    } catch { /* */ }
+
+    searchResults.value = local.slice(0, 10)
+    if (local.length === 0) searchError.value = '未找到匹配用户'
   }
 }
 
 async function handleStartChat(rid: number, rrole: string) {
   try {
     const res = await sendMessage({ receiverId: rid, receiverRole: rrole, content: '你好！' })
-    showNewChat.value = false; searchUsername.value = ''; searchResult.value = null
+    showNewChat.value = false; searchUsername.value = ''; searchResults.value = []
     await loadConversations()
     const nc = conversations.value.find(c => c.conversationId === res.data.conversationId)
     if (nc) { activeConv.value = nc; await loadMessages(nc.conversationId); startPolling() }
@@ -176,24 +247,28 @@ async function handleChatWithAdmin() {
 async function loadFriendData() {
   friendLoading.value = true
   try {
-    const [f, p, m] = await Promise.all([listFriends(), listPendingRequests(), listMyRequests().catch(() => ({ data: [] as FriendVO[] }))])
-    // 前端二次过滤：仅保留同角色的好友（防止后端未按角色隔离）
+    const [f, p, mResult] = await Promise.all([
+      listFriends(), listPendingRequests(),
+      listMyRequests().then(r => r.data).catch(e => { console.error('listMyRequests 失败:', e); return [] }),
+    ])
     const myRole = currentRole.value
     friends.value = f.data.filter(x => x.role === myRole)
     pendingRequests.value = p.data.filter(x => x.role === myRole)
-    myRequests.value = m.data.filter(x => x.role === myRole)
+    myRequests.value = Array.isArray(mResult) ? mResult : []
+    console.log('好友数据: 好友', friends.value.length, '待处理', pendingRequests.value.length, '我的申请', myRequests.value.length, 'myRole', myRole, '申请原始', mResult)
   }
   catch { /* */ } finally { friendLoading.value = false }
 }
 
-async function handleApplyFriend() {
-  if (!searchResult.value || searchResult.value.role !== currentRole.value) { alert('仅可向同角色用户发送好友申请'); return }
+async function handleApplyFriend(target: { id: number; name: string; username: string; role: string; isFriend: number }) {
+  if (target.role !== currentRole.value) { alert('仅可向同角色用户发送好友申请'); return }
   try {
-    await applyFriend(searchResult.value.id, searchResult.value.role)
-    alert('好友申请已发送！')
-    searchUsername.value = ''; searchResult.value = null
-    // 实时刷新完整好友数据（含我的申请）
+    await applyFriend(target.id, target.role)
+    alert(`已向 ${target.name} 发送好友申请！`)
+    searchUsername.value = ''; searchResults.value = []
+    // 刷新好友数据并自动打开好友面板查看申请状态
     await loadFriendData()
+    showFriendPanel.value = true
   } catch (e: unknown) { alert(e instanceof Error ? e.message : '申请失败') }
 }
 
@@ -206,7 +281,6 @@ async function handleRejectFriend(r: FriendVO) {
   catch (e: unknown) { alert(e instanceof Error ? e.message : '操作失败') }
 }
 
-onMounted(() => { loadConversations() })
 </script>
 
 <template>
@@ -230,18 +304,23 @@ onMounted(() => { loadConversations() })
           <button class="btn-sm-primary" @click="handleSearchUser">搜索</button>
         </div>
         <p v-if="searchError" class="err-text">{{ searchError }}</p>
-        <div v-if="searchResult" class="search-result fade-in">
-          <div class="result-row">
-            <span class="result-name">{{ searchResult.name }}</span>
-            <span class="result-role">{{ roleLabel(searchResult.role) }}</span>
-            <span class="result-id">@{{ searchResult.username }}</span>
-          </div>
-          <div class="result-actions">
-            <button class="btn-sm-primary" @click="handleStartChat(searchResult.id, searchResult.role)">发起对话</button>
-            <!-- 仅同角色之间可加好友（USER↔USER 或 INHERITOR↔INHERITOR） -->
-            <button v-if="canFriend && searchResult.role === currentRole && !searchResult.isFriend" class="btn-sm-outline" @click="handleApplyFriend">加好友</button>
-            <span v-if="canFriend && searchResult.role === currentRole && searchResult.isFriend" class="friend-badge">已是好友</span>
-            <span v-if="canFriend && searchResult.role !== currentRole && searchResult.role !== 'ADMIN'" class="friend-badge" style="color:#888">可对话</span>
+        <div v-if="searchResults.length > 0" class="search-results-list">
+          <div v-for="(sr, idx) in searchResults" :key="sr.id + sr.role" class="search-result fade-in" :style="{ animationDelay: idx * 0.05 + 's' }">
+            <div class="result-row">
+              <span class="result-name">{{ sr.name }}</span>
+              <span class="result-role">{{ roleLabel(sr.role) }}</span>
+              <span class="result-id">@{{ sr.username }}</span>
+            </div>
+            <div class="result-actions">
+              <!-- 管理员 -->
+              <button v-if="sr.role === 'ADMIN'" class="btn-sm-primary" @click="handleStartChat(sr.id, sr.role)">联系管理员</button>
+              <!-- 同角色 + 好友：对话 -->
+              <button v-else-if="canFriend && sr.role === currentRole && sr.isFriend" class="btn-sm-primary" @click="handleStartChat(sr.id, sr.role)">发起对话</button>
+              <!-- 同角色 + 非好友：加好友 -->
+              <button v-else-if="canFriend && sr.role === currentRole && !sr.isFriend" class="btn-sm-outline" @click="handleApplyFriend(sr)">加好友</button>
+              <!-- 跨角色：可直接对话（不加好友） -->
+              <button v-else-if="canFriend" class="btn-sm-primary" @click="handleStartChat(sr.id, sr.role)">发起对话</button>
+            </div>
           </div>
         </div>
       </div>
@@ -384,6 +463,24 @@ onMounted(() => { loadConversations() })
 .result-actions { display: flex; gap: 8px; align-items: center; }
 .friend-badge { font-size: 12px; color: #27ae60; }
 .err-text { color: #dc3545; font-size: 12px; margin-top: 6px; }
+
+/* 搜索结果滚动列表 */
+.search-results-list {
+  max-height: 240px; overflow-y: auto; margin-top: 4px;
+}
+.search-results-list::-webkit-scrollbar { width: 5px; }
+.search-results-list::-webkit-scrollbar-track { background: transparent; }
+.search-results-list::-webkit-scrollbar-thumb { background: rgba(196,30,58,0.15); border-radius: 3px; }
+.search-results-list::-webkit-scrollbar-thumb:hover { background: rgba(196,30,58,0.3); }
+
+/* 搜索项过渡动画 */
+.search-result {
+  animation: resultSlideIn 0.35s ease-out both;
+}
+@keyframes resultSlideIn {
+  0% { opacity: 0; transform: translateY(-8px) scale(0.97); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
 .admin-quick-btn { width: 100%; padding: 10px; font-size: 14px; color: #fff; background: linear-gradient(135deg, #c41e3a, #d43030); border: none; border-radius: 8px; cursor: pointer; font-weight: 600; transition: 0.2s; }
 .admin-quick-btn:hover { background: linear-gradient(135deg, #a8162b, #b82028); transform: translateY(-1px); }
 .search-divider { display: flex; align-items: center; margin: 12px 0; gap: 10px; }

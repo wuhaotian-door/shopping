@@ -26,8 +26,9 @@ public class FriendController {
     @ApiOperation("发送好友申请")
     public Result<String> apply(@RequestBody FriendApplyDTO dto) {
         Long userId = BaseContext.getCurrentId();
-        log.info("发送好友申请：from={}, to={}", userId, dto.getTargetUserId());
-        friendService.apply(userId, dto.getTargetUserId());
+        String userRole = BaseContext.getCurrentRole();
+        log.info("发送好友申请：from={}({}), to={}({})", userId, userRole, dto.getTargetUserId(), dto.getTargetRole());
+        friendService.apply(userId, userRole, dto.getTargetUserId(), dto.getTargetRole());
         return Result.success("好友申请已发送");
     }
 
@@ -63,5 +64,13 @@ public class FriendController {
         Long userId = BaseContext.getCurrentId();
         log.info("获取待处理好友申请：userId={}", userId);
         return Result.success(friendService.listPendingRequests(userId));
+    }
+
+    @GetMapping("/my-requests")
+    @ApiOperation("获取我发出的好友申请")
+    public Result<List<FriendVO>> listMyRequests() {
+        Long userId = BaseContext.getCurrentId();
+        log.info("获取我发出的好友申请：userId={}", userId);
+        return Result.success(friendService.listMyRequests(userId));
     }
 }

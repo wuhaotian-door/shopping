@@ -8,4 +8,6 @@ import java.io.Serializable;
 public class FriendApplyDTO implements Serializable {
     /** 目标用户ID */
     private Long targetUserId;
+    /** 目标用户角色 */
+    private String targetRole;
 }

@@ -8,8 +8,8 @@ import java.util.List;
 @Mapper
 public interface FriendRelationMapper {
 
-    @Insert("INSERT INTO friend_relation (user_id, friend_id, status, created_at, updated_at) " +
-            "VALUES (#{userId}, #{friendId}, #{status}, NOW(), NOW())")
+    @Insert("INSERT INTO friend_relation (user_id, user_role, friend_id, friend_role, status, created_at, updated_at) " +
+            "VALUES (#{userId}, #{userRole}, #{friendId}, #{friendRole}, #{status}, NOW(), NOW())")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(FriendRelation relation);
 
@@ -31,6 +31,9 @@ public interface FriendRelationMapper {
 
     /** 查询待处理的好友申请（别人发给我的） */
     List<FriendRelation> listPendingRequests(@Param("userId") Long userId);
+
+    /** 查询我发出的好友申请 */
+    List<FriendRelation> listMyRequests(@Param("userId") Long userId);
 
     /** 检查是否为好友 */
     @Select("SELECT COUNT(*) FROM friend_relation WHERE status = 1 AND " +
