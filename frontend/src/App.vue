@@ -5,9 +5,11 @@ import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
 import HeritageBg from '@/components/HeritageBg.vue'
+import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
 const route = useRoute()
+useHistory() // 自动记录浏览足迹
 const authStore = useAuthStore()
 
 const showSplash = ref(!sessionStorage.getItem('splash_done'))

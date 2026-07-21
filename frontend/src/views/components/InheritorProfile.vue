@@ -1,11 +1,19 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { getMyProfile, saveProfile } from '@/api/profile'
 import { sendResetCode, resetPassword } from '@/api/auth'
-import type { InheritorProfileVO, InheritorProfileDTO } from '@/types/api'
+import { listMyOrders } from '@/api/order'
+import { listMyProductOrders } from '@/api/product'
+import type { InheritorProfileVO, InheritorProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
 import { useAuthStore } from '@/stores/auth'
+import { useCartStore } from '@/stores/cart'
+import { useHistory } from '@/composables/useHistory'
 
+const router = useRouter()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
+const { getUserHistory } = useHistory()
 
 const profile = ref<InheritorProfileVO>({
   id: 0, employeeId: 0, name: '', phone: '', sex: '', region: '',
@@ -19,8 +27,39 @@ const form = ref({
   honorTitle: '', selfIntro: '', craftTypes: '', address: '', avatarUrl: '',
 })
 const saveMsg = ref('')
+const showHistory = ref(false)
 
-onMounted(() => { loadProfile() })
+onMounted(() => { loadProfile(); loadOrders(); loadProductOrders() })
+
+// ===== 工坊预约订单 =====
+const orders = ref<OrderVO[]>([])
+const loadingOrders = ref(false)
+const orderStatusMap: Record<number, { label: string; cls: string }> = {
+  0: { label: '待确认', cls: 's-pending' },
+  1: { label: '已确认', cls: 's-confirmed' },
+  2: { label: '已完成', cls: 's-done' },
+  3: { label: '已取消', cls: 's-cancel' },
+}
+async function loadOrders() {
+  loadingOrders.value = true
+  try { orders.value = (await listMyOrders()).data || [] }
+  catch { /* */ } finally { loadingOrders.value = false }
+}
+
+// ===== 文创商品订单 =====
+const productOrders = ref<ProductOrderVO[]>([])
+const loadingPO = ref(false)
+const poStatusMap: Record<number, { label: string; cls: string }> = {
+  0: { label: '待发货', cls: 's-pending' },
+  1: { label: '已发货', cls: 's-shipped' },
+  2: { label: '已完成', cls: 's-done' },
+  3: { label: '已取消', cls: 's-cancel' },
+}
+async function loadProductOrders() {
+  loadingPO.value = true
+  try { productOrders.value = (await listMyProductOrders()).data || [] }
+  catch { /* */ } finally { loadingPO.value = false }
+}
 
 async function loadProfile() {
   try {
@@ -184,6 +223,29 @@ async function handleChangePwd() {
       </div>
 
       <!-- 编辑按钮 -->
+      <!-- ===== 快捷入口卡片 ===== -->
+      <div class="quick-cards">
+        <div class="quick-card" @click="router.push('/cart')">
+          <span class="qc-icon">🛒</span>
+          <span class="qc-label">购物车</span>
+          <span v-if="cartStore.count > 0" class="qc-badge">{{ cartStore.count }}</span>
+        </div>
+        <div class="quick-card" @click="showHistory = !showHistory">
+          <span class="qc-icon">👣</span>
+          <span class="qc-label">个人足迹</span>
+        </div>
+      </div>
+
+      <!-- 足迹面板 -->
+      <div v-if="showHistory" class="history-panel">
+        <h3>浏览足迹</h3>
+        <div v-if="getUserHistory().length === 0" class="empty-tip">暂无浏览记录</div>
+        <div v-for="h in getUserHistory().slice(0, 10)" :key="h.path" class="history-item" @click="router.push(h.path)">
+          <span class="hi-title">{{ h.title }}</span>
+          <span class="hi-time">{{ h.time }}</span>
+        </div>
+      </div>
+
       <div v-if="editMode" class="profile-edit-actions">
         <button class="btn-primary" @click="handleSave">保存修改</button>
         <button class="btn-outline" @click="cancelEdit">取消</button>
@@ -210,6 +272,47 @@ async function handleChangePwd() {
         </div>
         <p v-if="pwdMsg" class="save-msg" :class="{ error: pwdMsg.includes('失败') || pwdMsg.includes('错误') }">{{ pwdMsg }}</p>
       </div>
+    </div>
+
+    <!-- ===== 工坊预约订单 ===== -->
+    <div class="section-header" style="margin-top:36px"><h2>工坊预约</h2><button class="btn-outline" @click="router.push('/orders')">查看全部订单 →</button></div>
+    <div class="order-card">
+      <div v-if="loadingOrders" class="empty-tip">加载中...</div>
+      <div v-else-if="orders.length === 0" class="empty-tip">暂无工坊预约</div>
+      <table v-else class="order-table">
+        <thead><tr><th>传承人</th><th>日期</th><th>时段</th><th>人数</th><th>备注</th><th>状态</th></tr></thead>
+        <tbody>
+          <tr v-for="o in orders" :key="o.id">
+            <td>{{ o.inheritorName || '-' }}</td>
+            <td>{{ o.date }}</td>
+            <td>{{ o.timeSlot }}</td>
+            <td>{{ o.peopleCount }}人</td>
+            <td class="rmk">{{ o.remark || '-' }}</td>
+            <td><span class="s-tag" :class="orderStatusMap[o.status]?.cls">{{ orderStatusMap[o.status]?.label }}</span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- ===== 文创商品订单 ===== -->
+    <div class="section-header" style="margin-top:36px"><h2>文创订单</h2><button class="btn-outline" @click="router.push('/orders')">查看全部订单 →</button></div>
+    <div class="order-card">
+      <div v-if="loadingPO" class="empty-tip">加载中...</div>
+      <div v-else-if="productOrders.length === 0" class="empty-tip">暂无文创订单</div>
+      <table v-else class="order-table">
+        <thead><tr><th>商品</th><th>单价</th><th>数量</th><th>金额</th><th>电话</th><th>状态</th><th>时间</th></tr></thead>
+        <tbody>
+          <tr v-for="o in productOrders" :key="o.id">
+            <td>{{ o.productName }}</td>
+            <td>¥{{ o.price?.toFixed(2) }}</td>
+            <td>{{ o.quantity }}</td>
+            <td>¥{{ o.totalAmount?.toFixed(2) }}</td>
+            <td>{{ o.phone || '-' }}</td>
+            <td><span class="s-tag" :class="poStatusMap[o.status]?.cls">{{ poStatusMap[o.status]?.label }}</span></td>
+            <td>{{ o.createTime?.slice(0,10) }}</td>
+          </tr>
+        </tbody>
+      </table>
     </div>
   </section>
 </template>
@@ -251,6 +354,58 @@ async function handleChangePwd() {
 .form-input:focus { border-color: #c41e3a; box-shadow: 0 0 0 3px rgba(196,30,58,0.08); background: #fff; }
 .form-textarea { width: 100%; padding: 14px; border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical; box-sizing: border-box; outline: none; font-family: inherit; line-height: 1.8; background: #fafafa; }
 .form-textarea:focus { border-color: #c41e3a; box-shadow: 0 0 0 3px rgba(196,30,58,0.08); background: #fff; }
+/* 订单卡片 */
+.order-card { background: #fff; border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); overflow-x: auto; }
+.order-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.order-table th, .order-table td { padding: 12px 14px; text-align: left; font-size: 13px; }
+.order-table thead { background: #fff5f7; }
+.order-table th { color: #c41e3a; font-weight: 600; font-size: 12px; }
+.order-table tbody tr { border-bottom: 1px solid #f5f5f5; }
+.order-table tbody tr:hover { background: #fefafa; }
+.rmk { max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-tag { display: inline-block; padding: 2px 10px; border-radius: 10px; font-size: 11px; font-weight: 600; }
+.s-pending { background: #fff3cd; color: #856404; }
+.s-confirmed { background: #d4edda; color: #155724; }
+.s-shipped { background: #cce5ff; color: #004085; }
+.s-done { background: #e2e3e5; color: #383d41; }
+.s-cancel { background: #f8d7da; color: #721c24; }
+.empty-tip { text-align: center; padding: 40px; color: #999; font-size: 14px; }
+
+/* 快捷入口卡片 */
+.quick-cards { display: flex; gap: 16px; margin-top: 20px; }
+.quick-card {
+  position: relative;
+  flex: 1; background: #fff; border-radius: 14px;
+  padding: 24px 16px; text-align: center; cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid rgba(196,30,58,0.08);
+}
+.quick-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(196,30,58,0.12); }
+.qc-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.qc-label { font-size: 14px; color: #666; font-weight: 600; }
+.qc-badge {
+  position: absolute; top: 12px; right: 16px;
+  min-width: 22px; height: 22px; border-radius: 11px;
+  background: #c41e3a; color: #fff; font-size: 12px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+}
+
+/* 足迹面板 */
+.history-panel {
+  background: #fff; border-radius: 14px; padding: 20px 24px;
+  margin-top: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+}
+.history-panel h3 { font-size: 16px; color: #c41e3a; margin-bottom: 12px; }
+.history-item {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer;
+  transition: background 0.15s;
+}
+.history-item:hover { background: #fefafa; margin: 0 -12px; padding: 10px 12px; border-radius: 6px; }
+.hi-title { font-size: 14px; color: #333; }
+.hi-time { font-size: 12px; color: #aaa; }
+
 @media (max-width: 992px) { .profile-detail-grid { grid-template-columns: 1fr; } }
 @media (max-width: 768px) { .profile-avatar-section { flex-direction: column; text-align: center; } }
 </style>
