@@ -1,12 +1,19 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
 import { listMyOrders } from '@/api/order'
 import { listMyProductOrders } from '@/api/product'
 import type { UserProfileVO, UserProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
+import { useCartStore } from '@/stores/cart'
+import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
+const cartStore = useCartStore()
+const { getUserHistory } = useHistory()
+const cartCount = computed(() => cartStore.count)
+const showHistory = ref(false)
+const historyList = computed(() => getUserHistory())
 
 // ==================== 我的预约 ====================
 const orders = ref<OrderVO[]>([])
@@ -275,6 +282,27 @@ async function resendCode() {
             <button class="btn-primary" @click="handleSave">保存修改</button>
             <button class="btn-outline" @click="cancelEdit">取消</button>
             <span v-if="saveMsg" class="save-msg" :class="{ error: saveMsg.includes('失败') || saveMsg.includes('已存在') }">{{ saveMsg }}</span>
+          </div>
+        </div>
+
+        <!-- ========== 快捷入口卡片 ========== -->
+        <div class="quick-cards">
+          <div class="quick-card" @click="$router.push('/cart')">
+            <span class="qc-icon">🛒</span>
+            <span class="qc-label">购物车</span>
+            <span v-if="cartCount > 0" class="qc-badge">{{ cartCount }}</span>
+          </div>
+          <div class="quick-card" @click="showHistory = !showHistory">
+            <span class="qc-icon">👣</span>
+            <span class="qc-label">个人足迹</span>
+          </div>
+        </div>
+        <div v-if="showHistory" class="history-panel">
+          <h3>浏览足迹</h3>
+          <div v-if="historyList.length === 0" class="empty-tip">暂无浏览记录</div>
+          <div v-for="h in historyList.slice(0, 10)" :key="h.path" class="history-item" @click="$router.push(h.path)">
+            <span class="hi-title">{{ h.title }}</span>
+            <span class="hi-time">{{ h.time }}</span>
           </div>
         </div>
 
@@ -996,4 +1024,17 @@ select.form-input {
     gap: 12px;
   }
 }
+/* 快捷入口卡片 */
+.quick-cards { display: flex; gap: 16px; margin-top: 20px; }
+.quick-card { position: relative; flex: 1; background: #fff; border-radius: 14px; padding: 24px 16px; text-align: center; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(196,30,58,0.08); }
+.quick-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(196,30,58,0.12); }
+.qc-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.qc-label { font-size: 14px; color: #666; font-weight: 600; }
+.qc-badge { position: absolute; top: 12px; right: 16px; min-width: 22px; height: 22px; border-radius: 11px; background: #c41e3a; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.history-panel { background: #fff; border-radius: 14px; padding: 20px 24px; margin-top: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.history-panel h3 { font-size: 16px; color: #c41e3a; margin-bottom: 12px; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
+.history-item:hover { background: #fefafa; margin: 0 -12px; padding: 10px 12px; border-radius: 6px; }
+.hi-title { font-size: 14px; color: #333; }
+.hi-time { font-size: 12px; color: #aaa; }
 </style>
