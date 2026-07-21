@@ -14,6 +14,9 @@ public class MessageConstant {
 
     public static final String LOGIN_FAILED = "登录失败";
     public static final String UPLOAD_FAILED = "文件上传失败";
+    public static final String FILE_EMPTY = "上传文件不能为空";
+    public static final String FILE_SIZE_EXCEEDED = "文件大小超过限制（最大10MB）";
+    public static final String FILE_TYPE_INVALID = "不支持的文件类型，仅支持 jpg/png/gif/webp";
 
     public static final String PASSWORD_EDIT_FAILED = "密码修改失败";
 

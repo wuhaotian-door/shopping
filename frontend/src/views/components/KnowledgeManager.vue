@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
-import { listMyArticles, createArticle, updateArticle, deleteArticle } from '@/api/knowledge'
+import { listMyArticles, createArticle, updateArticle, deleteArticle, uploadFile } from '@/api/knowledge'
 import type { KnowledgeArticleVO, KnowledgeArticleDTO } from '@/types/api'
 
 const articles = ref<KnowledgeArticleVO[]>([])
@@ -14,10 +14,44 @@ const form = ref<KnowledgeArticleDTO>({
   title: '',
   category: '',
   content: '',
+  coverUrl: '',
   status: 0,
 })
 
 const submitMsg = ref('')
+
+// ===== 封面上传相关 =====
+const uploadLoading = ref(false)
+const uploadMsg = ref('')
+const fileInputRef = ref<HTMLInputElement | null>(null)
+
+/** 选择本地图片后自动上传，返回 URL 后填入 form.coverUrl */
+async function handleCoverUpload(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  uploadLoading.value = true
+  uploadMsg.value = ''
+  try {
+    const res = await uploadFile(file)
+    form.value.coverUrl = res.data
+    uploadMsg.value = '封面上传成功'
+  } catch (e: unknown) {
+    uploadMsg.value = e instanceof Error ? e.message : '上传失败，请重试'
+  } finally {
+    uploadLoading.value = false
+    // 清空 input，支持重复选择同一文件
+    if (fileInputRef.value) fileInputRef.value.value = ''
+  }
+}
+
+/** 移除已上传的封面图 */
+function removeCover() {
+  form.value.coverUrl = ''
+  uploadMsg.value = ''
+  if (fileInputRef.value) fileInputRef.value.value = ''
+}
 
 onMounted(() => { loadArticles() })
 
@@ -31,9 +65,10 @@ async function loadArticles() {
 
 function openCreate() {
   editingId.value = null
-  form.value = { title: '', category: '', content: '', status: 0 }
+  form.value = { title: '', category: '', content: '', coverUrl: '', status: 0 }
   showEditor.value = true
   submitMsg.value = ''
+  uploadMsg.value = ''
 }
 
 function openEdit(article: KnowledgeArticleVO) {
@@ -42,10 +77,12 @@ function openEdit(article: KnowledgeArticleVO) {
     title: article.title,
     category: article.category,
     content: article.content,
+    coverUrl: article.coverUrl || '',
     status: article.status,
   }
   showEditor.value = true
   submitMsg.value = ''
+  uploadMsg.value = ''
 }
 
 async function handleSave() {
@@ -115,6 +152,33 @@ async function togglePublish(article: KnowledgeArticleVO) {
       <div class="form-group">
         <label>内容</label>
         <textarea v-model="form.content" class="form-textarea" rows="10" placeholder="文章内容..."></textarea>
+      </div>
+      <!-- 封面图上传（本地图片） -->
+      <div class="form-group">
+        <label>封面图</label>
+        <div class="cover-upload-row">
+          <!-- 已上传封面图预览 -->
+          <div v-if="form.coverUrl" class="cover-preview">
+            <img :src="form.coverUrl" alt="封面预览" class="cover-img" />
+            <button class="cover-remove-btn" @click="removeCover" title="移除封面">✕</button>
+          </div>
+          <!-- 上传按钮 -->
+          <label class="cover-upload-btn" :class="{ uploading: uploadLoading }">
+            <input
+              ref="fileInputRef"
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp"
+              class="cover-file-input"
+              @change="handleCoverUpload"
+              :disabled="uploadLoading"
+            />
+            <span v-if="uploadLoading" class="upload-label">上传中…</span>
+            <span v-else class="upload-label">{{ form.coverUrl ? '更换封面图' : '选择本地图片' }}</span>
+          </label>
+        </div>
+        <span v-if="uploadMsg" class="upload-msg" :class="{ 'upload-err': uploadMsg.includes('失败') || uploadMsg.includes('超') || uploadMsg.includes('不支持') }">
+          {{ uploadMsg }}
+        </span>
       </div>
       <div class="form-group">
         <label>状态</label>
@@ -208,5 +272,80 @@ async function togglePublish(article: KnowledgeArticleVO) {
 .form-actions { display: flex; align-items: center; gap: 12px; margin-top: 8px; }
 .submit-msg { font-size: 13px; color: #28a745; }
 .submit-msg.error { color: #dc3545; }
+
+/* ---- 封面图上传 ---- */
+.cover-upload-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.cover-preview {
+  position: relative;
+  width: 200px;
+  height: 140px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 2px solid #e0e0e0;
+  flex-shrink: 0;
+}
+.cover-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.cover-remove-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: 0.2s;
+}
+.cover-remove-btn:hover { background: rgba(220,53,69,0.85); }
+.cover-upload-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 200px;
+  height: 140px;
+  border: 2px dashed #d0d0d0;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: 0.25s;
+  background: #fafafa;
+  position: relative;
+}
+.cover-upload-btn:hover { border-color: #c41e3a; background: #fff5f7; }
+.cover-upload-btn.uploading { border-color: #c41e3a; background: #fff5f7; cursor: wait; }
+.cover-file-input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.cover-file-input:disabled { cursor: wait; }
+.upload-label {
+  font-size: 13px;
+  color: #999;
+  pointer-events: none;
+}
+.upload-msg {
+  display: inline-block;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #28a745;
+}
+.upload-msg.upload-err { color: #dc3545; }
+
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
 </style>
