@@ -16,11 +16,9 @@ export function sendMessage(data: ChatSendDTO): Promise<Result<ChatMessageVO>> {
   return request.post('/chat/send', data)
 }
 
-/** 模糊搜索用户（关键词匹配用户名或姓名） */
+/** 模糊搜索用户（后端应在 user 表和 inheritor 表中 LIKE 查询，支持返回多条） */
 export function searchUser(keyword: string): Promise<Result<{
   id: number; name: string; username: string; role: string; isFriend: number
-}>> {
-  // 发送 %keyword% 格式，后端 LIKE 查询可直接拼接
-  const like = `%${keyword}%`
-  return request.get('/chat/search', { params: { keyword: like, username: like, name: like } })
+}[]>> {
+  return request.get('/chat/search', { params: { keyword } })
 }

@@ -7,7 +7,7 @@ import java.util.List;
 public interface FriendService {
 
     /** 发送好友申请 */
-    void apply(Long fromUserId, Long toUserId);
+    void apply(Long fromUserId, String fromRole, Long toUserId, String toRole);
 
     /** 接受好友申请 */
     void accept(Long relationId, Long currentUserId);
@@ -20,4 +20,7 @@ public interface FriendService {
 
     /** 获取待处理的好友申请列表 */
     List<FriendVO> listPendingRequests(Long userId);
+
+    /** 获取我发出的好友申请列表 */
+    List<FriendVO> listMyRequests(Long userId);
 }
