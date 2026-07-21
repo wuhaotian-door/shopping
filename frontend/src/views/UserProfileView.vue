@@ -3,7 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
 import { listMyOrders } from '@/api/order'
-import type { UserProfileVO, UserProfileDTO, OrderVO } from '@/types/api'
+import { listMyProductOrders } from '@/api/product'
+import type { UserProfileVO, UserProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
 
 const router = useRouter()
 
@@ -28,10 +29,32 @@ async function loadOrders() {
   }
 }
 
+// ==================== 文创商品订单 ====================
+const productOrders = ref<ProductOrderVO[]>([])
+const loadingProductOrders = ref(false)
+
+const productOrderStatusMap: Record<number, { label: string; cls: string }> = {
+  0: { label: '待发货', cls: 'status-pending' },
+  1: { label: '已发货', cls: 'status-shipped' },
+  2: { label: '已完成', cls: 'status-done' },
+  3: { label: '已取消', cls: 'status-cancelled' },
+}
+
+async function loadProductOrders() {
+  loadingProductOrders.value = true
+  try {
+    const res = await listMyProductOrders()
+    productOrders.value = res.data || []
+  } catch { /* ignore */ } finally {
+    loadingProductOrders.value = false
+  }
+}
+
 onMounted(() => {
   document.title = '个人中心 — 码上非遗'
   loadProfile()
   loadOrders()
+  loadProductOrders()
 })
 
 const profile = ref<UserProfileVO>({
@@ -390,6 +413,61 @@ async function resendCode() {
                 </div>
                 <div class="order-field">
                   <span class="field-label">提交时间</span>
+                  <span class="field-value">{{ order.createTime?.slice(0, 16) }}</span>
+                </div>
+                <div v-if="order.remark" class="order-field full-width">
+                  <span class="field-label">备注</span>
+                  <span class="field-value">{{ order.remark }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ========== 文创商品订单 ========== -->
+        <div class="section-header" style="margin-top: 40px">
+          <h2>文创商品订单</h2>
+          <button class="btn-outline" @click="$router.push('/orders')">查看全部订单 →</button>
+        </div>
+
+        <div class="profile-card">
+          <div v-if="loadingProductOrders" class="loading-tip">加载中...</div>
+          <div v-else-if="productOrders.length === 0" class="empty-tip">暂无文创商品订单</div>
+          <div v-else class="order-list">
+            <div v-for="order in productOrders" :key="order.id" class="order-item">
+              <div class="order-header">
+                <span class="order-id">#{{ order.id }}</span>
+                <span class="order-status-badge" :class="productOrderStatusMap[order.status]?.cls">
+                  {{ productOrderStatusMap[order.status]?.label || '未知' }}
+                </span>
+              </div>
+              <div class="order-body product-order-body">
+                <div class="order-field product-field">
+                  <span class="field-label">商品名称</span>
+                  <span class="field-value">{{ order.productName }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">单价</span>
+                  <span class="field-value">¥{{ order.price }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">数量</span>
+                  <span class="field-value">×{{ order.quantity }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">金额</span>
+                  <span class="field-value total-amount">¥{{ order.totalAmount }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">收货电话</span>
+                  <span class="field-value">{{ order.phone }}</span>
+                </div>
+                <div class="order-field full-width">
+                  <span class="field-label">收货地址</span>
+                  <span class="field-value">{{ order.address }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">下单时间</span>
                   <span class="field-value">{{ order.createTime?.slice(0, 16) }}</span>
                 </div>
                 <div v-if="order.remark" class="order-field full-width">
@@ -857,6 +935,10 @@ select.form-input {
   background: #e3f2fd;
   color: #1565c0;
 }
+.status-shipped {
+  background: #fff3e0;
+  color: #e65100;
+}
 .status-cancelled {
   background: #f5f5f5;
   color: #999;
@@ -881,6 +963,13 @@ select.form-input {
 .field-value {
   font-size: 14px;
   color: #333;
+}
+.total-amount {
+  font-weight: 700;
+  color: #c41e3a;
+}
+.product-order-body {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 /* ---- 响应式 ---- */
