@@ -6,10 +6,12 @@ import AppHeader from '@/components/AppHeader.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
 import HeritageBg from '@/components/HeritageBg.vue'
 import { useHistory } from '@/composables/useHistory'
+import { useUnread } from '@/composables/useUnread'
 
 const router = useRouter()
 const route = useRoute()
-useHistory() // 自动记录浏览足迹
+useHistory()
+useUnread() // 全局未读消息轮询
 const authStore = useAuthStore()
 
 const showSplash = ref(!sessionStorage.getItem('splash_done'))
