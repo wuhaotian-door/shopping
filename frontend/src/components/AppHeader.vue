@@ -2,6 +2,7 @@
 import { computed } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { unreadCount } from '@/composables/useUnread'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,6 +12,9 @@ const isLoggedIn = computed(() => authStore.isLoggedIn)
 const userName = computed(() => authStore.userInfo?.name)
 const isInheritor = computed(() => authStore.userInfo?.role === 'INHERITOR')
 const isAdmin = computed(() => authStore.userInfo?.role === 'ADMIN')
+const isChatPage = computed(() => route.path === '/chat')
+const isProfilePage = computed(() => route.path === '/profile')
+const badgeCount = computed(() => unreadCount.value)
 
 const navItems = [
   { path: '/', label: '首页' },
@@ -66,8 +70,11 @@ function handleLogout() {
           {{ isInheritor ? '非遗传承人' : isAdmin ? '管理员' : '用户' }}
         </span>
         <span class="user-name">{{ userName }}</span>
-        <button v-if="!isInheritor && !isAdmin" class="header-btn" @click="router.push('/profile')">个人中心</button>
-        <button class="header-btn" @click="router.push('/chat')">消息</button>
+        <button v-if="!isInheritor && !isAdmin" class="header-btn" :class="{ 'header-btn-active': isProfilePage }" @click="router.push('/profile')">个人中心</button>
+        <button class="header-btn msg-btn" :class="{ 'header-btn-active': isChatPage }" @click="router.push('/chat')">
+          消息
+          <span v-if="badgeCount > 0" class="msg-badge">{{ badgeCount > 99 ? '99+' : badgeCount }}</span>
+        </button>
         <button class="logout-btn" @click="handleLogout">退出</button>
       </template>
       <template v-else>
@@ -129,6 +136,12 @@ function handleLogout() {
   cursor: pointer; transition: 0.2s; white-space: nowrap; font-family: inherit;
 }
 .header-btn:hover { background: rgba(255, 255, 255, 0.25); }
+.header-btn-active {
+  background: #ffd700 !important;
+  color: #c41e3a !important;
+  font-weight: 700;
+  border-color: #ffd700 !important;
+}
 
 .logout-btn {
   padding: 6px 14px; font-size: 12px;
@@ -145,6 +158,17 @@ function handleLogout() {
   transition: 0.2s;
 }
 .login-top-btn:hover { background: #ffe9ec; }
+
+/* 消息按钮红点徽标 */
+.msg-btn { position: relative; }
+.msg-badge {
+  position: absolute; top: -6px; right: -8px;
+  min-width: 18px; height: 18px; border-radius: 9px;
+  background: #ffd700; color: #c41e3a;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  padding: 0 5px; line-height: 1;
+}
 
 @media (max-width: 768px) {
   .nav-links { gap: 2px; }
