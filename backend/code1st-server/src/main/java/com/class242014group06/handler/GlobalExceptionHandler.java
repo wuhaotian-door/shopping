@@ -7,6 +7,8 @@ import com.class242014group06.result.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
 
 import java.sql.SQLIntegrityConstraintViolationException;
 
@@ -29,7 +31,7 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 处理SQL唯一约束冲突
+     * 处理 SQL 唯一约束冲突
      * @param ex
      * @return
      */
@@ -48,7 +50,25 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * 兜底异常处理 — 防止未预期的异常直接返回 500
+     * 处理文件上传超过大小限制 — Spring 在请求进入 Controller 前抛出
+     */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public Result exceptionHandler(MaxUploadSizeExceededException ex) {
+        log.warn("文件上传超限：{}", ex.getMessage());
+        return Result.error(MessageConstant.FILE_SIZE_EXCEEDED);
+    }
+
+    /**
+     * 处理其他 Multipart 异常（如请求不是 multipart、缺少 boundary 等）
+     */
+    @ExceptionHandler(MultipartException.class)
+    public Result exceptionHandler(MultipartException ex) {
+        log.warn("文件上传异常：{}", ex.getMessage());
+        return Result.error("文件上传失败：" + ex.getMessage());
+    }
+
+    /**
+     * 兜底异常处理 — 防止未预期的异常直接返回 500 或空响应
      */
     @ExceptionHandler(Exception.class)
     public Result exceptionHandler(Exception ex) {

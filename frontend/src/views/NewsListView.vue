@@ -27,6 +27,11 @@ function handleLogout() {
 // ===== 文章列表 =====
 const newsList = ref<KnowledgeArticleVO[]>([])
 const loading = ref(true)
+const failedImages = ref(new Set<number>())
+
+function onImgError(articleId: number) {
+  failedImages.value.add(articleId)
+}
 
 async function loadArticles() {
   loading.value = true
@@ -147,7 +152,14 @@ const filteredNews = computed(() => {
       <div v-else class="news-grid">
         <div v-for="article in filteredNews" :key="article.id" class="news-card" @click="router.push(`/news/${article.id}`)">
           <div class="news-card-img">
-            <div class="img-placeholder">{{ article.category || '非遗' }}</div>
+            <img
+              v-if="article.coverUrl && !failedImages.has(article.id)"
+              :src="article.coverUrl"
+              :alt="article.title"
+              class="news-card-img-real"
+              @error="onImgError(article.id)"
+            />
+            <div v-else class="img-placeholder">{{ article.category || '非遗' }}</div>
           </div>
           <div class="news-card-body">
             <span class="news-category-tag">{{ article.category }}</span>
@@ -271,6 +283,12 @@ const filteredNews = computed(() => {
 .news-card-img {
   width: 240px; min-height: 180px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+}
+.news-card-img-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .img-placeholder {
   width: 100%; height: 100%;

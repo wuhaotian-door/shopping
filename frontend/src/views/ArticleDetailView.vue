@@ -127,6 +127,10 @@ async function handleDeleteComment(commentId: number) {
       <template v-else-if="article">
         <!-- 文章内容区 -->
         <div class="article-section">
+          <!-- 封面图 -->
+          <div v-if="article.coverUrl" class="article-cover">
+            <img :src="article.coverUrl" :alt="article.title" />
+          </div>
           <div class="article-header">
             <span class="article-category-tag">{{ article.category }}</span>
             <h1 class="article-title">{{ article.title }}</h1>
@@ -255,11 +259,24 @@ async function handleDeleteComment(commentId: number) {
 .article-section {
   background: #fff;
   border-radius: 12px;
-  padding: 40px;
+  overflow: hidden;
   box-shadow: 0 2px 10px rgba(0,0,0,0.06);
   margin-bottom: 40px;
 }
+.article-cover {
+  width: 100%;
+  max-height: 400px;
+  overflow: hidden;
+}
+.article-cover img {
+  width: 100%;
+  height: 100%;
+  max-height: 400px;
+  object-fit: cover;
+  display: block;
+}
 .article-header {
+  padding: 40px 40px 0 40px;
   border-bottom: 1px solid #f0f0f0;
   padding-bottom: 24px;
   margin-bottom: 28px;
@@ -292,6 +309,7 @@ async function handleDeleteComment(commentId: number) {
   color: #444;
   line-height: 2;
   word-break: break-word;
+  padding: 0 40px 40px 40px;
 }
 
 /* ---- 评论区域 ---- */

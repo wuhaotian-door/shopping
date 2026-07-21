@@ -1,6 +1,14 @@
 import request from './request'
 import type { Result, KnowledgeArticleVO, KnowledgeArticleDTO } from '@/types/api'
 
+/** 上传文件（图片），返回可访问的 URL */
+export function uploadFile(file: File): Promise<Result<string>> {
+  const formData = new FormData()
+  formData.append('file', file)
+  // 不要手动设置 Content-Type，让 axios 自动添加 boundary
+  return request.post('/common/upload', formData)
+}
+
 /** 创建文章 */
 export function createArticle(data: KnowledgeArticleDTO): Promise<Result<string>> {
   return request.post('/knowledge', data)

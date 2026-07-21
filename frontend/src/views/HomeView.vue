@@ -34,6 +34,12 @@ async function loadArticles() {
 /** 首页仅展示前5篇资讯 */
 const topNews = computed(() => newsList.value.slice(0, 5))
 
+/** 封面图加载失败时回退到占位符 */
+const failedImages = ref(new Set<number>())
+function onImgError(articleId: number) {
+  failedImages.value.add(articleId)
+}
+
 // ------- 传承人列表（从API加载） -------
 const masterList = ref<InheritorProfileVO[]>([])
 async function loadMasters() {
@@ -67,7 +73,14 @@ function handleLogout() {
     <div class="news-card-list">
         <div v-for="news in topNews" :key="news.id" class="news-card" @click="router.push(`/news/${news.id}`)">
           <div class="news-card-img">
-            <div class="img-placeholder">{{ news.category || '非遗' }}</div>
+            <img
+              v-if="news.coverUrl && !failedImages.has(news.id)"
+              :src="news.coverUrl"
+              :alt="news.title"
+              class="news-card-img-real"
+              @error="onImgError(news.id)"
+            />
+            <div v-else class="img-placeholder">{{ news.category || '非遗' }}</div>
           </div>
           <div class="news-card-text">
             <h4>{{ news.title }}</h4>
@@ -435,6 +448,12 @@ function handleLogout() {
   width: 160px;
   height: 120px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.news-card-img-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .img-placeholder {
   width: 100%;
