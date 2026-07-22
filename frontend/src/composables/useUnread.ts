@@ -21,7 +21,7 @@ export function useUnread() {
     if (started) return
     started = true
     refresh()
-    timer = setInterval(refresh, 12000)
+    timer = setInterval(refresh, 6000)
   }
 
   // 等待 uid 就绪后开始轮询

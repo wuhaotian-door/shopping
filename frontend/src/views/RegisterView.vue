@@ -27,6 +27,62 @@ const form = reactive({
 const errorMsg = ref('')
 const loading = ref(false)
 
+const fieldErrors = reactive<Record<string, string>>({
+  username: '',
+  name: '',
+  email: '',
+  password: '',
+  confirmPassword: '',
+  phone: '',
+  idNumber: '',
+  region: '',
+  role: '',
+})
+
+function validateField(field: string) {
+  const v = (form as any)[field]
+  switch (field) {
+    case 'username':
+      fieldErrors.username = !v || !v.trim() ? '请输入用户名' : ''
+      break
+    case 'name':
+      fieldErrors.name = !v || !v.trim() ? '请输入姓名' : ''
+      break
+    case 'email':
+      fieldErrors.email = !v || !v.trim() ? '请输入邮箱' : ''
+      break
+    case 'password':
+      fieldErrors.password = !v ? '请输入密码' : v.length < 6 ? '密码至少 6 位' : ''
+      if (form.confirmPassword && v !== form.confirmPassword) {
+        fieldErrors.confirmPassword = '两次密码不一致'
+      } else if (form.confirmPassword) {
+        fieldErrors.confirmPassword = ''
+      }
+      break
+    case 'confirmPassword':
+      fieldErrors.confirmPassword = !v ? '请确认密码' : v !== form.password ? '两次密码不一致' : ''
+      break
+    case 'phone':
+      if (v && v.trim().length > 11) {
+        fieldErrors.phone = '手机号不能超过11位'
+      } else if (isInheritor.value && (!v || !v.trim())) {
+        fieldErrors.phone = '请输入手机号'
+      } else {
+        fieldErrors.phone = ''
+      }
+      break
+    case 'idNumber':
+      fieldErrors.idNumber = isInheritor.value && (!v || !v.trim()) ? '请输入身份证号' : ''
+      break
+    case 'region':
+      fieldErrors.region = isInheritor.value && (!v || !v.trim()) ? '请选择完整省市地区' : ''
+      break
+    case 'role':
+      fieldErrors.role = !v ? '请选择注册类型' : ''
+      break
+  }
+}
+
 const isInheritor = computed(() => form.role === 'INHERITOR')
 
 // 省市数据（与GeoJSON地图行政区划一致）
@@ -193,14 +249,15 @@ async function handleRegister() {
         <div class="title-line"></div>
 
         <form class="login-form" @submit.prevent="handleRegister">
+          <div class="form-grid">
           <!-- 角色选择（放在表单最前面） -->
-          <div class="form-item">
+          <div class="form-item full-width">
             <label class="role-label">注册类型 *</label>
             <div class="role-selector">
               <div
                   class="role-card"
                   :class="{ active: form.role === 'USER' }"
-                  @click="form.role = 'USER'"
+                  @click="form.role = 'USER'; validateField('role')"
               >
                 <div class="role-icon user-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -214,7 +271,7 @@ async function handleRegister() {
               <div
                   class="role-card"
                   :class="{ active: form.role === 'INHERITOR' }"
-                  @click="form.role = 'INHERITOR'"
+                  @click="form.role = 'INHERITOR'; validateField('role')"
               >
                 <div class="role-icon inheritor-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -227,9 +284,9 @@ async function handleRegister() {
                 <span class="role-desc">展示与传承技艺</span>
               </div>
             </div>
+            <span class="field-error">{{ fieldErrors.role }}</span>
           </div>
-
-          <!-- 基础信息（两种角色都显示） -->
+          <!-- 用户名 | 姓名 -->
           <div class="form-item">
             <label for="reg-username">用户名 *</label>
             <input
@@ -238,9 +295,10 @@ async function handleRegister() {
                 type="text"
                 placeholder="登录账号"
                 autocomplete="username"
+                @input="validateField('username')"
             />
+            <span class="field-error">{{ fieldErrors.username }}</span>
           </div>
-
           <div class="form-item">
             <label for="reg-name">姓名 *</label>
             <input
@@ -248,9 +306,12 @@ async function handleRegister() {
                 v-model="form.name"
                 type="text"
                 placeholder="真实姓名"
+                @input="validateField('name')"
             />
+            <span class="field-error">{{ fieldErrors.name }}</span>
           </div>
 
+          <!-- 邮箱 | 手机号 -->
           <div class="form-item">
             <label for="reg-email">邮箱 *</label>
             <input
@@ -259,60 +320,67 @@ async function handleRegister() {
                 type="email"
                 placeholder="用于找回密码"
                 autocomplete="email"
+                @input="validateField('email')"
             />
+            <span class="field-error">{{ fieldErrors.email }}</span>
+          </div>
+          <div class="form-item">
+            <label for="reg-phone">手机号{{ isInheritor ? ' *' : '' }}</label>
+            <input
+                id="reg-phone"
+                v-model="form.phone"
+                type="text"
+                placeholder="11位手机号"
+                maxlength="11"
+                @input="validateField('phone')"
+            />
+            <span class="field-error">{{ fieldErrors.phone }}</span>
           </div>
 
-          <div class="form-row">
-            <div class="form-item form-half">
-              <label for="reg-password">密码 *</label>
-              <input
-                  id="reg-password"
-                  v-model="form.password"
-                  type="password"
-                  placeholder="至少 6 位密码"
-                  autocomplete="new-password"
-              />
-            </div>
-
-            <div class="form-item form-half">
-              <label for="reg-confirm">确认密码 *</label>
-              <input
-                  id="reg-confirm"
-                  v-model="form.confirmPassword"
-                  type="password"
-                  placeholder="再次输入密码"
-                  autocomplete="new-password"
-              />
-            </div>
+          <!-- 密码 | 确认密码 -->
+          <div class="form-item">
+            <label for="reg-password">密码 *</label>
+            <input
+                id="reg-password"
+                v-model="form.password"
+                type="password"
+                placeholder="至少 6 位密码"
+                autocomplete="new-password"
+                @input="validateField('password')"
+            />
+            <span class="field-error">{{ fieldErrors.password }}</span>
+          </div>
+          <div class="form-item">
+            <label for="reg-confirm">确认密码 *</label>
+            <input
+                id="reg-confirm"
+                v-model="form.confirmPassword"
+                type="password"
+                placeholder="再次输入密码"
+                autocomplete="new-password"
+                @input="validateField('confirmPassword')"
+            />
+            <span class="field-error">{{ fieldErrors.confirmPassword }}</span>
           </div>
 
           <!-- 非遗传承人专属字段 -->
           <template v-if="isInheritor">
-            <div class="form-divider">
+            <div class="form-divider full-width">
               <span>传承人信息</span>
             </div>
 
-            <div class="form-item">
-              <label for="reg-phone-inheritor">手机号 *</label>
-              <input
-                  id="reg-phone-inheritor"
-                  v-model="form.phone"
-                  type="text"
-                  placeholder="请输入11位手机号"
-                  maxlength="11"
-              />
-            </div>
-
-            <div class="form-item">
-              <label for="reg-idnumber">身份证号 *</label>
-              <input
-                  id="reg-idnumber"
-                  v-model="form.idNumber"
-                  type="text"
-                  placeholder="请输入身份证号"
-                  maxlength="18"
-              />
-            </div>
+              <div class="form-item">
+                <label for="reg-idnumber">身份证号 *</label>
+                <input
+                    id="reg-idnumber"
+                    v-model="form.idNumber"
+                    type="text"
+                    placeholder="请输入身份证号"
+                    maxlength="18"
+                    @input="validateField('idNumber')"
+                />
+                <span class="field-error">{{ fieldErrors.idNumber }}</span>
+              </div>
 
             <div class="form-item">
               <label for="reg-birthdate">出生日期</label>
@@ -322,43 +390,20 @@ async function handleRegister() {
                   type="date"
               />
             </div>
-
-            <div class="form-item">
-              <label>所属地区 *</label>
-              <div class="region-selects">
-                <select v-model="selectedProvince" @change="onProvinceChange()" class="region-select">
-                  <option value="">选择省份</option>
-                  <option v-for="p in provinces" :key="p" :value="p">{{ p }}</option>
-                </select>
-                <select v-model="form.region" :disabled="!selectedProvince" class="region-select">
-                  <option value="">选择城市</option>
-                  <option v-for="c in availableCities" :key="c" :value="selectedProvince + c">{{ c }}</option>
-                </select>
+              <div class="form-item full-width">
+                <label>所属地区 *</label>
+                <div class="region-selects">
+                  <select v-model="selectedProvince" @change="onProvinceChange(); validateField('region')" class="region-select">
+                    <option value="">选择省份</option>
+                    <option v-for="p in provinces" :key="p" :value="p">{{ p }}</option>
+                  </select>
+                  <select v-model="form.region" :disabled="!selectedProvince" class="region-select" @change="validateField('region')">
+                    <option value="">选择城市</option>
+                    <option v-for="c in availableCities" :key="c" :value="selectedProvince + c">{{ c }}</option>
+                  </select>
+                </div>
+                <span class="field-error">{{ fieldErrors.region }}</span>
               </div>
-            </div>
-
-            <div class="form-item">
-              <label for="reg-sex-inheritor">性别</label>
-              <select id="reg-sex-inheritor" v-model="form.sex">
-                <option value="">请选择</option>
-                <option value="男">男</option>
-                <option value="女">女</option>
-              </select>
-            </div>
-          </template>
-
-          <!-- 普通用户可选字段（折叠显示） -->
-          <template v-if="!isInheritor && form.role === 'USER'">
-            <div class="form-item">
-              <label for="reg-phone">手机号</label>
-              <input
-                  id="reg-phone"
-                  v-model="form.phone"
-                  type="text"
-                  placeholder="11位手机号（选填）"
-                  maxlength="11"
-              />
-            </div>
 
             <div class="form-item">
               <label for="reg-sex">性别</label>
@@ -370,11 +415,24 @@ async function handleRegister() {
             </div>
           </template>
 
-          <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
+          <!-- 普通用户可选字段（折叠显示） -->
+          <template v-if="!isInheritor && form.role === 'USER'">
+            <div class="form-item">
+              <label for="reg-sex">性别</label>
+              <select id="reg-sex" v-model="form.sex">
+                <option value="">请选择</option>
+                <option value="男">男</option>
+                <option value="女">女</option>
+              </select>
+            </div>
+          </template>
 
-          <button type="submit" class="login-btn" :disabled="loading">
+          <p v-if="errorMsg" class="error-msg full-width">{{ errorMsg }}</p>
+
+          <button type="submit" class="login-btn full-width" :disabled="loading">
             {{ loading ? '注册中...' : (isInheritor ? '提交入驻申请' : '注 册') }}
           </button>
+          </div>
         </form>
 
         <div class="switch-tip">
@@ -686,14 +744,14 @@ export default {
 .login-card {
   width: 100%;
   max-width: 520px;
-  padding: 40px 32px;
+  padding: 32px 28px;
   background: #fff;
   border-radius: 14px;
   box-shadow: 0 6px 22px rgba(196, 30, 58, 0.12);
 }
 .login-title {
   text-align: center;
-  font-size: 26px;
+  font-size: 22px;
   color: #c41e3a;
   margin-bottom: 4px;
 }
@@ -707,29 +765,45 @@ export default {
   width: 50px;
   height: 3px;
   background: #c41e3a;
-  margin: 0 auto 32px;
+  margin: 0 auto 24px;
 }
 .login-form {
   display: flex;
   flex-direction: column;
 }
+
+/* 双列表单网格 */
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 14px;
+}
+.form-grid .full-width {
+  grid-column: 1 / -1;
+}
 .form-item {
-  margin-bottom: 22px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
 }
 .form-item label {
-  display: block;
-  font-size: 15px;
+  width: 64px;
+  flex-shrink: 0;
+  font-size: 13px;
   color: #444;
-  margin-bottom: 8px;
+  margin: 0 6px 0 0;
+  text-align: right;
 }
 .form-item input,
 .form-item select {
-  width: 100%;
-  height: 44px;
-  padding: 0 14px;
+  flex: 1;
+  min-width: 0;
+  height: 36px;
+  padding: 0 12px;
   border: 1px solid #e8647a;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 13px;
   color: #333;
   box-sizing: border-box;
   transition: 0.25s;
@@ -760,19 +834,11 @@ export default {
 }
 
 /* 双列布局 */
-.form-row {
-  display: flex;
-  gap: 16px;
-}
-.form-half {
-  flex: 1;
-}
-
 /* 分割线 */
 .form-divider {
   display: flex;
   align-items: center;
-  margin: 8px 0 22px;
+  margin: 8px 0 16px;
   gap: 12px;
 }
 .form-divider::before,
@@ -798,7 +864,7 @@ export default {
 }
 .login-btn {
   width: 100%;
-  height: 46px;
+  height: 42px;
   background: #c41e3a;
   color: #fff;
   border: none;
@@ -817,7 +883,7 @@ export default {
 }
 .switch-tip {
   text-align: center;
-  margin-top: 24px;
+  margin-top: 18px;
   font-size: 14px;
   color: #666;
 }
@@ -839,9 +905,26 @@ export default {
 /* ===== 角色选择器 ===== */
 .role-label {
   display: block;
-  font-size: 15px;
+  width: 100%;
+  text-align: left;
+  font-size: 13px;
   color: #444;
-  margin-bottom: 8px;
+  margin: 0 0 6px 0;
+}
+/* 逐字段实时校验错误 */
+.field-error {
+  width: 100%;
+  margin-left: 70px;
+  font-size: 11px;
+  color: #c41e3a;
+  min-height: 16px;
+  line-height: 1.4;
+}
+.full-width .field-error {
+  margin-left: 0;
+}
+.field-error:empty {
+  display: none;
 }
 .role-selector {
   display: flex;
@@ -852,7 +935,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 16px 10px;
+  padding: 14px 10px;
   border: 2px solid #e8647a;
   border-radius: 10px;
   cursor: pointer;
@@ -869,9 +952,9 @@ export default {
   box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.15);
 }
 .role-icon {
-  width: 40px;
-  height: 40px;
-  margin-bottom: 8px;
+  width: 36px;
+  height: 36px;
+  margin-bottom: 6px;
   color: #c41e3a;
 }
 .role-icon svg {
@@ -914,12 +997,19 @@ export default {
   .float-text-wrap h2 {
     font-size: 26px;
   }
+  .form-grid {
+    grid-template-columns: 1fr;
+    gap: 0;
+  }
+  .form-grid .full-width {
+    grid-column: 1;
+  }
   .role-selector {
     flex-direction: column;
   }
-  .form-row {
+  .region-selects {
     flex-direction: column;
-    gap: 0;
+    gap: 8px;
   }
 }
 </style>
