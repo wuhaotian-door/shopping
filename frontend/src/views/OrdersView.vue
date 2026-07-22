@@ -3,7 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { listMyOrders } from '@/api/order'
-import { listMyProductOrders } from '@/api/product'
+import { listMyProductOrders, cancelProductOrder, completeProductOrder } from '@/api/product'
 import type { OrderVO } from '@/types/api'
 import type { ProductOrderVO } from '@/types/api'
 
@@ -51,6 +51,22 @@ async function loadProductOrders() {
   try { productOrders.value = (await listMyProductOrders()).data || [] }
   catch { /* */ } finally { poLoading.value = false }
 }
+
+function viewOrderDetail(orderId: number) {
+  router.push(`/order/${orderId}`)
+}
+
+async function cancelPOOrder(orderId: number) {
+  if (!confirm('确定要取消该订单吗？')) return
+  try { await cancelProductOrder(orderId); await loadProductOrders() }
+  catch { /* */ }
+}
+
+async function handleConfirmReceive(orderId: number) {
+  if (!confirm('确认已收到商品？')) return
+  try { await completeProductOrder(orderId); await loadProductOrders() }
+  catch { /* */ }
+}
 </script>
 
 <template>
@@ -95,7 +111,7 @@ async function loadProductOrders() {
       <div v-if="poLoading" class="loading">加载中...</div>
       <div v-else-if="productOrders.length === 0" class="empty">暂无文创订单</div>
       <table v-else class="order-table">
-        <thead><tr><th>商品</th><th>单价</th><th>数量</th><th>金额</th><th>电话</th><th>地址</th><th>状态</th><th>时间</th></tr></thead>
+        <thead><tr><th>商品</th><th>单价</th><th>数量</th><th>金额</th><th>电话</th><th>地址</th><th>状态</th><th>时间</th><th>操作</th></tr></thead>
         <tbody>
           <tr v-for="o in productOrders" :key="o.id">
             <td>{{ o.productName }}</td>
@@ -106,6 +122,11 @@ async function loadProductOrders() {
             <td class="rmk">{{ o.address }}</td>
             <td><span class="status" :class="poStatusMap[o.status]?.cls">{{ poStatusMap[o.status]?.label }}</span></td>
             <td>{{ o.createTime?.slice(0, 10) }}</td>
+            <td class="action-col">
+              <button class="btn-view" @click="viewOrderDetail(o.id)">查看</button>
+              <button v-if="o.status === 0" class="btn-cancel" @click="cancelPOOrder(o.id)">取消</button>
+              <button v-if="o.status === 1" class="btn-confirm-receive" @click="handleConfirmReceive(o.id)">确认收货</button>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -157,4 +178,20 @@ async function loadProductOrders() {
 .s-cancel { background: #f8d7da; color: #721c24; }
 
 .loading, .empty { text-align: center; padding: 60px; color: #999; font-size: 14px; }
+.action-col { white-space: nowrap; }
+.btn-view {
+  padding: 4px 12px; font-size: 12px; color: #c41e3a; background: #fff;
+  border: 1px solid #c41e3a; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-right: 6px;
+}
+.btn-view:hover { background: #c41e3a; color: #fff; }
+.btn-cancel {
+  padding: 4px 12px; font-size: 12px; color: #dc3545; background: #fff;
+  border: 1px solid #dc3545; border-radius: 4px; cursor: pointer; transition: 0.2s;
+}
+.btn-cancel:hover { background: #dc3545; color: #fff; }
+.btn-confirm-receive {
+  padding: 4px 12px; font-size: 12px; color: #fff; background: #28a745;
+  border: none; border-radius: 4px; cursor: pointer; transition: 0.2s;
+}
+.btn-confirm-receive:hover { background: #218838; }
 </style>

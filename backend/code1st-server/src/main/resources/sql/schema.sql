@@ -217,6 +217,8 @@ CREATE TABLE product_order (
     inheritor_id     BIGINT         COMMENT '传承人ID（关联对应表）',
     remark           VARCHAR(500)   COMMENT '用户备注',
     status           INT            NOT NULL DEFAULT 0 COMMENT '订单状态：0-待发货, 1-已发货, 2-已完成, 3-已取消',
+    courier_company  VARCHAR(100)   COMMENT '快递公司',
+    tracking_number  VARCHAR(200)   COMMENT '快递单号',
     create_time      DATETIME       COMMENT '创建时间',
     update_time      DATETIME       COMMENT '更新时间',
     create_user      BIGINT         COMMENT '创建人ID',

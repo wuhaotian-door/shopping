@@ -69,17 +69,22 @@ export function listMyProductOrders(): Promise<Result<ProductOrderVO[]>> {
   return request.get('/product-order/my')
 }
 
+/** 查询商品订单详情 */
+export function getProductOrderDetail(id: number): Promise<Result<ProductOrderVO>> {
+  return request.get(`/product-order/${id}`)
+}
+
 /** 传承人查看自己商品的订单 */
 export function listInheritorProductOrders(): Promise<Result<ProductOrderVO[]>> {
   return request.get('/product-order/inheritor')
 }
 
-/** 传承人发货 */
-export function shipProductOrder(id: number): Promise<Result<string>> {
-  return request.put(`/product-order/${id}/ship`)
+/** 传承人发货（含快递信息） */
+export function shipProductOrder(id: number, courierCompany?: string, trackingNumber?: string): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/ship`, null, { params: { courierCompany, trackingNumber } })
 }
 
-/** 传承人完成订单 */
+/** 用户确认收货 */
 export function completeProductOrder(id: number): Promise<Result<string>> {
   return request.put(`/product-order/${id}/complete`)
 }

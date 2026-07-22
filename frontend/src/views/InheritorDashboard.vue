@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import OrderManager from './components/OrderManager.vue'
 import SlotManager from './components/SlotManager.vue'
 import KnowledgeManager from './components/KnowledgeManager.vue'
@@ -10,21 +10,23 @@ import ProductManager from './components/ProductManager.vue'
 import InheritorProfile from './components/InheritorProfile.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import StatsPanel from './components/StatsPanel.vue'
-import { listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder } from '@/api/product'
+import { listInheritorProductOrders, shipProductOrder, cancelProductOrder } from '@/api/product'
 import type { ProductOrderVO } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 onMounted(() => {
   document.title = '非遗传承人工坊 — 码上非遗'
+  if (activeTab.value === 'productOrders') loadProductOrders()
 })
 
 const userName = computed(() => authStore.userInfo?.name)
 
-// 当前激活的 tab
+// 当前激活的 tab — 支持通过 URL query ?tab=xxx 指定
 type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
-const activeTab = ref<TabKey>('orders')
+const activeTab = ref<TabKey>((route.query.tab as TabKey) || 'orders')
 
 // 下拉菜单分组
 interface MenuGroup {
@@ -95,14 +97,53 @@ async function loadProductOrders() {
   }
 }
 
-async function handlePOAction(order: ProductOrderVO, action: 'ship' | 'complete' | 'cancel') {
+function viewOrderDetail(orderId: number) {
+  router.push(`/order/${orderId}`)
+}
+
+async function handleCancelPO(order: ProductOrderVO) {
+  if (!confirm('确定要取消该订单吗？')) return
   try {
-    if (action === 'ship') await shipProductOrder(order.id)
-    else if (action === 'complete') await completeProductOrder(order.id)
-    else if (action === 'cancel') await cancelProductOrder(order.id)
+    await cancelProductOrder(order.id)
     await loadProductOrders()
   } catch {
     // ignore
+  }
+}
+
+// ==================== 发货弹窗 ====================
+const showShipModal = ref(false)
+const shipOrderId = ref<number | null>(null)
+const shipCourier = ref('')
+const shipTracking = ref('')
+const shipLoading = ref(false)
+
+function openShipModal(order: ProductOrderVO) {
+  shipOrderId.value = order.id
+  shipCourier.value = ''
+  shipTracking.value = ''
+  showShipModal.value = true
+}
+
+async function submitShip() {
+  if (!shipOrderId.value) return
+  if (!shipCourier.value.trim()) {
+    alert('请输入快递公司')
+    return
+  }
+  if (!shipTracking.value.trim()) {
+    alert('请输入快递单号')
+    return
+  }
+  shipLoading.value = true
+  try {
+    await shipProductOrder(shipOrderId.value, shipCourier.value.trim(), shipTracking.value.trim())
+    showShipModal.value = false
+    await loadProductOrders()
+  } catch {
+    alert('发货失败')
+  } finally {
+    shipLoading.value = false
   }
 }
 
@@ -229,12 +270,10 @@ function handleLogout() {
                   </span>
                 </td>
                 <td class="action-cell">
+                  <button class="btn-view" @click="viewOrderDetail(order.id)">查看</button>
                   <template v-if="order.status === 0">
-                    <button class="btn-confirm" style="background: #17a2b8" @click="handlePOAction(order, 'ship')">发货</button>
-                    <button class="btn-reject" @click="handlePOAction(order, 'cancel')">取消</button>
-                  </template>
-                  <template v-else-if="order.status === 1">
-                    <button class="btn-confirm" @click="handlePOAction(order, 'complete')">完成</button>
+                    <button class="btn-confirm" style="background: #17a2b8" @click="openShipModal(order)">发货</button>
+                    <button class="btn-reject" @click="handleCancelPO(order)">取消</button>
                   </template>
                   <span v-else class="no-action">—</span>
                 </td>
@@ -243,6 +282,27 @@ function handleLogout() {
           </table>
           <div v-if="productOrderLoading" class="empty-state">加载中…</div>
           <div v-else-if="productOrderList.length === 0" class="empty-state">暂无商品订单</div>
+        </div>
+
+        <!-- 发货弹窗 -->
+        <div v-if="showShipModal" class="modal-overlay" @click.self="showShipModal = false">
+          <div class="modal-box">
+            <h3>填写快递信息</h3>
+            <div class="field">
+              <label>快递公司</label>
+              <input v-model="shipCourier" placeholder="如：顺丰速运" class="modal-input" />
+            </div>
+            <div class="field">
+              <label>快递单号</label>
+              <input v-model="shipTracking" placeholder="请输入快递单号" class="modal-input" />
+            </div>
+            <div class="modal-btns">
+              <button class="btn-cancel" @click="showShipModal = false">取消</button>
+              <button class="btn-submit" :disabled="shipLoading" @click="submitShip">
+                {{ shipLoading ? '发货中...' : '确认发货' }}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -557,6 +617,26 @@ function handleLogout() {
   color: #999;
   font-size: 14px;
 }
+
+/* "查看" 按钮 */
+.btn-view {
+  padding: 5px 14px; font-size: 12px; color: #c41e3a; background: #fff;
+  border: 1px solid #c41e3a; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-right: 6px;
+}
+.btn-view:hover { background: #c41e3a; color: #fff; }
+
+/* ==================== 发货弹窗 ==================== */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-box { background: #fff; border-radius: 12px; padding: 32px; max-width: 420px; width: 90%; }
+.modal-box h3 { font-size: 18px; color: #333; margin-bottom: 20px; text-align: center; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+.modal-input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; }
+.modal-input:focus { border-color: #c41e3a; }
+.modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+.btn-cancel { padding: 10px 24px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; }
+.btn-submit { padding: 10px 24px; background: #c41e3a; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ==================== 页脚 ==================== */
 .page-footer {
