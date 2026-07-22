@@ -17,6 +17,7 @@ const form = ref({
   price: 0,
   stock: 0,
   imageUrl: '',
+  modelUrl: '',
 })
 
 const submitMsg = ref('')
@@ -40,7 +41,7 @@ async function loadProducts() {
 
 function openCreate() {
   editingId.value = null
-  form.value = { name: '', category: '', description: '', price: 0, stock: 0, imageUrl: '' }
+  form.value = { name: '', category: '', description: '', price: 0, stock: 0, imageUrl: '', modelUrl: '' }
   showEditor.value = true
   submitMsg.value = ''
 }
@@ -54,6 +55,7 @@ function openEdit(product: ProductVO) {
     price: product.price,
     stock: product.stock,
     imageUrl: product.imageUrl || '',
+    modelUrl: product.modelUrl || '',
   }
   showEditor.value = true
   submitMsg.value = ''
@@ -125,6 +127,10 @@ async function handleToggle(product: ProductVO) {
           <div class="form-group">
             <label>图片链接</label>
             <input v-model="form.imageUrl" type="text" class="form-input" placeholder="商品图片URL" />
+          </div>
+          <div class="form-group">
+            <label>3D模型链接（可选，glb/gltf格式）</label>
+            <input v-model="form.modelUrl" type="text" class="form-input" placeholder="留空则使用默认茶壶模型" />
           </div>
           <div class="form-group">
             <label>商品描述</label>

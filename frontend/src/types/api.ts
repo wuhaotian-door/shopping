@@ -1,20 +1,20 @@
-/** 后端统一响应包装 */
+/** 鍚庣缁熶竴鍝嶅簲鍖呰 */
 export interface Result<T = unknown> {
-  /** 1 = 成功, 0 = 失败 */
+  /** 1 = 鎴愬姛, 0 = 澶辫触 */
   code: number
-  /** 错误消息 */
+  /** 閿欒娑堟伅 */
   msg: string | null
-  /** 响应数据 */
+  /** 鍝嶅簲鏁版嵁 */
   data: T
 }
 
-/** 登录请求参数 */
+/** 鐧诲綍璇锋眰鍙傛暟 */
 export interface LoginRequest {
   username: string
   password: string
 }
 
-/** 登录成功返回的用户信息 */
+/** 鐧诲綍鎴愬姛杩斿洖鐨勭敤鎴蜂俊鎭?*/
 export interface LoginResponse {
   id: number
   userName: string
@@ -23,10 +23,10 @@ export interface LoginResponse {
   role: RoleType | 'ADMIN'
 }
 
-/** 角色类型 */
+/** 瑙掕壊绫诲瀷 */
 export type RoleType = 'USER' | 'INHERITOR'
 
-/** 管理员创建员工请求参数（需登录后调用） */
+/** 绠＄悊鍛樺垱寤哄憳宸ヨ姹傚弬鏁帮紙闇€鐧诲綍鍚庤皟鐢級 */
 export interface AdminCreateRequest {
   username: string
   name: string
@@ -35,7 +35,7 @@ export interface AdminCreateRequest {
   idNumber?: string
 }
 
-/** 普通用户注册请求参数（公开接口，简化版） */
+/** 鏅€氱敤鎴锋敞鍐岃姹傚弬鏁帮紙鍏紑鎺ュ彛锛岀畝鍖栫増锛?*/
 export interface RegisterRequest {
   username: string
   name: string
@@ -45,34 +45,34 @@ export interface RegisterRequest {
   email?: string
 }
 
-/** 忘记密码 — 发送验证码请求 */
+/** 蹇樿瀵嗙爜 鈥?鍙戦€侀獙璇佺爜璇锋眰 */
 export interface ForgotPasswordRequest {
   username: string
 }
 
-/** 忘记密码 — 重置密码请求 */
+/** 蹇樿瀵嗙爜 鈥?閲嶇疆瀵嗙爜璇锋眰 */
 export interface ResetPasswordRequest {
   username: string
   code: string
   newPassword: string
 }
 
-/** 非遗传承人注册请求参数（公开接口，详细信息） */
+/** 闈為仐浼犳壙浜烘敞鍐岃姹傚弬鏁帮紙鍏紑鎺ュ彛锛岃缁嗕俊鎭級 */
 export interface InheritorRegisterRequest {
   username: string
   name: string
   password: string
   phone?: string
   sex?: string
-  email?: string   // 邮箱（用于接收审核结果通知）
+  email?: string   // 閭锛堢敤浜庢帴鏀跺鏍哥粨鏋滈€氱煡锛?
   idNumber: string
-  /** 出生日期，如：1985-03-12 */
+  /** 鍑虹敓鏃ユ湡锛屽锛?985-03-12 */
   birthDate?: string
-  /** 所属地区，如：江苏省苏州市 */
+  /** 鎵€灞炲湴鍖猴紝濡傦細姹熻嫃鐪佽嫃宸炲競 */
   region: string
 }
 
-/** 待审核用户信息（管理员审核列表用） */
+/** 寰呭鏍哥敤鎴蜂俊鎭紙绠＄悊鍛樺鏍稿垪琛ㄧ敤锛?*/
 export interface PendingUser {
   id: number
   username: string
@@ -80,14 +80,14 @@ export interface PendingUser {
   phone: string
   sex: string
   idNumber: string
-  /** 所属地区 */
+  /** 鎵€灞炲湴鍖?*/
   region?: string
   role?: string
   status: number
   createTime: string
 }
 
-/** 用户列表信息（管理员用户管理用） */
+/** 鐢ㄦ埛鍒楄〃淇℃伅锛堢鐞嗗憳鐢ㄦ埛绠＄悊鐢級 */
 export interface UserInfo {
   id: number
   username: string
@@ -100,7 +100,7 @@ export interface UserInfo {
   createTime: string
 }
 
-/** 仪表盘统计数据 */
+/** 浠〃鐩樼粺璁℃暟鎹?*/
 export interface DashboardStats {
   totalUsers: number
   userCount: number
@@ -111,13 +111,13 @@ export interface DashboardStats {
   disabledCount: number
 }
 
-// ==================== 订单 ====================
+// ==================== 璁㈠崟 ====================
 
-/** 订单状态 */
+/** 璁㈠崟鐘舵€?*/
 export type OrderStatus = 0 | 1 | 2 | 3
-// 0-待确认, 1-已确认, 2-已完成, 3-已取消
+// 0-寰呯‘璁? 1-宸茬‘璁? 2-宸插畬鎴? 3-宸插彇娑?
 
-/** 订单提交请求 */
+/** 璁㈠崟鎻愪氦璇锋眰 */
 export interface OrderSubmitRequest {
   userName: string
   phone: string
@@ -129,7 +129,7 @@ export interface OrderSubmitRequest {
   remark: string
 }
 
-/** 订单返回对象 */
+/** 璁㈠崟杩斿洖瀵硅薄 */
 export interface OrderVO {
   id: number
   inheritorId: number
@@ -144,7 +144,7 @@ export interface OrderVO {
   createTime: string
 }
 
-// ==================== 传承人个人资料 ====================
+// ==================== 浼犳壙浜轰釜浜鸿祫鏂?====================
 
 export interface InheritorProfileVO {
   id: number
@@ -170,7 +170,7 @@ export interface InheritorProfileDTO {
   avatarUrl?: string
 }
 
-// ==================== 非遗知识库 ====================
+// ==================== 闈為仐鐭ヨ瘑搴?====================
 
 export interface KnowledgeArticleVO {
   id: number
@@ -193,7 +193,7 @@ export interface KnowledgeArticleDTO {
   status?: number
 }
 
-// ==================== 非遗项目 ====================
+// ==================== 闈為仐椤圭洰 ====================
 
 export interface HeritageProjectVO {
   id: number
@@ -209,8 +209,8 @@ export interface HeritageProjectVO {
   maxPeople: number
   currentPeople: number
   status: number
-  projectType: number  // 0-公益(非盈利), 1-非公益(盈利)
-  price?: number       // 价格（非公益项目使用）
+  projectType: number  // 0-鍏泭(闈炵泩鍒?, 1-闈炲叕鐩?鐩堝埄)
+  price?: number       // 浠锋牸锛堥潪鍏泭椤圭洰浣跨敤锛?
   createTime: string
 }
 
@@ -224,11 +224,11 @@ export interface HeritageProjectDTO {
   endDate?: string
   maxPeople?: number
   status?: number
-  projectType?: number  // 0-公益(非盈利), 1-非公益(盈利)
-  price?: number        // 价格（非公益项目使用）
+  projectType?: number  // 0-鍏泭(闈炵泩鍒?, 1-闈炲叕鐩?鐩堝埄)
+  price?: number        // 浠锋牸锛堥潪鍏泭椤圭洰浣跨敤锛?
 }
 
-// ==================== 商城商品 ====================
+// ==================== 鍟嗗煄鍟嗗搧 ====================
 
 export interface ProductVO {
   id: number
@@ -237,6 +237,8 @@ export interface ProductVO {
   price: number
   stock: number
   imageUrl: string
+  /** 3D模型URL（glb/gltf格式），可选 */
+  modelUrl?: string
   category: string
   inheritorId: number
   inheritorName: string
@@ -246,7 +248,7 @@ export interface ProductVO {
   reviewCount: number
 }
 
-// ==================== 商品评价 ====================
+// ==================== 鍟嗗搧璇勪环 ====================
 
 export interface ProductReviewVO {
   id: number
@@ -268,7 +270,7 @@ export interface ProductReviewDTO {
   parentId?: number
 }
 
-// ==================== 商品订单 ====================
+// ==================== 鍟嗗搧璁㈠崟 ====================
 
 export interface ProductOrderVO {
   id: number
@@ -298,7 +300,7 @@ export interface ProductOrderSubmitRequest {
   remark: string
 }
 
-// ==================== 预约时段 ====================
+// ==================== 棰勭害鏃舵 ====================
 
 export interface AppointmentSlot {
   id: number
@@ -330,7 +332,7 @@ export interface SlotDateRange {
   maxDate?: string
 }
 
-// ==================== 聊天系统 ====================
+// ==================== 鑱婂ぉ绯荤粺 ====================
 
 export interface ConversationVO {
   conversationId: number
@@ -363,7 +365,7 @@ export interface ChatSendDTO {
   content: string
 }
 
-// ==================== 普通用户个人资料 ====================
+// ==================== 鏅€氱敤鎴蜂釜浜鸿祫鏂?====================
 
 export interface UserProfileVO {
   id: number
@@ -383,12 +385,12 @@ export interface UserProfileDTO {
 }
 
 export interface ChangePasswordDTO {
-  code?: string        // 验证码（忘记密码场景）
-  oldPassword?: string // 旧密码（已登录改密码场景）
-  newPassword: string  // 新密码
+  code?: string        // 楠岃瘉鐮侊紙蹇樿瀵嗙爜鍦烘櫙锛?
+  oldPassword?: string // 鏃у瘑鐮侊紙宸茬櫥褰曟敼瀵嗙爜鍦烘櫙锛?
+  newPassword: string  // 鏂板瘑鐮?
 }
 
-// ==================== 好友系统 ====================
+// ==================== 濂藉弸绯荤粺 ====================
 
 export interface FriendVO {
   relationId: number
@@ -400,7 +402,7 @@ export interface FriendVO {
   createdAt: string
 }
 
-// ==================== 文章评论 ====================
+// ==================== 鏂囩珷璇勮 ====================
 
 export interface ArticleCommentVO {
   id: number
@@ -420,7 +422,7 @@ export interface ArticleCommentDTO {
   parentId?: number
 }
 
-// ==================== 操作日志 ====================
+// ==================== 鎿嶄綔鏃ュ織 ====================
 
 export interface OperationLog {
   id: number
