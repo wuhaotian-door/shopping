@@ -1,5 +1,7 @@
 package com.class242014group06.service.impl;
 
+import com.class242014group06.constant.RoleConstant;
+import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.ArticleCommentDTO;
 import com.class242014group06.entity.Admin;
 import com.class242014group06.entity.ArticleComment;
@@ -52,20 +54,23 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
             }
         }
 
-        // 跨表查询用户名（支持普通用户/传承人/管理员评论）
+        // 根据角色定向查询用户名，避免不同表间 ID 冲突导致名字错乱
+        String role = BaseContext.getCurrentRole();
         String userName = "";
-        User user = userMapper.getById(userId);
-        if (user != null) {
-            userName = user.getName();
-        } else {
+        if (RoleConstant.ADMIN.equals(role)) {
+            Admin admin = adminMapper.getById(userId);
+            if (admin != null) {
+                userName = admin.getName();
+            }
+        } else if (RoleConstant.INHERITOR.equals(role)) {
             Inheritor inheritor = inheritorMapper.getById(userId);
             if (inheritor != null) {
                 userName = inheritor.getName();
-            } else {
-                Admin admin = adminMapper.getById(userId);
-                if (admin != null) {
-                    userName = admin.getName();
-                }
+            }
+        } else {
+            User user = userMapper.getById(userId);
+            if (user != null) {
+                userName = user.getName();
             }
         }
 
