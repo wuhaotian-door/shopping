@@ -185,7 +185,7 @@ async function handleRegister() {
 
     <!-- 右侧注册表单 -->
     <div class="login-right-box">
-      <div class="login-card" :style="{ maxWidth: isInheritor ? '520px' : '460px' }">
+      <div class="login-card">
         <h1 class="login-title">
           {{ isInheritor ? '非遗传承人入驻' : '用户注册' }}
         </h1>
@@ -685,7 +685,7 @@ export default {
 }
 .login-card {
   width: 100%;
-  max-width: 460px;
+  max-width: 520px;
   padding: 40px 32px;
   background: #fff;
   border-radius: 14px;
