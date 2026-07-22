@@ -9,7 +9,7 @@ const route = useRoute()
 const authStore = useAuthStore()
 
 const isLoggedIn = computed(() => authStore.isLoggedIn)
-const userName = computed(() => authStore.userInfo?.name)
+const userName = computed(() => authStore.userInfo?.name || '')
 const isInheritor = computed(() => authStore.userInfo?.role === 'INHERITOR')
 const isAdmin = computed(() => authStore.userInfo?.role === 'ADMIN')
 const isChatPage = computed(() => route.path === '/chat')
@@ -21,6 +21,7 @@ const showAccountMenu = ref(false)
 const switcherRef = ref<HTMLElement | null>(null)
 const accounts = computed(() => authStore.accounts)
 const activeIndex = computed(() => authStore.activeIndex)
+const avatarUrl = computed(() => authStore.activeAccount?.avatarUrl || '')
 function roleLabel(r: string) {
   return r === 'INHERITOR' ? '传承人' : r === 'ADMIN' ? '管理员' : '用户'
 }
@@ -99,6 +100,8 @@ function handleLogout() {
         <!-- 多账户切换 -->
         <div class="account-switcher" ref="switcherRef" v-if="accounts.length > 0">
           <button class="account-btn" @click.stop="toggleAccountMenu" :class="{ open: showAccountMenu }">
+            <img v-if="avatarUrl" :src="avatarUrl" class="header-avatar" />
+            <span v-else class="header-avatar-placeholder">{{ userName.charAt(0) }}</span>
             <span class="user-name">{{ userName }}</span>
             <span class="account-arrow" :class="{ flipped: showAccountMenu }">&#9662;</span>
           </button>
@@ -126,7 +129,6 @@ function handleLogout() {
           </div>
           </Transition>
         </div>
-        <span v-else class="user-name">{{ userName }}</span>
         <button v-if="!isInheritor && !isAdmin" class="header-btn" :class="{ 'header-btn-active': isProfilePage }" @click="router.push('/profile')">个人中心</button>
         <button class="header-btn msg-btn" :class="{ 'header-btn-active': isChatPage }" @click="router.push('/chat')">
           消息
@@ -185,6 +187,9 @@ function handleLogout() {
 .admin-tag { background: #fff; color: #c41e3a; }
 .user-tag { background: rgba(255, 255, 255, 0.2); color: #fff; }
 .user-name { font-size: 14px; white-space: nowrap; }
+
+.header-avatar { width: 28px !important; height: 28px !important; border-radius: 50%; object-fit: cover; flex-shrink: 0; border: 2px solid rgba(255,255,255,0.4); }
+.header-avatar-placeholder { width: 28px; height: 28px; border-radius: 50%; background: rgba(255,255,255,0.2); color: #fff; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 700; flex-shrink: 0; }
 
 /* 多账户切换器 */
 .account-switcher { position: relative; z-index: 150; }

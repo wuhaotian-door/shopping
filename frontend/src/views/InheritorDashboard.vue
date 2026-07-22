@@ -22,7 +22,7 @@ onMounted(() => {
   if (activeTab.value === 'productOrders') loadProductOrders()
 })
 
-const userName = computed(() => authStore.userInfo?.name)
+const userName = computed(() => authStore.userInfo?.name || '')
 
 // 多账户切换
 const showAccountMenu = ref(false)
@@ -32,6 +32,7 @@ function toggleAccountMenu() {
 }
 const accounts = computed(() => authStore.accounts)
 const activeIndex = computed(() => authStore.activeIndex)
+const avatarUrl = computed(() => authStore.activeAccount?.avatarUrl || '')
 function roleLabel(r: string) {
   return r === 'INHERITOR' ? '传承人' : r === 'ADMIN' ? '管理员' : '用户'
 }
@@ -220,6 +221,8 @@ function handleLogout() {
       <!-- 多账户切换 -->
       <div class="account-switcher" ref="switcherRef" v-if="accounts.length > 0">
         <button class="account-btn" @click.stop="toggleAccountMenu" :class="{ open: showAccountMenu }">
+          <img v-if="avatarUrl" :src="avatarUrl" class="header-avatar" />
+          <span v-else class="header-avatar-placeholder">{{ userName.charAt(0) }}</span>
           <span class="user-name">{{ userName }}</span>
           <span class="account-arrow" :class="{ flipped: showAccountMenu }">&#9662;</span>
         </button>
@@ -246,9 +249,7 @@ function handleLogout() {
           </div>
         </div>
         </Transition>
-      </div>
-      <span v-else class="user-name">{{ userName }}</span>
-      <button class="home-btn" @click="router.push('/')">返回首页</button>
+      </div>      <button class="home-btn" @click="router.push('/')">返回首页</button>
       <button class="logout-btn" @click="handleLogout">退出</button>
     </div>
   </header>
@@ -497,6 +498,28 @@ function handleLogout() {
 .user-name {
   font-size: 14px;
   white-space: nowrap;
+}
+
+.header-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+.header-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
 }
 /* 多账户切换器 */
 .account-switcher { position: relative; z-index: 150; }

@@ -63,7 +63,8 @@ function splitCrafts(craftTypes: string): string[] {
         <div v-for="master in masterList" :key="master.employeeId" class="master-card">
           <div class="master-card-top">
             <div class="master-avatar-big">
-              <span class="master-avatar-initial">{{ (master.name || '传')[0] }}</span>
+              <img v-if="master.avatarUrl" :src="master.avatarUrl" class="master-avatar-img" />
+              <span v-else class="master-avatar-initial">{{ (master.name || '传')[0] }}</span>
             </div>
             <div v-if="master.region || master.address" class="master-region-tag">
               📍 {{ master.region || master.address }}

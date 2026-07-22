@@ -40,6 +40,7 @@ public class UserController {
                 .username(user.getUsername())
                 .phone(user.getPhone())
                 .email(user.getEmail())
+                .avatarUrl(user.getAvatarUrl())
                 .sex(user.getSex())
                 .build();
         return Result.success(vo);

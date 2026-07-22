@@ -8,6 +8,7 @@ import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
 import CommentItem from '@/components/CommentItem.vue'
 import Product3dViewer from '@/components/Product3dViewer.vue'
+import Product3dViewer from '@/components/Product3dViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -192,7 +193,9 @@ async function submitBuy() {
 // ===== 轻提示 =====
 const cartToast = ref('')
 const show3d = ref(false)
+const show3d = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
+const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 function showToast() {
   if (toastTimer) clearTimeout(toastTimer)
@@ -493,6 +496,7 @@ function goTo(path: string) {
 .product-image-wrap {
   width: 400px;
   position: relative;
+  position: relative;
   height: 400px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -517,6 +521,8 @@ function goTo(path: string) {
   color: #c41e3a;
   background: linear-gradient(135deg, #ffe9ec, #fef0f2);
 }
+.btn-3d-toggle { position: absolute; top: 10px; right: 10px; z-index: 20; padding: 6px 14px; font-size: 12px; color: #fff; background: rgba(196, 30, 58, 0.85); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); transition: all 0.2s; }
+.btn-3d-toggle:hover { background: #c41e3a; box-shadow: 0 2px 8px rgba(196, 30, 58, 0.35); }
 
 .btn-3d-toggle {
   position: absolute;

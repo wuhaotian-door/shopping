@@ -12,6 +12,7 @@ interface StoredAccount {
   username: string
   name: string
   token: string
+  avatarUrl?: string
 }
 
 function loadAccounts(): StoredAccount[] {
@@ -101,9 +102,27 @@ export const useAuthStore = defineStore('auth', () => {
     if (accounts.value.length === 0) return
     const a = activeAccount.value
     if (a) {
+      try {
+        if (a.role === 'INHERITOR') {
+          const { getMyProfile } = await import('@/api/profile')
+          const res = await getMyProfile()
+          if (res.data?.avatarUrl) { a.avatarUrl = res.data.avatarUrl; persist() }
+        } else {
+          const { getMyProfile } = await import('@/api/user')
+          const res = await getMyProfile()
+          if (res.data?.avatarUrl) { a.avatarUrl = res.data.avatarUrl; persist() }
+        }
+      } catch { /* ignore */ }
       import('@/stores/cart').then(m => m.useCartStore().loadForUser(a.role + '_' + a.id))
     }
   }
 
-  return { accounts, activeIndex, activeAccount, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, initAuth }
+  function updateAvatar(url: string) {
+    const a = activeAccount.value
+    if (!a) return
+    a.avatarUrl = url
+    persist()
+  }
+
+  return { accounts, activeIndex, activeAccount, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, initAuth, updateAvatar }
 })

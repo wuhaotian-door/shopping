@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import '@google/model-viewer'
+import { uploadFile } from '@/api/upload'
+import { ElMessage } from 'element-plus'
 import { listMyProducts, addProduct, updateProduct, offProduct, onProduct } from '@/api/product'
 import type { ProductVO } from '@/types/api'
 
@@ -21,6 +24,37 @@ const form = ref({
 })
 
 const submitMsg = ref('')
+const uploadingImage = ref(false)
+const uploadingModel = ref(false)
+const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp'
+const MODEL_ACCEPT = '.glb,.gltf'
+const IMAGE_MAX = 5 * 1024 * 1024
+const MODEL_MAX = 20 * 1024 * 1024
+
+function beforeImageUpload(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['jpg','jpeg','png','webp'].includes(ext)) { ElMessage.error('仅支持 jpg/png/webp 格式的图片'); return false }
+  if (file.size > IMAGE_MAX) { ElMessage.error('图片大小不能超过 5MB'); return false }
+  return true
+}
+function beforeModelUpload(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['glb','gltf'].includes(ext)) { ElMessage.error('仅支持 glb/gltf 格式的3D模型'); return false }
+  if (file.size > MODEL_MAX) { ElMessage.error('模型大小不能超过 20MB'); return false }
+  return true
+}
+async function handleImageUpload(options: { file: File }) {
+  uploadingImage.value = true
+  try { const res = await uploadFile(options.file, 'image'); form.value.imageUrl = res.data; ElMessage.success('图片上传成功') }
+  catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '图片上传失败') }
+  finally { uploadingImage.value = false }
+}
+async function handleModelUpload(options: { file: File }) {
+  uploadingModel.value = true
+  try { const res = await uploadFile(options.file, 'model'); form.value.modelUrl = res.data; ElMessage.success('模型上传成功') }
+  catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '模型上传失败') }
+  finally { uploadingModel.value = false }
+}
 
 /** 图片加载失败时回退到占位符 */
 const failedImages = ref(new Set<number>())
@@ -126,11 +160,23 @@ async function handleToggle(product: ProductVO) {
           </div>
           <div class="form-group">
             <label>图片链接</label>
-            <input v-model="form.imageUrl" type="text" class="form-input" placeholder="商品图片URL" />
+            <div class="upload-row">
+              <el-upload :http-request="handleImageUpload" :before-upload="beforeImageUpload" :accept="IMAGE_ACCEPT" :show-file-list="false" :disabled="uploadingImage">
+                <el-button type="primary" :loading="uploadingImage" size="small">{{ uploadingImage ? '上传中...' : '上传图片' }}</el-button>
+              </el-upload>
+              <input v-model="form.imageUrl" type="text" class="form-input" placeholder="商品图片URL" />
+            </div>
+            <div v-if="form.imageUrl" class="preview-box"><img :src="form.imageUrl" alt="预览" class="preview-img" @error="(e) => (e.target as HTMLImageElement).style.display='none'" /></div>
           </div>
           <div class="form-group">
             <label>3D模型链接（可选，glb/gltf格式）</label>
-            <input v-model="form.modelUrl" type="text" class="form-input" placeholder="留空则使用默认茶壶模型" />
+            <div class="upload-row">
+              <el-upload :http-request="handleModelUpload" :before-upload="beforeModelUpload" :accept="MODEL_ACCEPT" :show-file-list="false" :disabled="uploadingModel">
+                <el-button type="primary" :loading="uploadingModel" size="small">{{ uploadingModel ? '上传中...' : '上传模型' }}</el-button>
+              </el-upload>
+              <input v-model="form.modelUrl" type="text" class="form-input" placeholder="留空则使用默认茶壶模型" />
+            </div>
+            <div v-if="form.modelUrl" class="preview-box preview-model-box"><model-viewer :src="form.modelUrl" auto-rotate camera-controls shadow-intensity="0.3" exposure="1" style="width:100%;height:200px;"></model-viewer><span class="preview-hint">3D 模型预览</span></div>
           </div>
           <div class="form-group">
             <label>商品描述</label>
