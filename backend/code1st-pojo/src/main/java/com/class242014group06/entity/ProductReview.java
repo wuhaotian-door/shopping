@@ -27,6 +27,9 @@ public class ProductReview implements Serializable {
     /** 评价用户ID */
     private Long userId;
 
+    /** 评价用户角色：USER/INHERITOR/ADMIN */
+    private String userRole;
+
     /** 评价用户名 */
     private String userName;
 

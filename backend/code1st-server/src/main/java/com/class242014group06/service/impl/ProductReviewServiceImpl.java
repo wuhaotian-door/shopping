@@ -82,6 +82,7 @@ public class ProductReviewServiceImpl implements ProductReviewService {
         ProductReview review = ProductReview.builder()
                 .productId(productId)
                 .userId(userId)
+                .userRole(role)
                 .userName(userName)
                 .rating(dto.getRating())
                 .content(dto.getContent().trim())
@@ -117,7 +118,10 @@ public class ProductReviewServiceImpl implements ProductReviewService {
         if (review == null) {
             throw new OrderBusinessException("评价不存在");
         }
-        if (!review.getUserId().equals(userId)) {
+        // 同时校验 userId 和 userRole；旧数据无 userRole 时仅比对 userId
+        if (!review.getUserId().equals(userId)
+                || (review.getUserRole() != null
+                    && !BaseContext.getCurrentRole().equals(review.getUserRole()))) {
             throw new OrderBusinessException("无权删除他人评价");
         }
         reviewMapper.deleteById(reviewId);
@@ -163,6 +167,7 @@ public class ProductReviewServiceImpl implements ProductReviewService {
                 .id(review.getId())
                 .productId(review.getProductId())
                 .userId(review.getUserId())
+                .userRole(review.getUserRole())
                 .userName(review.getUserName())
                 .rating(review.getRating())
                 .content(review.getContent())

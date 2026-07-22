@@ -252,6 +252,7 @@ export interface ProductReviewVO {
   id: number
   productId: number
   userId: number
+  userRole: string
   userName: string
   rating: number | null
   content: string
@@ -406,6 +407,7 @@ export interface ArticleCommentVO {
   id: number
   articleId: number
   userId: number
+  userRole: string
   userName: string
   content: string
   parentId: number | null

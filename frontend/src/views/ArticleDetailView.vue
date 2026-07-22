@@ -188,6 +188,7 @@ async function handleDeleteComment(commentId: number) {
               :key="comment.id"
               :comment="comment"
               :current-user-id="authStore.userInfo?.id ?? null"
+              :current-user-role="authStore.userInfo?.role ?? null"
               :depth="0"
               @reply="handleReplyClick"
               @delete="handleDeleteComment"

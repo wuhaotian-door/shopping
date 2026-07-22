@@ -16,8 +16,8 @@ import java.util.List;
 @Mapper
 public interface ProductReviewMapper {
 
-    @Insert("insert into product_review (product_id, user_id, user_name, rating, content, parent_id, is_deleted, create_time) " +
-            "values (#{productId}, #{userId}, #{userName}, #{rating}, #{content}, #{parentId}, #{isDeleted}, #{createTime})")
+    @Insert("insert into product_review (product_id, user_id, user_role, user_name, rating, content, parent_id, is_deleted, create_time) " +
+            "values (#{productId}, #{userId}, #{userRole}, #{userName}, #{rating}, #{content}, #{parentId}, #{isDeleted}, #{createTime})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(ProductReview review);
 

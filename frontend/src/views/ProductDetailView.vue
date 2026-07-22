@@ -317,6 +317,7 @@ function goTo(path: string) {
               :key="review.id"
               :comment="review"
               :current-user-id="authStore.userInfo?.id ?? null"
+              :current-user-role="authStore.userInfo?.role ?? null"
               :depth="0"
               @reply="handleReplyClick"
               @delete="handleDeleteReview"

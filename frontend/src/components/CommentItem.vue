@@ -4,6 +4,7 @@ import { ref } from 'vue'
 interface CommentNode {
   id: number
   userId: number
+  userRole: string
   userName: string
   content: string
   parentId: number | null
@@ -17,6 +18,7 @@ interface CommentNode {
 const props = defineProps<{
   comment: CommentNode
   currentUserId: number | null
+  currentUserRole: string | null
   depth: number
 }>()
 
@@ -73,6 +75,7 @@ function handleDelete() {
             :key="child.id"
             :comment="child"
             :current-user-id="currentUserId"
+            :current-user-role="currentUserRole"
             :depth="0"
             @reply="(parentId: number, content: string) => emit('reply', parentId, content)"
             @delete="emit('delete', $event)"
@@ -110,7 +113,7 @@ function handleDelete() {
               {{ showReplyForm ? '取消回复' : '回复' }}
             </button>
             <button
-              v-if="currentUserId && comment.userId === currentUserId && comment.isDeleted !== 1"
+              v-if="currentUserId && currentUserRole && comment.userId === currentUserId && (comment.userRole == null || comment.userRole === currentUserRole) && comment.isDeleted !== 1"
               class="action-btn delete-btn"
               @click="handleDelete"
             >
@@ -145,6 +148,7 @@ function handleDelete() {
           :key="child.id"
           :comment="child"
           :current-user-id="currentUserId"
+          :current-user-role="currentUserRole"
           :depth="depth + 1"
           @reply="(parentId: number, content: string) => emit('reply', parentId, content)"
           @delete="emit('delete', $event)"

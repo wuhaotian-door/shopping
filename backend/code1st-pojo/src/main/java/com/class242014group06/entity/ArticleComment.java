@@ -27,6 +27,9 @@ public class ArticleComment implements Serializable {
     /** 评论用户ID */
     private Long userId;
 
+    /** 评论用户角色：USER/INHERITOR/ADMIN */
+    private String userRole;
+
     /** 评论用户名 */
     private String userName;
 

@@ -77,6 +77,7 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
         ArticleComment comment = ArticleComment.builder()
                 .articleId(articleId)
                 .userId(userId)
+                .userRole(role)
                 .userName(userName)
                 .content(dto.getContent().trim())
                 .parentId(dto.getParentId())
@@ -106,7 +107,10 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
         if (comment == null) {
             throw new OrderBusinessException("评论不存在");
         }
-        if (!comment.getUserId().equals(userId)) {
+        // 同时校验 userId 和 userRole；旧数据无 userRole 时仅比对 userId
+        if (!comment.getUserId().equals(userId)
+                || (comment.getUserRole() != null
+                    && !BaseContext.getCurrentRole().equals(comment.getUserRole()))) {
             throw new OrderBusinessException("无权删除他人评论");
         }
         commentMapper.deleteById(commentId);
@@ -152,6 +156,7 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
                 .id(comment.getId())
                 .articleId(comment.getArticleId())
                 .userId(comment.getUserId())
+                .userRole(comment.getUserRole())
                 .userName(comment.getUserName())
                 .content(comment.getContent())
                 .parentId(comment.getParentId())

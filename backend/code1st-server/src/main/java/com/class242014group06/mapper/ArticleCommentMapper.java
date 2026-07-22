@@ -16,8 +16,8 @@ import java.util.List;
 @Mapper
 public interface ArticleCommentMapper {
 
-    @Insert("insert into article_comment (article_id, user_id, user_name, content, parent_id, is_deleted, create_time) " +
-            "values (#{articleId}, #{userId}, #{userName}, #{content}, #{parentId}, #{isDeleted}, #{createTime})")
+    @Insert("insert into article_comment (article_id, user_id, user_role, user_name, content, parent_id, is_deleted, create_time) " +
+            "values (#{articleId}, #{userId}, #{userRole}, #{userName}, #{content}, #{parentId}, #{isDeleted}, #{createTime})")
     @Options(useGeneratedKeys = true, keyProperty = "id")
     void insert(ArticleComment comment);
 
