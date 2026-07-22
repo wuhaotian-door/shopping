@@ -168,6 +168,11 @@ function handleLogout() {
   font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
   padding: 0 5px; line-height: 1;
+  animation: badgePulse 2s ease-in-out infinite;
+}
+@keyframes badgePulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.15); }
 }
 
 @media (max-width: 768px) {

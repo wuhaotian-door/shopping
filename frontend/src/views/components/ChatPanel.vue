@@ -59,10 +59,17 @@ async function loadConversations() {
 async function selectConversation(conv: ConversationVO) {
   activeConv.value = conv
   await loadMessages(conv.conversationId)
-  // 仅清除当前会话的未读计数
+  // 清除当前会话未读：服务端 loadMessages 已标记已读，刷新列表获取最新计数
+  await loadConversations()
   if (conv.unreadCount > 0) {
-    unreadCount.value = Math.max(0, unreadCount.value - conv.unreadCount)
-    conv.unreadCount = 0
+    const updated = conversations.value.find(c => c.conversationId === conv.conversationId)
+    if (updated) {
+      unreadCount.value = Math.max(0, unreadCount.value - conv.unreadCount + (updated.unreadCount || 0))
+      conv.unreadCount = updated.unreadCount || 0
+    } else {
+      unreadCount.value = Math.max(0, unreadCount.value - conv.unreadCount)
+      conv.unreadCount = 0
+    }
   }
   startPolling()
 }
