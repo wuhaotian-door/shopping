@@ -164,7 +164,7 @@ router.beforeEach((to, _from, next) => {
   }
 
   // 已登录时访问登录页 → 按角色跳转
-  if (to.path === '/login' && authStore.isLoggedIn) {
+  if (to.path === '/login' && authStore.isLoggedIn && to.query.add !== '1') {
     if (authStore.userInfo?.role === 'ADMIN') {
       next('/admin')
     } else if (authStore.userInfo?.role === 'INHERITOR') {

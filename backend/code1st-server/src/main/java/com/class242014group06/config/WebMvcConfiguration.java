@@ -46,6 +46,10 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     @Value("${code1st.upload.path:./uploads}")
     private String uploadPath;
 
+    /** 静态文件存储路径（图片、模型等） */
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
+
     /**
      * 配置跨域
      *
@@ -126,6 +130,15 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
         log.info("上传文件静态资源映射：/uploads/** -> file:{}", absoluteUploadPath);
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + absoluteUploadPath);
+
+        // 映射静态目录：上传的图片和3D模型可通过 /images/xxx.jpg、/models/xxx.glb 直接访问
+        String absoluteStaticPath = new java.io.File(staticPath).getAbsolutePath() + java.io.File.separator;
+        log.info("静态资源映射：/images/** -> file:{}images/", absoluteStaticPath);
+        log.info("静态资源映射：/models/** -> file:{}models/", absoluteStaticPath);
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations("file:" + absoluteStaticPath + "images/");
+        registry.addResourceHandler("/models/**")
+                .addResourceLocations("file:" + absoluteStaticPath + "models/");
     }
 
     /**

@@ -2,6 +2,9 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyProfile, saveProfile } from '@/api/profile'
+import { uploadFile } from '@/api/upload'
+import { ElMessage } from 'element-plus'
+import AvatarCropper from '@/components/AvatarCropper.vue'
 import { sendResetCode, resetPassword } from '@/api/auth'
 import { listMyOrders } from '@/api/order'
 import { listMyProductOrders } from '@/api/product'
@@ -27,6 +30,11 @@ const form = ref({
   honorTitle: '', selfIntro: '', craftTypes: '', address: '', avatarUrl: '',
 })
 const saveMsg = ref('')
+const uploadingAvatar = ref(false)
+const cropVisible = ref(false)
+const cropImage = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+let cropResolve: ((blob: Blob) => void) | null = null
 const showHistory = ref(false)
 
 onMounted(() => { loadProfile(); loadOrders(); loadProductOrders() })
@@ -111,6 +119,27 @@ function cancelEdit() {
   saveMsg.value = ''
 }
 
+function startAvatarCrop(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['jpg','jpeg','png','webp'].includes(ext)) { ElMessage.error('仅支持 jpg/png/webp 格式'); return }
+  cropImage.value = URL.createObjectURL(file)
+  cropVisible.value = true
+  new Promise<Blob>((resolve) => { cropResolve = resolve }).then(doUploadCropped)
+}
+async function doUploadCropped(blob: Blob) {
+  uploadingAvatar.value = true
+  try {
+    const res = await uploadFile(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'image')
+    profile.value.avatarUrl = res.data
+    form.value.avatarUrl = res.data
+    await saveProfile({ avatarUrl: res.data })
+    authStore.updateAvatar(res.data)
+    ElMessage.success('头像更新成功')
+  } catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '头像上传失败') }
+  finally { uploadingAvatar.value = false }
+}
+function onCropConfirm(blob: Blob) { cropResolve?.(blob); cropResolve = null }
+
 const craftArray = () => profile.value.craftTypes ? profile.value.craftTypes.split(/[,，]/).filter(Boolean) : []
 
 // 修改密码（邮箱验证码）
@@ -159,12 +188,16 @@ async function handleChangePwd() {
     <div class="profile-card">
       <!-- 头像+姓名 -->
       <div class="profile-avatar-section">
-        <div class="profile-avatar-lg"></div>
+        <div class="profile-avatar-lg" :style="profile.avatarUrl ? { backgroundImage: 'url(' + profile.avatarUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}"></div>
         <div class="profile-name-role">
           <h3 v-if="!editMode">{{ profile.name || '未设置姓名' }}</h3>
           <input v-else v-model="form.name" type="text" class="form-input name-input" placeholder="姓名" />
           <p v-if="!editMode" class="profile-honor">{{ profile.honorTitle || '未设置荣誉称号' }}</p>
           <p v-if="!editMode" class="profile-region">{{ profile.region || '' }}</p>
+          <div v-if="editMode" class="avatar-upload-btn" style="margin-top:8px">
+            <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="(e) => { const t = e.target as HTMLInputElement; const f = t.files?.[0]; if (f) startAvatarCrop(f); t.value = '' }" />
+            <el-button size="small" :loading="uploadingAvatar" @click="fileInput?.click()">{{ uploadingAvatar ? '上传中...' : '更换头像' }}</el-button>
+          </div>
         </div>
       </div>
 
@@ -314,7 +347,8 @@ async function handleChangePwd() {
         </tbody>
       </table>
     </div>
-  </section>
+    <AvatarCropper v-model:visible="cropVisible" :image-url="cropImage" @crop="onCropConfirm" />
+</section>
 </template>
 
 <style scoped>

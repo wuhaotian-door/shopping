@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 文创商品实体
+ * 鏂囧垱鍟嗗搧瀹炰綋
  */
 @Data
 @Builder
@@ -22,31 +22,34 @@ public class Product implements Serializable {
 
     private Long id;
 
-    /** 商品名称 */
+    /** 鍟嗗搧鍚嶇О */
     private String name;
 
-    /** 商品描述 */
+    /** 鍟嗗搧鎻忚堪 */
     private String description;
 
-    /** 商品价格 */
+    /** 鍟嗗搧浠锋牸 */
     private BigDecimal price;
 
-    /** 库存数量 */
+    /** 搴撳瓨鏁伴噺 */
     private Integer stock;
 
-    /** 商品图片URL */
+    /** 鍟嗗搧鍥剧墖URL */
     private String imageUrl;
 
-    /** 商品分类 */
+    /** 3D模型URL（glb/gltf格式），可选 */
+    private String modelUrl;
+
+    /** 鍟嗗搧鍒嗙被 */
     private String category;
 
-    /** 传承人ID */
+    /** 浼犳壙浜篒D */
     private Long inheritorId;
 
-    /** 传承人姓名 */
+    /** 浼犳壙浜哄鍚?*/
     private String inheritorName;
 
-    /** 状态：1-上架 0-下架 */
+    /** 鐘舵€侊細1-涓婃灦 0-涓嬫灦 */
     private Integer status;
 
     private LocalDateTime createTime;

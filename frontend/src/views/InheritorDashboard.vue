@@ -22,7 +22,28 @@ onMounted(() => {
   if (activeTab.value === 'productOrders') loadProductOrders()
 })
 
-const userName = computed(() => authStore.userInfo?.name)
+const userName = computed(() => authStore.userInfo?.name || '')
+
+// 多账户切换
+const showAccountMenu = ref(false)
+const switcherRef = ref<HTMLElement | null>(null)
+function toggleAccountMenu() {
+  showAccountMenu.value = !showAccountMenu.value
+}
+const accounts = computed(() => authStore.accounts)
+const activeIndex = computed(() => authStore.activeIndex)
+const avatarUrl = computed(() => authStore.activeAccount?.avatarUrl || '')
+function roleLabel(r: string) {
+  return r === 'INHERITOR' ? '传承人' : r === 'ADMIN' ? '管理员' : '用户'
+}
+function doSwitchAccount(index: number) {
+  authStore.switchAccount(index)
+  showAccountMenu.value = false
+}
+function addAccount() {
+  showAccountMenu.value = false
+  router.push('/login?add=1')
+}
 
 // 当前激活的 tab — 支持通过 URL query ?tab=xxx 指定
 type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
@@ -63,6 +84,9 @@ function closeMenu() {
 function onDocClick(e: MouseEvent) {
   if (navRef.value && !navRef.value.contains(e.target as Node)) {
     closeMenu()
+  }
+  if (switcherRef.value && !switcherRef.value.contains(e.target as Node)) {
+    showAccountMenu.value = false
   }
 }
 onMounted(() => document.addEventListener('click', onDocClick))
@@ -194,8 +218,38 @@ function handleLogout() {
 
     <div class="header-right">
       <span class="inheritor-badge">非遗传承人</span>
-      <span class="user-name">{{ userName }}</span>
-      <button class="home-btn" @click="router.push('/')">返回首页</button>
+      <!-- 多账户切换 -->
+      <div class="account-switcher" ref="switcherRef" v-if="accounts.length > 0">
+        <button class="account-btn" @click.stop="toggleAccountMenu" :class="{ open: showAccountMenu }">
+          <img v-if="avatarUrl" :src="avatarUrl" class="header-avatar" />
+          <span v-else class="header-avatar-placeholder">{{ userName.charAt(0) }}</span>
+          <span class="user-name">{{ userName }}</span>
+          <span class="account-arrow" :class="{ flipped: showAccountMenu }">&#9662;</span>
+        </button>
+        <Transition name="menu-fade">
+        <div class="account-menu" v-if="showAccountMenu">
+          <div
+            v-for="(acc, idx) in accounts"
+            :key="idx"
+            class="account-item"
+            :class="{ active: idx === activeIndex }"
+            @click.stop="doSwitchAccount(idx)"
+          >
+            <span class="account-avatar">{{ acc.name.charAt(0) }}</span>
+            <span class="account-info">
+              <span class="account-name">{{ acc.name }}</span>
+              <span class="account-detail">{{ acc.username }} · {{ roleLabel(acc.role) }}</span>
+            </span>
+            <span v-if="idx === activeIndex" class="account-check-icon">&#10003;</span>
+          </div>
+          <div class="account-divider"></div>
+          <div class="account-item add-account" @click.stop="addAccount">
+            <span class="account-add-icon">+</span>
+            <span class="account-name">添加其他账号</span>
+          </div>
+        </div>
+        </Transition>
+      </div>      <button class="home-btn" @click="router.push('/')">返回首页</button>
       <button class="logout-btn" @click="handleLogout">退出</button>
     </div>
   </header>
@@ -430,6 +484,7 @@ function handleLogout() {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
 }
 .inheritor-badge {
   font-size: 11px;
@@ -444,6 +499,88 @@ function handleLogout() {
   font-size: 14px;
   white-space: nowrap;
 }
+
+.header-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+.header-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+/* 多账户切换器 */
+.account-switcher { position: relative; z-index: 150; }
+.account-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; font-size: 14px;
+  color: #fff; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+  transition: all 0.2s;
+}
+.account-btn:hover, .account-btn.open {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.5);
+}
+.account-arrow { font-size: 10px; transition: transform 0.25s; }
+.account-arrow.flipped { transform: rotate(180deg); }
+.account-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 240px;
+  background: linear-gradient(160deg, #3d0a12 0%, #5c1522 40%, #7a1e2d 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,215,0,0.08);
+  overflow: hidden;
+  padding: 6px 0;
+}
+.account-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer; transition: background 0.15s;
+  color: rgba(255,255,255,0.9); font-size: 14px;
+  position: relative;
+}
+.account-item:hover { background: rgba(255,255,255,0.1); }
+.account-item.active { background: rgba(255,215,0,0.12); color: #ffd700; }
+.account-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.account-item.active .account-avatar { background: #ffd700; color: #5c1522; }
+.account-info { display: flex; flex-direction: column; }
+.account-name { font-weight: 600; }
+.account-detail { font-size: 11px; color: rgba(255,255,255,0.5); }
+.account-item.active .account-detail { color: rgba(255,215,0,0.7); }
+.account-check-icon { margin-left: auto; color: #ffd700; font-size: 16px; font-weight: 700; }
+.account-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+.add-account { color: rgba(255,255,255,0.7); }
+.add-account:hover { color: #fff; background: rgba(255,255,255,0.1); }
+.account-add-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1.5px dashed rgba(255,255,255,0.4); color: rgba(255,255,255,0.6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.add-account:hover .account-add-icon { border-color: #ffd700; color: #ffd700; }
+.menu-fade-enter-active { transition: all 0.2s ease-out; }
+.menu-fade-leave-active { transition: all 0.15s ease-in; }
+.menu-fade-enter-from { opacity: 0; transform: translateY(-6px); }
+.menu-fade-leave-to { opacity: 0; transform: translateY(-4px); }
 .home-btn {
   padding: 6px 12px;
   font-size: 12px;

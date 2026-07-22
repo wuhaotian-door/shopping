@@ -82,6 +82,7 @@ public class UserServiceImpl implements UserService {
                 .phone(dto.getPhone())
                 .email(dto.getEmail())
                 .sex(dto.getSex())
+                .avatarUrl(dto.getAvatarUrl())
                 .build();
         userMapper.update(user);
     }
