@@ -54,6 +54,17 @@ public class ProductOrderController {
     }
 
     /**
+     * 查询订单详情
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("查询订单详情")
+    public Result<ProductOrderVO> getDetail(@PathVariable Long id) {
+        log.info("查询订单详情，orderId：{}", id);
+        ProductOrderVO order = productOrderService.getDetail(id);
+        return Result.success(order);
+    }
+
+    /**
      * 用户查看自己的商品订单
      */
     @GetMapping("/my")
@@ -78,27 +89,31 @@ public class ProductOrderController {
     }
 
     /**
-     * 传承人发货
+     * 传承人发货（含快递信息）
      */
     @PutMapping("/{id}/ship")
     @ApiOperation("传承人发货")
-    public Result<String> ship(@PathVariable Long id) {
+    public Result<String> ship(@PathVariable Long id,
+                                @RequestParam(required = false) String courierCompany,
+                                @RequestParam(required = false) String trackingNumber) {
         Long inheritorId = BaseContext.getCurrentId();
-        log.info("传承人发货，orderId：{}，inheritorId：{}", id, inheritorId);
-        productOrderService.ship(id, inheritorId);
+        log.info("传承人发货，orderId：{}，courier：{}，tracking：{}", id, courierCompany, trackingNumber);
+        productOrderService.ship(id, inheritorId,
+                courierCompany != null ? courierCompany : "",
+                trackingNumber != null ? trackingNumber : "");
         return Result.success("已发货");
     }
 
     /**
-     * 传承人完成订单
+     * 用户确认收货
      */
     @PutMapping("/{id}/complete")
-    @ApiOperation("传承人完成订单")
+    @ApiOperation("用户确认收货")
     public Result<String> complete(@PathVariable Long id) {
-        Long inheritorId = BaseContext.getCurrentId();
-        log.info("传承人完成订单，orderId：{}，inheritorId：{}", id, inheritorId);
-        productOrderService.complete(id, inheritorId);
-        return Result.success("订单已完成");
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户确认收货，orderId：{}，userId：{}", id, userId);
+        productOrderService.complete(id, userId);
+        return Result.success("确认收货成功");
     }
 
     /**

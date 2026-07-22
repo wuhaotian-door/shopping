@@ -272,6 +272,7 @@ export interface ProductReviewDTO {
 
 export interface ProductOrderVO {
   id: number
+  userId?: number
   userName: string
   phone: string
   address: string
@@ -284,6 +285,8 @@ export interface ProductOrderVO {
   inheritorId: number
   remark: string
   status: number
+  courierCompany?: string
+  trackingNumber?: string
   createTime: string
 }
 

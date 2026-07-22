@@ -13,6 +13,11 @@ public interface ProductOrderService {
     void submit(Long userId, String userName, ProductOrderSubmitDTO dto);
 
     /**
+     * 查询订单详情
+     */
+    ProductOrderVO getDetail(Long orderId);
+
+    /**
      * 用户查看自己的商品订单
      */
     List<ProductOrderVO> listByUser(Long userId);
@@ -23,17 +28,17 @@ public interface ProductOrderService {
     List<ProductOrderVO> listByInheritor(Long inheritorId);
 
     /**
-     * 传承人发货
+     * 传承人发货（含快递信息）
      */
-    void ship(Long orderId, Long inheritorId);
+    void ship(Long orderId, Long inheritorId, String courierCompany, String trackingNumber);
 
     /**
-     * 传承人完成订单
+     * 用户确认收货（完成订单）
      */
-    void complete(Long orderId, Long inheritorId);
+    void complete(Long orderId, Long userId);
 
     /**
-     * 取消订单（用户取消 或 传承人取消）
+     * 用户取消订单（仅待发货状态下可取消）
      */
     void cancel(Long orderId, Long userId);
     List<ProductOrderVO> listAll();

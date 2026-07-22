@@ -66,6 +66,15 @@ public class ProductOrderServiceImpl implements ProductOrderService {
     }
 
     @Override
+    public ProductOrderVO getDetail(Long orderId) {
+        ProductOrder order = productOrderMapper.getById(orderId);
+        if (order == null) {
+            throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
+        }
+        return toVO(order);
+    }
+
+    @Override
     public List<ProductOrderVO> listByUser(Long userId) {
         List<ProductOrder> orders = productOrderMapper.listByUserId(userId);
         return orders.stream().map(this::toVO).collect(Collectors.toList());
@@ -78,7 +87,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
     }
 
     @Override
-    public void ship(Long orderId, Long inheritorId) {
+    public void ship(Long orderId, Long inheritorId, String courierCompany, String trackingNumber) {
         ProductOrder order = productOrderMapper.getById(orderId);
         if (order == null) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
@@ -92,17 +101,20 @@ public class ProductOrderServiceImpl implements ProductOrderService {
         ProductOrder update = ProductOrder.builder()
                 .id(orderId)
                 .status(ProductOrderStatusConstant.SHIPPED)
+                .courierCompany(courierCompany)
+                .trackingNumber(trackingNumber)
                 .build();
         productOrderMapper.update(update);
     }
 
     @Override
-    public void complete(Long orderId, Long inheritorId) {
+    public void complete(Long orderId, Long userId) {
         ProductOrder order = productOrderMapper.getById(orderId);
         if (order == null) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
         }
-        if (!order.getInheritorId().equals(inheritorId)) {
+        // 只有下单用户本人可以确认收货
+        if (!order.getUserId().equals(userId)) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_PERMISSION_DENIED);
         }
         if (!order.getStatus().equals(ProductOrderStatusConstant.SHIPPED)) {
@@ -122,10 +134,11 @@ public class ProductOrderServiceImpl implements ProductOrderService {
         if (order == null) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_NOT_FOUND);
         }
-        // 只允许下单用户取消，或传承人取消
-        if (!order.getUserId().equals(userId) && !order.getInheritorId().equals(userId)) {
+        // 只允许下单用户取消自己的订单
+        if (!order.getUserId().equals(userId)) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_ORDER_PERMISSION_DENIED);
         }
+        // 只能在待发货状态下取消
         if (!order.getStatus().equals(ProductOrderStatusConstant.PENDING)) {
             throw new OrderBusinessException(MessageConstant.ORDER_STATUS_ERROR);
         }
@@ -206,6 +219,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
     private ProductOrderVO toVO(ProductOrder order) {
         return ProductOrderVO.builder()
                 .id(order.getId())
+                .userId(order.getUserId())
                 .userName(order.getUserName())
                 .phone(order.getPhone())
                 .address(order.getAddress())
@@ -218,6 +232,8 @@ public class ProductOrderServiceImpl implements ProductOrderService {
                 .inheritorId(order.getInheritorId())
                 .remark(order.getRemark())
                 .status(order.getStatus())
+                .courierCompany(order.getCourierCompany())
+                .trackingNumber(order.getTrackingNumber())
                 .createTime(order.getCreateTime())
                 .build();
     }

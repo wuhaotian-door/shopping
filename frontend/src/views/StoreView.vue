@@ -40,6 +40,12 @@ function addToCart(p: ProductVO) {
   if (!isLoggedIn.value) { router.push('/login'); return }
   cartStore.add(p, authStore.uid)
 }
+
+function goTo(path: string) {
+  // 三个入口都需要登录
+  if (!isLoggedIn.value) { router.push('/login'); return }
+  router.push(path)
+}
 </script>
 
 <template>
@@ -78,11 +84,36 @@ function addToCart(p: ProductVO) {
     </div>
   </main>
 
-  <!-- ===== 右下角悬浮加号按钮 ===== -->
-  <div class="fab" @click="router.push('/cart')">
-    <span class="fab-icon">+</span>
-    <span v-if="cartStore.count > 0" class="fab-badge">{{ cartStore.count }}</span>
-  </div>
+  <!-- ===== 右侧悬浮侧边栏（仿淘宝） ===== -->
+  <aside class="side-toolbar">
+    <button class="side-btn" @click="goTo('/cart')" title="购物车">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="9" cy="21" r="1.2"/>
+        <circle cx="18" cy="21" r="1.2"/>
+        <path d="M2.5 3h2.2l2.4 12.2a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.5L21.5 7H6"/>
+      </svg>
+      <span class="side-label">购物车</span>
+      <span v-if="cartStore.count > 0" class="side-badge">{{ cartStore.count }}</span>
+    </button>
+
+    <button class="side-btn" @click="goTo('/orders')" title="我的订单">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+        <polyline points="14 3 14 9 20 9"/>
+        <line x1="8" y1="13" x2="16" y2="13"/>
+        <line x1="8" y1="17" x2="13" y2="17"/>
+      </svg>
+      <span class="side-label">我的订单</span>
+    </button>
+
+    <button class="side-btn" @click="goTo('/profile')" title="个人中心">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="4"/>
+        <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+      </svg>
+      <span class="side-label">个人中心</span>
+    </button>
+  </aside>
 
   <footer class="page-footer"><p>校园非遗与文创传承人平台 © 2026 码上非遗</p></footer>
 </template>
@@ -90,26 +121,33 @@ function addToCart(p: ProductVO) {
 <style scoped>
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
-/* ===== 悬浮加号按钮 ===== */
-.fab {
-  position: fixed; bottom: 32px; right: 32px; z-index: 500;
-  width: 60px; height: 60px; border-radius: 50%;
-  background: linear-gradient(135deg, #c41e3a, #d43030);
-  color: #fff; font-size: 32px; font-weight: 300;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer; box-shadow: 0 4px 16px rgba(196,30,58,0.4);
-  transition: transform 0.2s, box-shadow 0.2s;
-  user-select: none;
+/* ===== 右侧悬浮侧边栏（仿淘宝） ===== */
+.side-toolbar {
+  position: fixed; right: 16px; top: 50%;
+  transform: translateY(-50%); z-index: 500;
+  display: flex; flex-direction: column; gap: 2px;
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  padding: 6px 0; width: 60px;
 }
-.fab:hover { transform: scale(1.1); box-shadow: 0 6px 24px rgba(196,30,58,0.55); }
-.fab-icon { line-height: 1; }
-.fab-badge {
-  position: absolute; top: -4px; right: -4px;
-  min-width: 22px; height: 22px; border-radius: 11px;
-  background: #ffd700; color: #c41e3a;
-  font-size: 12px; font-weight: 700;
+.side-btn {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 12px 0; gap: 4px;
+  background: transparent; border: none; cursor: pointer;
+  color: #666; transition: color 0.2s, background 0.2s;
+}
+.side-btn:hover { color: #c41e3a; background: #fff5f7; }
+.side-btn svg { width: 24px; height: 24px; }
+.side-label { font-size: 12px; line-height: 1; user-select: none; }
+.side-badge {
+  position: absolute; top: 6px; right: 10px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: #ff4400; color: #fff;
+  font-size: 11px; font-weight: 700;
   display: flex; align-items: center; justify-content: center;
-  border: 2px solid #fff;
+  box-sizing: border-box; line-height: 1;
 }
 
 /* ===== 主内容 ===== */
@@ -157,6 +195,9 @@ function addToCart(p: ProductVO) {
 
 @media (max-width: 768px) {
   .product-grid { grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 16px; }
-  .fab { width: 50px; height: 50px; bottom: 20px; right: 20px; font-size: 28px; }
+  .side-toolbar { right: 6px; width: 50px; }
+  .side-btn { padding: 10px 0; }
+  .side-btn svg { width: 20px; height: 20px; }
+  .side-label { font-size: 11px; }
 }
 </style>
