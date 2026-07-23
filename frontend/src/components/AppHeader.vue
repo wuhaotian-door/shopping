@@ -34,6 +34,7 @@ function toggleAccountMenu() {
 function doSwitchAccount(index: number) {
   authStore.switchAccount(index)
   showAccountMenu.value = false
+  location.reload()  // 立即刷新页面加载新账户数据
 }
 function addAccount() {
   showAccountMenu.value = false
