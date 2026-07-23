@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter, useRoute } from 'vue-router'
 import OrderManager from './components/OrderManager.vue'
@@ -32,7 +32,10 @@ function toggleAccountMenu() {
 }
 const accounts = computed(() => authStore.accounts)
 const activeIndex = computed(() => authStore.activeIndex)
-const avatarUrl = computed(() => authStore.activeAccount?.avatarUrl || '')
+const avatarUrl = computed(() => authStore.avatarUrl)
+const avatarFailed = ref(false)
+function onAvatarError() { avatarFailed.value = true }
+watch(avatarUrl, () => { avatarFailed.value = false })
 function roleLabel(r: string) {
   return r === 'INHERITOR' ? '传承人' : r === 'ADMIN' ? '管理员' : '用户'
 }
@@ -221,7 +224,7 @@ function handleLogout() {
       <!-- 多账户切换 -->
       <div class="account-switcher" ref="switcherRef" v-if="accounts.length > 0">
         <button class="account-btn" @click.stop="toggleAccountMenu" :class="{ open: showAccountMenu }">
-          <img v-if="avatarUrl" :src="avatarUrl" class="header-avatar" />
+          <img v-if="avatarUrl && !avatarFailed" :src="avatarUrl" class="header-avatar" @error="onAvatarError" />
           <span v-else class="header-avatar-placeholder">{{ userName.charAt(0) }}</span>
           <span class="user-name">{{ userName }}</span>
           <span class="account-arrow" :class="{ flipped: showAccountMenu }">&#9662;</span>

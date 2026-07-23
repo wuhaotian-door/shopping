@@ -3,6 +3,8 @@ package com.class242014group06.service.impl;
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.dto.ProductSubmitDTO;
 import com.class242014group06.entity.Inheritor;
+import org.springframework.beans.factory.annotation.Value;
+import java.io.File;
 import com.class242014group06.entity.Product;
 import com.class242014group06.exception.OrderBusinessException;
 import com.class242014group06.mapper.InheritorMapper;
@@ -54,10 +56,30 @@ public class ProductServiceImpl implements ProductService {
         if (!product.getInheritorId().equals(inheritorId)) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_PERMISSION_DENIED);
         }
+        // 删除旧3D模型文件（保护默认模型和 static/ 下的文件不删除）
+        if (dto.getModelUrl() != null && !dto.getModelUrl().isEmpty()
+            && product.getModelUrl() != null && !product.getModelUrl().equals(dto.getModelUrl())) {
+            deleteOldModelFile(product.getModelUrl());
+        }
         Product update = new Product();
         BeanUtils.copyProperties(dto, update);
         update.setId(productId);
         productMapper.update(update);
+    }
+
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
+    private static final String DEFAULT_MODEL = "a_chinese_tongguan_kiln_teapot-1.glb";
+
+    private void deleteOldModelFile(String modelUrl) {
+        if (modelUrl == null || modelUrl.isEmpty()) return;
+        if (modelUrl.contains(DEFAULT_MODEL)) return;
+        try {
+            String fileName = modelUrl.replaceFirst("^.*/", "");
+            if (fileName.isEmpty()) return;
+            File file = new File(new File(staticPath).getAbsoluteFile(), "models/" + fileName);
+            if (file.exists()) file.delete();
+        } catch (Exception e) { /* ignore */ }
     }
 
     @Override

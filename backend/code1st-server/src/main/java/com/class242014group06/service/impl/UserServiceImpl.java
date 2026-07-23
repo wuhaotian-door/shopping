@@ -166,15 +166,16 @@ public class UserServiceImpl implements UserService {
         userMapper.updatePassword(id, md5Password, LocalDateTime.now());
     }
 
-    @Value("${code1st.upload.path:./uploads}")
-    private String uploadPath;
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
 
     private void deleteAvatarFile(String avatarUrl) {
         if (avatarUrl == null || avatarUrl.isEmpty()) return;
         try {
-            // avatarUrl 格式如 /uploads/avatar/xxx.jpg
-            String fileName = avatarUrl.replaceFirst("^/uploads/", "");
-            File file = new File(new File(uploadPath).getAbsoluteFile(), fileName);
+            // avatarUrl 格式如 /images/xxx.jpg → 文件在 static/images/xxx.jpg
+            String fileName = avatarUrl.replaceFirst("^/images/", "");
+            if (fileName.equals(avatarUrl)) return; // 不是 images 路径，跳过
+            File file = new File(new File(staticPath).getAbsoluteFile(), "images/" + fileName);
             if (file.exists()) file.delete();
         } catch (Exception e) { /* ignore */ }
     }

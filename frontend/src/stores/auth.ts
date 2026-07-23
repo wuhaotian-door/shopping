@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import type { LoginResponse } from '@/types/api'
 import { login as loginApi, checkAuth } from '@/api/auth'
 
@@ -29,6 +29,10 @@ export const useAuthStore = defineStore('auth', () => {
 
   const activeAccount = computed(() => accounts.value[activeIndex.value] || null)
 
+  // 独立 avatarUrl ref，跟随 activeAccount 变化
+  const avatarUrl = ref(activeAccount.value?.avatarUrl || '')
+  watch(activeAccount, (a) => { avatarUrl.value = a?.avatarUrl || '' }, { immediate: true })
+
   const token = computed(() => activeAccount.value?.token || '')
 
   const userInfo = computed<LoginResponse | null>(() => {
@@ -52,21 +56,26 @@ export const useAuthStore = defineStore('auth', () => {
     const res = await loginApi({ username, password })
     const data = res.data
     const newAccount: StoredAccount = {
-      id: data.id,
-      role: data.role,
-      username: data.userName,
-      name: data.name,
-      token: data.token,
+      id: data.id, role: data.role, username: data.userName,
+      name: data.name, token: data.token,
     }
+    // 先写入账号（让 interceptor 能获取到新 token）
     const existIdx = accounts.value.findIndex(a => a.id === data.id && a.role === data.role)
-    if (existIdx >= 0) {
-      accounts.value[existIdx] = newAccount
-      activeIndex.value = existIdx
-    } else {
-      accounts.value.push(newAccount)
-      activeIndex.value = accounts.value.length - 1
-    }
+    if (existIdx >= 0) { accounts.value[existIdx] = newAccount; activeIndex.value = existIdx }
+    else { accounts.value.push(newAccount); activeIndex.value = accounts.value.length - 1 }
     persist()
+    // 再获取头像（此时 interceptor 已能读到新 token）
+    try {
+      if (data.role === 'INHERITOR') {
+        const { getMyProfile } = await import('@/api/profile')
+        const p = await getMyProfile()
+        if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
+      } else {
+        const { getMyProfile } = await import('@/api/user')
+        const p = await getMyProfile()
+        if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
+      }
+    } catch { /* ignore */ }
     import('@/stores/cart').then(m => m.useCartStore().loadForUser(data.role + '_' + data.id))
   }
 
@@ -104,19 +113,19 @@ export const useAuthStore = defineStore('auth', () => {
     const a = accounts.value[idx]
     if (a) {
       try {
-        let avatarUrl = ''
+        let apiAvatar = ''
         if (a.role === 'INHERITOR') {
           const { getMyProfile } = await import('@/api/profile')
           const res = await getMyProfile()
-          avatarUrl = res.data?.avatarUrl || ''
+          apiAvatar = res.data?.avatarUrl || ''
         } else {
           const { getMyProfile } = await import('@/api/user')
           const res = await getMyProfile()
-          avatarUrl = res.data?.avatarUrl || ''
+          apiAvatar = res.data?.avatarUrl || ''
         }
-        if (avatarUrl && avatarUrl !== a.avatarUrl) {
-          // 触发响应式更新：替换整个对象
-          accounts.value[idx] = { ...a, avatarUrl }
+        if (apiAvatar && apiAvatar !== a.avatarUrl) {
+          accounts.value[idx] = { ...a, avatarUrl: apiAvatar }
+          avatarUrl.value = apiAvatar
           persist()
         }
       } catch { /* ignore */ }
@@ -129,8 +138,9 @@ export const useAuthStore = defineStore('auth', () => {
     const a = accounts.value[idx]
     if (!a) return
     accounts.value[idx] = { ...a, avatarUrl: url }
+    avatarUrl.value = url
     persist()
   }
 
-  return { accounts, activeIndex, activeAccount, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, initAuth, updateAvatar }
+  return { accounts, activeIndex, activeAccount, avatarUrl, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, initAuth, updateAvatar }
 })
