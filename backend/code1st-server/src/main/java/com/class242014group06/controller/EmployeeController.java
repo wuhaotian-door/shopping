@@ -214,6 +214,20 @@ public class EmployeeController {
         return Result.success("状态已更新");
     }
 
+    @PutMapping("/{id}/ban")
+    @ApiOperation("封禁/解封用户")
+    public Result<String> banUser(@PathVariable Long id, @RequestParam Integer status,
+            @RequestParam String role, @RequestParam(required = false) Integer banDays) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("封禁/解封用户：id={}, status={}, role={}, banDays={}", id, status, role, banDays);
+        employeeService.banUser(id, status, role, banDays);
+        String detail = status == 1 ? "解封用户ID=" + id : "封禁用户ID=" + id + (banDays != null ? "，" + banDays + "天" : "");
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "TOGGLE_USER_STATUS", "user", id, detail);
+        return Result.success(status == 1 ? "已解封" : "已封禁" + (banDays != null ? banDays + "天" : ""));
+    }
+
     @PostMapping("/batch-status")
     @ApiOperation("批量修改用户状态")
     public Result<String> batchUpdateStatus(@RequestBody BatchStatusDTO dto) {

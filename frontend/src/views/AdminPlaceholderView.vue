@@ -13,6 +13,7 @@ import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, a
 import { listAllArticles, adminDeleteArticle, batchDeleteArticle, getArticleById } from '@/api/knowledge'
 import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct, adminCancelProductOrder } from '@/api/product'
 import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject, batchToggleProject } from '@/api/project'
+import { listReports, handleReport, banUser, type UserReportVO } from '@/api/report'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from './components/ChatPanel.vue'
 const AdminMonitorPanel = defineAsyncComponent(() => import('./components/AdminMonitorPanel.vue'))
@@ -78,7 +79,7 @@ const prodOrderPage = ref(1)
 const logPage = ref(1)
 
 // ==================== 侧边栏菜单 ====================
-const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'logs' | 'settings'>('dashboard')
+const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'reports' | 'logs' | 'settings'>('dashboard')
 
 const menuItems = [
   { key: 'dashboard' as const, label: '仪表盘', icon: '📊' },
@@ -89,6 +90,7 @@ const menuItems = [
   { key: 'projects' as const, label: '项目管理', icon: '📋' },
   { key: 'orders' as const, label: '订单管理', icon: '🛒' },
   { key: 'messages' as const, label: '消息管理', icon: '💬' },
+  { key: 'reports' as const, label: '举报管理', icon: '🚨' },
   { key: 'logs' as const, label: '操作日志', icon: '📝' },
   { key: 'settings' as const, label: '系统设置', icon: '⚙️' },
 ]
@@ -109,6 +111,7 @@ function switchMenu(key: MenuKey) {
   else if (key === 'products') loadProducts()
   else if (key === 'projects') loadProjects()
   else if (key === 'orders') loadOrders()
+  else if (key === 'reports') loadReports()
   else if (key === 'logs') loadLogs()
 }
 
@@ -679,6 +682,7 @@ const opTypeLabel = (t: string) => ({
   'TOGGLE_PROJECT': '项目上下架', 'DELETE_ARTICLE': '删除资讯',
   'UPDATE_ORDER_STATUS': '改订单状态', 'UPDATE_ORDER_FIELDS': '改订单字段',
   'UPDATE_ORDER_ADDRESS': '改收货地址', 'CANCEL_ORDER': '取消订单',
+  'HANDLE_REPORT': '处理举报',
 } as Record<string, string>)[t] || t
 
 const opTargetTypeLabel = (t: string) => ({
@@ -686,6 +690,32 @@ const opTargetTypeLabel = (t: string) => ({
   'product': '商品', 'project': '项目', 'article': '资讯',
   'order': '预约订单', 'product_order': '商城订单',
 } as Record<string, string>)[t] || t
+
+// ==================== 举报管理 ====================
+const reportList = ref<UserReportVO[]>([])
+const reportLoading = ref(false)
+
+async function loadReports() {
+  reportLoading.value = true
+  try { reportList.value = (await listReports()).data || [] } catch { reportList.value = [] }
+  finally { reportLoading.value = false }
+}
+
+// ---------- 处理举报（封号弹窗） ----------
+const handlingReport = ref<UserReportVO | null>(null)
+const handleResultText = ref('')
+const banDaysInput = ref(0)
+
+function openHandleReport(r: UserReportVO) { handlingReport.value = r; handleResultText.value = ''; banDaysInput.value = 0 }
+async function submitHandleReport() {
+  if (!handlingReport.value) return
+  try {
+    await handleReport(handlingReport.value.id, handleResultText.value || '已处理', banDaysInput.value)
+    showToast('处理完成')
+    handlingReport.value = null
+    loadReports()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
 
 // ==================== 仪表盘鼠标互动效果 ====================
 function onStatCardMouseMove(e: MouseEvent) {
@@ -1309,6 +1339,76 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               <button :disabled="prodOrderPage <= 1" @click="prodOrderPage--">上一页</button>
               <span>第 {{ prodOrderPage }} / {{ totalPages(filteredProdOrders) }} 页，共 {{ filteredProdOrders.length }} 条</span>
               <button :disabled="prodOrderPage >= totalPages(filteredProdOrders)" @click="prodOrderPage++">下一页</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 8.6 举报管理 ===== -->
+        <section v-if="activeMenu === 'reports'" class="panel">
+          <div v-if="reportLoading" class="loading-text">加载中...</div>
+          <div v-else class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th><th>举报人</th><th>被举报人</th><th>原因</th>
+                  <th>截图</th><th>时间</th><th>状态</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in reportList" :key="r.id">
+                  <td>{{ r.id }}</td>
+                  <td>{{ r.reporterRole === 'INHERITOR' ? '传承人' : r.reporterRole === 'ADMIN' ? '管理员' : '用户' }}(ID:{{ r.reporterId }})</td>
+                  <td>{{ r.reportedUserRole === 'INHERITOR' ? '传承人' : r.reportedUserRole === 'ADMIN' ? '管理员' : '用户' }}(ID:{{ r.reportedUserId }})</td>
+                  <td class="ellipsis-cell" style="max-width:160px">{{ r.reason }}</td>
+                  <td>
+                    <a v-if="r.screenshotUrl" :href="r.screenshotUrl" target="_blank" style="color:#c41e3a">查看</a>
+                    <span v-else>-</span>
+                  </td>
+                  <td>{{ r.createTime?.replace('T', ' ').slice(0, 16) }}</td>
+                  <td>
+                    <span class="status-dot" :class="r.status === 1 ? 's-enabled' : 's-pending'">
+                      {{ r.status === 1 ? '已处理' : '待处理' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button v-if="r.status === 0" class="btn-sm btn-primary" @click="openHandleReport(r)">处理</button>
+                    <span v-else class="no-op">{{ r.handleResult || '已处理' }}{{ r.banDays ? '（封号' + r.banDays + '天）' : '' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="reportList.length === 0 && !reportLoading" class="empty-text">暂无举报</div>
+          </div>
+
+          <!-- 处理举报弹窗 -->
+          <div v-if="handlingReport" class="modal-overlay" @click.self="handlingReport = null">
+            <div class="modal-content confirm-dialog">
+              <div class="modal-header">
+                <h3>处理举报 #{{ handlingReport.id }}</h3>
+                <button class="modal-close" @click="handlingReport = null">✕</button>
+              </div>
+              <div class="handle-body">
+                <p>被举报人：<strong>{{ handlingReport.reportedUserRole === 'INHERITOR' ? '传承人' : '用户' }}(ID:{{ handlingReport.reportedUserId }})</strong></p>
+                <p>举报原因：{{ handlingReport.reason }}</p>
+                <p v-if="handlingReport.screenshotUrl">
+                  截图：<a :href="handlingReport.screenshotUrl" target="_blank" style="color:#c41e3a">点击查看</a>
+                </p>
+                <label>处理结果：</label>
+                <textarea v-model="handleResultText" placeholder="处理意见..." rows="2" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;resize:vertical;box-sizing:border-box"></textarea>
+                <label>封号天数：</label>
+                <select v-model="banDaysInput" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                  <option :value="0">不封号（仅驳回）</option>
+                  <option :value="1">封号 1 天</option>
+                  <option :value="3">封号 3 天</option>
+                  <option :value="7">封号 7 天</option>
+                  <option :value="30">封号 30 天</option>
+                  <option :value="999">永久封号</option>
+                </select>
+                <div class="confirm-btns" style="margin-top:16px">
+                  <button class="btn-sm" style="background:#eee;color:#666" @click="handlingReport = null">取消</button>
+                  <button class="btn-sm btn-danger" @click="submitHandleReport">确认处理</button>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -2047,4 +2147,9 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 /* 用户链接 */
 .user-link { color: #c41e3a; cursor: pointer; text-decoration: underline; }
 .user-link:hover { color: #a8162b; }
+
+/* ==================== 举报处理弹窗 ==================== */
+.handle-body { padding: 16px 28px 8px; }
+.handle-body p { margin: 0 0 10px; font-size: 14px; color: #444; }
+.handle-body label { display: block; font-size: 13px; color: #666; margin: 12px 0 6px; }
 </style>

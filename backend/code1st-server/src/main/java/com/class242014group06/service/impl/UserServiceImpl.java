@@ -12,6 +12,8 @@ import com.class242014group06.mapper.AdminMapper;
 import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.service.EmailService;
+import org.springframework.beans.factory.annotation.Value;
+import java.io.File;
 import com.class242014group06.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -72,6 +74,14 @@ public class UserServiceImpl implements UserService {
                         || adminMapper.getByUsername(dto.getUsername()) != null) {
                     throw new RegistrationFailedException(MessageConstant.ALREADY_EXISTS);
                 }
+            }
+        }
+
+        // 删除旧头像文件
+        if (dto.getAvatarUrl() != null && !dto.getAvatarUrl().isEmpty()) {
+            User old = userMapper.getById(id);
+            if (old != null && old.getAvatarUrl() != null && !old.getAvatarUrl().equals(dto.getAvatarUrl())) {
+                deleteAvatarFile(old.getAvatarUrl());
             }
         }
 
@@ -154,5 +164,19 @@ public class UserServiceImpl implements UserService {
         // 更新为新密码
         String md5Password = DigestUtils.md5DigestAsHex(newPassword.getBytes());
         userMapper.updatePassword(id, md5Password, LocalDateTime.now());
+    }
+
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
+
+    private void deleteAvatarFile(String avatarUrl) {
+        if (avatarUrl == null || avatarUrl.isEmpty()) return;
+        try {
+            // avatarUrl 格式如 /images/xxx.jpg → 文件在 static/images/xxx.jpg
+            String fileName = avatarUrl.replaceFirst("^/images/", "");
+            if (fileName.equals(avatarUrl)) return; // 不是 images 路径，跳过
+            File file = new File(new File(staticPath).getAbsoluteFile(), "images/" + fileName);
+            if (file.exists()) file.delete();
+        } catch (Exception e) { /* ignore */ }
     }
 }

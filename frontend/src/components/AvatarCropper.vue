@@ -8,31 +8,29 @@ const canvasRef = ref<HTMLCanvasElement | null>(null)
 const previewCanvasRef = ref<HTMLCanvasElement | null>(null)
 let img: HTMLImageElement | null = null
 
-// 裁剪框固定为正方形，边长取画布短边
+// 裁剪区域（圆形，cropSize = 直径）
 const cropSize = ref(0)
-const cropX = ref(0)
-const cropY = ref(0)
+const cropCX = ref(0)  // 圆心 X
+const cropCY = ref(0)  // 圆心 Y
 
-// 图片变换状态
-let imgX = 0        // 图片左上角在画布上的 x
-let imgY = 0        // 图片左上角在画布上的 y
-let scale = 1       // 缩放倍数 0.3~3
+let imgX = 0
+let imgY = 0
+let scale = 1
 const MIN_SCALE = 0.3
 const MAX_SCALE = 3
 
-// 鼠标拖拽
 let dragging = false
 let dragStartX = 0
 let dragStartY = 0
 let dragImgX = 0
 let dragImgY = 0
 
-// canvas 尺寸相关
 let canvasW = 0
 let canvasH = 0
 
 function loadImage() {
   return new Promise<void>((resolve) => {
+    if (img) { img.src = ''; URL.revokeObjectURL(img.src) }
     img = new Image()
     img.onload = () => resolve()
     img.src = props.imageUrl
@@ -46,20 +44,19 @@ async function initCanvas() {
   canvasW = canvas.width = canvas.offsetWidth
   canvasH = canvas.height = canvas.offsetHeight
 
-  // 裁剪框居中，正方形
+  // 圆形裁剪区：直径取画布短边的 82%
   cropSize.value = Math.min(canvasW, canvasH) * 0.82
-  cropX.value = (canvasW - cropSize.value) / 2
-  cropY.value = (canvasH - cropSize.value) / 2
+  cropCX.value = canvasW / 2
+  cropCY.value = canvasH / 2
 
-  // 初始缩放：让图片宽或高刚好填满裁剪框
   if (img) {
-    const s = Math.max(cropSize.value / img.width, cropSize.value / img.height)
+    const r = cropSize.value / 2
+    const s = Math.max((r * 2) / img.width, (r * 2) / img.height)
     scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, s))
-    // 图片居中于裁剪框
     const sw = img.width * scale
     const sh = img.height * scale
-    imgX = cropX.value + (cropSize.value - sw) / 2
-    imgY = cropY.value + (cropSize.value - sh) / 2
+    imgX = cropCX.value - sw / 2
+    imgY = cropCY.value - sh / 2
   }
   draw()
 }
@@ -68,25 +65,30 @@ function draw() {
   const canvas = canvasRef.value
   if (!canvas || !img) return
   const ctx = canvas.getContext('2d')!
-  ctx.clearRect(0, 0, canvasW, canvasH)
 
-  // 1. 绘制图片
+  // 1. 先清空，画图片
+  ctx.clearRect(0, 0, canvasW, canvasH)
   const sw = img.width * scale
   const sh = img.height * scale
   ctx.drawImage(img, imgX, imgY, sw, sh)
 
-  // 2. 绘制半透明遮罩（裁剪框外）
-  const cx = cropX.value, cy = cropY.value, cs = cropSize.value
+  // 2. 半透明遮罩（圆形外部）
+  const cx = cropCX.value, cy = cropCY.value, r = cropSize.value / 2
+  ctx.save()
+  // 用 evenodd fill：外矩形 + 内圆 → 只填充圆外部
   ctx.fillStyle = 'rgba(0,0,0,0.55)'
-  ctx.fillRect(0, 0, canvasW, cy)                    // 上方
-  ctx.fillRect(0, cy + cs, canvasW, canvasH - cy - cs) // 下方
-  ctx.fillRect(0, cy, cx, cs)                         // 左方
-  ctx.fillRect(cx + cs, cy, canvasW - cx - cs, cs)     // 右方
+  ctx.beginPath()
+  ctx.rect(0, 0, canvasW, canvasH)
+  ctx.arc(cx, cy, r, 0, Math.PI * 2, true) // 逆时针 = 挖空
+  ctx.fill('evenodd')
+  ctx.restore()
 
-  // 3. 裁剪框边框
+  // 3. 圆形裁剪框边框
   ctx.strokeStyle = '#fff'
   ctx.lineWidth = 2
-  ctx.strokeRect(cx, cy, cs, cs)
+  ctx.beginPath()
+  ctx.arc(cx, cy, r, 0, Math.PI * 2)
+  ctx.stroke()
 
   // 4. 更新预览
   updatePreview()
@@ -100,16 +102,18 @@ function updatePreview() {
   const pctx = pCanvas.getContext('2d')!
   pctx.clearRect(0, 0, pw, pw)
 
-  // 裁剪预览区域（裁剪框内的图片部分）
-  const cx = cropX.value, cy = cropY.value, cs = cropSize.value
+  // 预览圆形裁剪：从原始图片中取对应区域
+  // imgX/imgY 是缩放后图片在画布上的坐标，除以 scale 映射回原始图片坐标
+  const cx = cropCX.value, cy = cropCY.value, r = cropSize.value / 2
+  const sx = (cx - r - imgX) / scale   // 图片原始像素坐标
+  const sy = (cy - r - imgY) / scale
+  const sw = (r * 2) / scale            // 图片原始像素宽高
+
   pctx.save()
   pctx.beginPath()
   pctx.arc(pw / 2, pw / 2, pw / 2, 0, Math.PI * 2)
   pctx.clip()
-  pctx.drawImage(img,
-    cx - imgX, cy - imgY, cs, cs,   // 源区域（裁剪框内）
-    0, 0, pw, pw                     // 目标（预览画布）
-  )
+  pctx.drawImage(img, sx, sy, sw, sw, 0, 0, pw, pw)
   pctx.restore()
 }
 
@@ -124,20 +128,13 @@ function onMouseDown(e: MouseEvent) {
 
 function onMouseMove(e: MouseEvent) {
   if (!dragging) return
-  const dx = e.offsetX - dragStartX
-  const dy = e.offsetY - dragStartY
-  imgX = clampX(dragImgX + dx)
-  imgY = clampY(dragImgY + dy)
+  imgX = clampX(dragImgX + e.offsetX - dragStartX)
+  imgY = clampY(dragImgY + e.offsetY - dragStartY)
   draw()
 }
 
-function onMouseUp() {
-  dragging = false
-}
-
-function onMouseLeave() {
-  dragging = false
-}
+function onMouseUp() { dragging = false }
+function onMouseLeave() { dragging = false }
 
 function onWheel(e: WheelEvent) {
   e.preventDefault()
@@ -145,13 +142,8 @@ function onWheel(e: WheelEvent) {
   let newScale = scale * (e.deltaY < 0 ? 1.08 : 0.92)
   newScale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale))
 
-  // 缩放锚点为鼠标在画布上的坐标
   const mx = e.offsetX
   const my = e.offsetY
-
-  // 图片上对应点：imgPoint = (mouse - imgPos) / oldScale
-  // 缩放后该点仍在鼠标位置：imgPoint * newScale + newImgPos = mouse
-  // => newImgPos = mouse - imgPoint * newScale
   const ratio = newScale / oldScale
   imgX = clampX(mx - (mx - imgX) * ratio)
   imgY = clampY(my - (my - imgY) * ratio)
@@ -159,35 +151,42 @@ function onWheel(e: WheelEvent) {
   draw()
 }
 
-// 边界限制：图片至少覆盖裁剪框的一部分
+// 边界限制：确保图片覆盖整个圆形裁剪区
 function clampX(x: number): number {
   const sw = img!.width * scale
-  const cx = cropX.value, cs = cropSize.value
-  const minX = cx + cs - sw  // 图片右边缘至少到裁剪框左边缘
-  const maxX = cx            // 图片左边缘最多到裁剪框左边缘
+  const cx = cropCX.value, r = cropSize.value / 2
+  const minX = cx + r - sw
+  const maxX = cx - r
   return Math.max(minX, Math.min(maxX, x))
 }
 
 function clampY(y: number): number {
   const sh = img!.height * scale
-  const cy = cropY.value, cs = cropSize.value
-  const minY = cy + cs - sh
-  const maxY = cy
+  const cy = cropCY.value, r = cropSize.value / 2
+  const minY = cy + r - sh
+  const maxY = cy - r
   return Math.max(minY, Math.min(maxY, y))
 }
 
-// ===== 确认 =====
+// ===== 确认（输出圆形裁剪） =====
 function confirm() {
   if (!img) return
-  const cx = cropX.value, cy = cropY.value, cs = cropSize.value
+  const r = cropSize.value / 2
+  const d = r * 2
   const outCanvas = document.createElement('canvas')
-  outCanvas.width = cs
-  outCanvas.height = cs
+  outCanvas.width = d
+  outCanvas.height = d
   const octx = outCanvas.getContext('2d')!
+
+  // 裁剪圆形（映射回原始图片坐标）
+  octx.beginPath()
+  octx.arc(r, r, r, 0, Math.PI * 2)
+  octx.clip()
   octx.drawImage(img,
-    cx - imgX, cy - imgY, cs, cs,
-    0, 0, cs, cs
+    (cropCX.value - r - imgX) / scale, (cropCY.value - r - imgY) / scale, d / scale, d / scale,
+    0, 0, d, d
   )
+
   outCanvas.toBlob((blob) => {
     if (blob) emit('crop', blob)
     emit('update:visible', false)
@@ -195,21 +194,15 @@ function confirm() {
 }
 
 function cancel() {
-  img = null
+  if (img) { img.src = ''; img = null }
   emit('update:visible', false)
 }
 
-watch(
-  () => props.visible,
-  async (v) => {
-    if (v && props.imageUrl) {
-      await loadImage()
-      await initCanvas()
-    }
-  }
-)
+watch(() => props.visible, async (v) => {
+  if (v && props.imageUrl) { await loadImage(); await initCanvas() }
+})
 
-onUnmounted(() => { img = null })
+onUnmounted(() => { if (img) { img.src = ''; img = null } })
 </script>
 
 <template>
@@ -232,7 +225,7 @@ onUnmounted(() => { img = null })
       </div>
       <div class="cropper-bottom">
         <div class="cropper-preview-area">
-          <canvas ref="previewCanvasRef" width="72" height="72" class="preview-canvas" />
+          <canvas ref="previewCanvasRef" width="80" height="80" class="preview-canvas" />
           <span class="preview-label">预览</span>
         </div>
         <div class="cropper-actions">

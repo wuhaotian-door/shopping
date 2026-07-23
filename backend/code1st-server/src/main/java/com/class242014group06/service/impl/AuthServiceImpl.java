@@ -62,9 +62,8 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(admin.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (admin.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
+            checkBanAndAutoUnban(admin.getStatus(), admin.getBanUntil(),
+                    () -> adminMapper.update(Admin.builder().id(admin.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(admin.getId())
                     .userName(admin.getUsername())
@@ -79,12 +78,11 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(inheritor.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (inheritor.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
             if (inheritor.getStatus() == StatusConstant.PENDING) {
                 throw new AccountPendingApprovalException(MessageConstant.ACCOUNT_PENDING);
             }
+            checkBanAndAutoUnban(inheritor.getStatus(), inheritor.getBanUntil(),
+                    () -> inheritorMapper.update(Inheritor.builder().id(inheritor.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(inheritor.getId())
                     .userName(inheritor.getUsername())
@@ -99,9 +97,8 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(user.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (user.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
+            checkBanAndAutoUnban(user.getStatus(), user.getBanUntil(),
+                    () -> userMapper.update(User.builder().id(user.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(user.getId())
                     .userName(user.getUsername())
@@ -111,6 +108,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+    }
+
+    /** 检查封禁状态：过期自动解封并允许登录，未过期抛异常 */
+    private void checkBanAndAutoUnban(Integer status, LocalDateTime banUntil, Runnable unbanAction) {
+        if (status != StatusConstant.DISABLE) return;
+        if (banUntil != null && banUntil.isBefore(LocalDateTime.now())) {
+            // 封禁已过期，自动解封
+            log.info("用户封禁已过期，自动解封");
+            unbanAction.run();
+            return;
+        }
+        String msg = MessageConstant.ACCOUNT_LOCKED;
+        if (banUntil != null) {
+            msg = "账号已被封禁至 " + banUntil.toLocalDate().toString();
+        }
+        throw new AccountLockedException(msg);
     }
 
     @Override

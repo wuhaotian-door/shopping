@@ -5,6 +5,7 @@ import { listConversations, getMessages, sendMessage, searchUser } from '@/api/c
 import { listFriends, listPendingRequests, listMyRequests, applyFriend, acceptFriend, rejectFriend } from '@/api/friend'
 import { listPublicProfiles } from '@/api/profile'
 import { listAllUsers } from '@/api/auth'
+import { submitReport, uploadFile } from '@/api/report'
 import type { ConversationVO, ChatMessageVO, FriendVO } from '@/types/api'
 import { unreadCount } from '@/composables/useUnread'
 import { notifyRecipient } from '@/api/notify'
@@ -27,6 +28,52 @@ const loading = ref(false)
 const msgLoading = ref(false)
 const pollTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const msgContainer = ref<HTMLElement | null>(null)
+
+// ==================== 举报 ====================
+const showReportDialog = ref(false)
+const reportTarget = ref<{ userId: number; userRole: string; userName: string } | null>(null)
+const reportReason = ref('')
+const reportScreenshot = ref<File | null>(null)
+const reportUploading = ref(false)
+const reportSubmitting = ref(false)
+const reportScreenshotUrl = ref('')
+
+function openReportDialog(userId: number, userRole: string, userName: string) {
+  reportTarget.value = { userId, userRole, userName }
+  reportReason.value = ''
+  reportScreenshot.value = null
+  reportScreenshotUrl.value = ''
+  showReportDialog.value = true
+}
+async function handleReportUpload(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  reportScreenshot.value = file
+  reportUploading.value = true
+  try {
+    const res = await uploadFile(file)
+    reportScreenshotUrl.value = res.data
+  } catch { /* 忽略上传失败 */ }
+  finally { reportUploading.value = false }
+}
+async function handleSubmitReport() {
+  if (!reportTarget.value || !reportReason.value.trim()) return
+  reportSubmitting.value = true
+  try {
+    await submitReport({
+      reportedUserId: reportTarget.value.userId,
+      reportedUserRole: reportTarget.value.userRole || 'USER',
+      reason: reportReason.value,
+      screenshotUrl: reportScreenshotUrl.value || undefined,
+    })
+    showReportDialog.value = false
+    alert('举报已提交，管理员将尽快处理')
+  } catch (e: unknown) {
+    alert('举报失败：' + (e instanceof Error ? e.message : '未知错误'))
+  }
+  finally { reportSubmitting.value = false }
+}
 
 // 新建对话
 const showNewChat = ref(false)
@@ -361,6 +408,9 @@ async function handleRejectFriend(r: FriendVO) {
         <div class="chat-header">
           <span class="chat-partner">{{ activeConv.otherUserName || '未知用户' }}</span>
           <span class="chat-role-tag">{{ roleLabel(activeConv.otherUserRole) }}</span>
+          <button class="btn-report-header"
+            @click="openReportDialog(activeConv.otherUserId, activeConv.otherUserRole, activeConv.otherName)"
+            title="举报该用户">⚠ 举报</button>
         </div>
         <div ref="msgContainer" class="chat-messages">
           <div v-if="msgLoading" class="empty-text">加载中…</div>
@@ -432,6 +482,25 @@ async function handleRejectFriend(r: FriendVO) {
       </div>
     </aside>
   </section>
+
+  <!-- 举报弹窗 -->
+  <div v-if="showReportDialog" class="report-overlay" @click.self="showReportDialog = false">
+    <div class="report-dialog">
+      <h3>举报用户：{{ reportTarget?.userName }}</h3>
+      <label>举报原因：</label>
+      <textarea v-model="reportReason" placeholder="请描述举报原因..." rows="3"></textarea>
+      <label>截图（可选）：</label>
+      <input type="file" accept="image/*" @change="handleReportUpload" />
+      <span v-if="reportUploading">上传中...</span>
+      <span v-else-if="reportScreenshotUrl" style="color:green">✓ 已上传</span>
+      <div class="report-btns">
+        <button @click="showReportDialog = false">取消</button>
+        <button class="btn-submit" @click="handleSubmitReport" :disabled="reportSubmitting || !reportReason.trim()">
+          {{ reportSubmitting ? '提交中...' : '提交举报' }}
+        </button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -581,4 +650,38 @@ async function handleRejectFriend(r: FriendVO) {
   .chat-sidebar { width: 100%; max-height: 250px; }
   .friend-panel { width: 100%; }
 }
+
+/* ===== 举报按钮（聊天头部） ===== */
+.btn-report-header {
+  margin-left: auto; padding: 4px 12px; font-size: 12px;
+  color: #999; background: transparent; border: 1px solid #e0e0e0;
+  border-radius: 6px; cursor: pointer; transition: all 0.2s; white-space: nowrap;
+}
+.btn-report-header:hover {
+  color: #c41e3a; border-color: #c41e3a; background: #fff5f7;
+}
+.report-overlay {
+  position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9999;
+  display: flex; align-items: center; justify-content: center;
+}
+.report-dialog {
+  background: #fff; border-radius: 14px; padding: 28px; width: 420px; max-width: 90vw;
+}
+.report-dialog h3 { margin: 0 0 16px; color: #c41e3a; }
+.report-dialog label { display: block; font-size: 13px; color: #666; margin: 12px 0 6px; }
+.report-dialog textarea {
+  width: 100%; padding: 10px; border: 1px solid #e0e0e0; border-radius: 8px;
+  font-size: 14px; resize: vertical; outline: none; font-family: inherit; box-sizing: border-box;
+}
+.report-dialog textarea:focus { border-color: #c41e3a; }
+.report-dialog input[type="file"] { font-size: 13px; }
+.report-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; }
+.report-btns button {
+  padding: 8px 20px; border-radius: 8px; border: 1px solid #ddd; background: #fff;
+  cursor: pointer; font-size: 14px;
+}
+.report-btns .btn-submit {
+  background: #c41e3a; color: #fff; border-color: #c41e3a;
+}
+.report-btns .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 </style>
