@@ -1,5 +1,4 @@
 # LLM 编排
-langchain
 langchain-core
 langchain-openai
 langchain-community
@@ -7,20 +6,14 @@ langgraph
 
 # RAG
 langchain-text-splitters
+langchain-huggingface
 chromadb
-sentence-transformers
-
-# 评估
-ragas
-datasets
 
 # Web 框架
 fastapi
 uvicorn[standard]
-python-multipart
 
 # 工具
 python-dotenv
-tenacity
 pydantic
 pymysql
