@@ -100,17 +100,24 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function initAuth() {
     if (accounts.value.length === 0) return
-    const a = activeAccount.value
+    const idx = activeIndex.value
+    const a = accounts.value[idx]
     if (a) {
       try {
+        let avatarUrl = ''
         if (a.role === 'INHERITOR') {
           const { getMyProfile } = await import('@/api/profile')
           const res = await getMyProfile()
-          if (res.data?.avatarUrl) { a.avatarUrl = res.data.avatarUrl; persist() }
+          avatarUrl = res.data?.avatarUrl || ''
         } else {
           const { getMyProfile } = await import('@/api/user')
           const res = await getMyProfile()
-          if (res.data?.avatarUrl) { a.avatarUrl = res.data.avatarUrl; persist() }
+          avatarUrl = res.data?.avatarUrl || ''
+        }
+        if (avatarUrl && avatarUrl !== a.avatarUrl) {
+          // 触发响应式更新：替换整个对象
+          accounts.value[idx] = { ...a, avatarUrl }
+          persist()
         }
       } catch { /* ignore */ }
       import('@/stores/cart').then(m => m.useCartStore().loadForUser(a.role + '_' + a.id))
@@ -118,9 +125,10 @@ export const useAuthStore = defineStore('auth', () => {
   }
 
   function updateAvatar(url: string) {
-    const a = activeAccount.value
+    const idx = activeIndex.value
+    const a = accounts.value[idx]
     if (!a) return
-    a.avatarUrl = url
+    accounts.value[idx] = { ...a, avatarUrl: url }
     persist()
   }
 
