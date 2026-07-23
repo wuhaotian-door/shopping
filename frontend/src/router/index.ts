@@ -124,6 +124,12 @@ const router = createRouter({
       component: () => import('@/views/RagView.vue'),
       meta: { requiresAuth: false },
     },
+    {
+      path: '/ai-search',
+      name: 'AiSearch',
+      component: () => import('@/views/AiSearchView.vue'),
+      meta: { requiresAuth: false },
+    },
   ],
 })
 
