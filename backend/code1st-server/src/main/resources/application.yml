@@ -57,6 +57,8 @@ code1st:
   upload:
     path: ./uploads
     max-size: 10485760
+  static:
+    path: ./static
   jwt:
     # 设置jwt签名加密时使用的秘钥
     admin-secret-key: itcast

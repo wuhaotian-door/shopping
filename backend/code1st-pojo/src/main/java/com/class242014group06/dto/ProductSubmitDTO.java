@@ -6,26 +6,29 @@ import java.io.Serializable;
 import java.math.BigDecimal;
 
 /**
- * 商品新增/修改请求体
+ * 鍟嗗搧鏂板/淇敼璇锋眰浣?
  */
 @Data
 public class ProductSubmitDTO implements Serializable {
 
-    /** 商品名称 */
+    /** 鍟嗗搧鍚嶇О */
     private String name;
 
-    /** 商品描述 */
+    /** 鍟嗗搧鎻忚堪 */
     private String description;
 
-    /** 商品价格 */
+    /** 鍟嗗搧浠锋牸 */
     private BigDecimal price;
 
-    /** 库存数量 */
+    /** 搴撳瓨鏁伴噺 */
     private Integer stock;
 
-    /** 商品图片URL */
+    /** 鍟嗗搧鍥剧墖URL */
     private String imageUrl;
 
-    /** 商品分类 */
+    /** 3D模型URL（glb/gltf格式），可选 */
+    private String modelUrl;
+
+    /** 鍟嗗搧鍒嗙被 */
     private String category;
 }

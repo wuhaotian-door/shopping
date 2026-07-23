@@ -12,6 +12,7 @@
             <if test="phone != null">phone = #{phone},</if>
             <if test="email != null">email = #{email},</if>
             <if test="sex != null">sex = #{sex},</if>
+            <if test="avatarUrl != null">avatar_url = #{avatarUrl},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="updateUser != null">update_user = #{updateUser},</if>
             <if test="status != null">status = #{status},</if>

@@ -1,15 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
 import { listMyOrders } from '@/api/order'
 import { listMyProductOrders } from '@/api/product'
 import type { UserProfileVO, UserProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
 import { useCartStore } from '@/stores/cart'
+import { uploadFile } from '@/api/upload'
+import { ElMessage } from 'element-plus'
+import AvatarCropper from '@/components/AvatarCropper.vue'
 import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
 const cartStore = useCartStore()
+const authStore = useAuthStore()
 const { getUserHistory } = useHistory()
 const cartCount = computed(() => cartStore.count)
 const showHistory = ref(false)
@@ -71,6 +76,7 @@ const profile = ref<UserProfileVO>({
   phone: '',
   email: '',
   sex: '',
+  avatarUrl: '',
 })
 
 // ==================== 编辑模式 ====================
@@ -81,8 +87,14 @@ const form = ref<UserProfileDTO>({
   phone: '',
   email: '',
   sex: '',
+  avatarUrl: '',
 })
 const saveMsg = ref('')
+const uploadingAvatar = ref(false)
+const cropVisible = ref(false)
+const cropImage = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+let cropResolve: ((blob: Blob) => void) | null = null
 
 async function loadProfile() {
   try {
@@ -100,6 +112,7 @@ function enterEdit() {
     phone: profile.value.phone || '',
     email: profile.value.email || '',
     sex: profile.value.sex || '',
+    avatarUrl: profile.value.avatarUrl || '',
   }
   editMode.value = true
   saveMsg.value = ''
@@ -121,6 +134,27 @@ function cancelEdit() {
   editMode.value = false
   saveMsg.value = ''
 }
+function startAvatarCrop(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['jpg','jpeg','png','webp'].includes(ext)) { ElMessage.error('仅支持 jpg/png/webp 格式'); return }
+  cropImage.value = URL.createObjectURL(file)
+  cropVisible.value = true
+  new Promise<Blob>((resolve) => { cropResolve = resolve }).then(doUploadCropped)
+}
+async function doUploadCropped(blob: Blob) {
+  uploadingAvatar.value = true
+  try {
+    const res = await uploadFile(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'image')
+    profile.value.avatarUrl = res.data
+    form.value.avatarUrl = res.data
+    await updateProfile({ avatarUrl: res.data })
+    authStore.updateAvatar(res.data)
+    ElMessage.success('头像更新成功')
+  } catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '头像上传失败') }
+  finally { uploadingAvatar.value = false }
+}
+function onCropConfirm(blob: Blob) { cropResolve?.(blob); cropResolve = null }
+
 
 // ==================== 修改密码 ====================
 const showPasswordSection = ref(false)
@@ -234,11 +268,15 @@ async function resendCode() {
         <div class="profile-card">
           <!-- 头像区域 -->
           <div class="profile-avatar-section">
-            <div class="profile-avatar-lg">
-              <span class="avatar-initial">{{ (profile.name || '用')[0] }}</span>
+            <div class="profile-avatar-lg" :style="profile.avatarUrl ? { backgroundImage: 'url(' + profile.avatarUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}">
+              <span v-if="!profile.avatarUrl" class="avatar-initial">{{ (profile.name || '用')[0] }}</span>
             </div>
             <div class="profile-name-role">
               <h3 v-if="!editMode">{{ profile.name || '未设置姓名' }}</h3>
+              <div v-if="editMode" class="avatar-upload-btn">
+                <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="(e) => { const t = e.target as HTMLInputElement; const f = t.files?.[0]; if (f) startAvatarCrop(f); t.value = '' }" />
+                <el-button size="small" :loading="uploadingAvatar" @click="fileInput?.click()">{{ uploadingAvatar ? '上传中...' : '更换头像' }}</el-button>
+              </div>
               <p class="profile-username">@{{ profile.username || '' }}</p>
               <span class="role-badge user-badge">普通用户</span>
             </div>
@@ -509,6 +547,7 @@ async function resendCode() {
       </div>
     </main>
   </div>
+  <AvatarCropper v-model:visible="cropVisible" :image-url="cropImage" @crop="onCropConfirm" />
 </template>
 
 <style scoped>

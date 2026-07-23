@@ -63,7 +63,8 @@ function splitCrafts(craftTypes: string): string[] {
         <div v-for="master in masterList" :key="master.employeeId" class="master-card">
           <div class="master-card-top">
             <div class="master-avatar-big">
-              <span class="master-avatar-initial">{{ (master.name || '传')[0] }}</span>
+              <img v-if="master.avatarUrl" :src="master.avatarUrl" class="master-avatar-img" />
+              <span v-else class="master-avatar-initial">{{ (master.name || '传')[0] }}</span>
             </div>
             <div v-if="master.region || master.address" class="master-region-tag">
               📍 {{ master.region || master.address }}
@@ -270,8 +271,8 @@ function splitCrafts(craftTypes: string): string[] {
   position: relative;
 }
 .master-avatar-big {
-  width: 100px;
-  height: 100px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   background: linear-gradient(135deg, #e8647a, #c41e3a);
   border: 4px solid #fff;
@@ -279,6 +280,12 @@ function splitCrafts(craftTypes: string): string[] {
   align-items: center;
   justify-content: center;
 }
+.master-avatar-img {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .master-avatar-initial {
   font-size: 42px;
   color: #fff;

@@ -25,6 +25,7 @@ export function addProduct(data: {
   price: number
   stock: number
   imageUrl?: string
+  modelUrl?: string
   category?: string
 }): Promise<Result<string>> {
   return request.post('/product', data)
@@ -37,6 +38,7 @@ export function updateProduct(id: number, data: {
   price?: number
   stock?: number
   imageUrl?: string
+  modelUrl?: string
   category?: string
 }): Promise<Result<string>> {
   return request.put(`/product/${id}`, data)

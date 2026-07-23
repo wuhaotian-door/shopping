@@ -7,6 +7,7 @@ import { getProductById, submitProductOrder } from '@/api/product'
 import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
 import CommentItem from '@/components/CommentItem.vue'
+import Product3dViewer from '@/components/Product3dViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -190,7 +191,9 @@ async function submitBuy() {
 
 // ===== 轻提示 =====
 const cartToast = ref('')
+const show3d = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
+const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 function showToast() {
   if (toastTimer) clearTimeout(toastTimer)
   toastTimer = setTimeout(() => { cartToast.value = '' }, 2000)
@@ -217,13 +220,32 @@ function goTo(path: string) {
         <!-- 商品信息区 -->
         <div class="product-info-section">
           <div class="product-image-wrap">
-            <img
-              v-if="product.imageUrl"
-              :src="product.imageUrl"
-              :alt="product.name"
-              class="product-image"
+            <!-- 3D / 图片切换 -->
+            <Product3dViewer
+              v-if="show3d"
+              :model-url="modelUrl"
+              :poster-image="product.imageUrl || ''"
+              :product-name="product.name"
+              :auto-rotate="true"
+              credit="CC BY 4.0 · 中国潼关窑茶壶"
             />
-            <div v-else class="img-placeholder">{{ product.category }}</div>
+            <template v-else>
+              <img
+                v-if="product.imageUrl"
+                :src="product.imageUrl"
+                :alt="product.name"
+                class="product-image"
+              />
+              <div v-else class="img-placeholder">{{ product.category }}</div>
+            </template>
+            <button
+              v-if="modelUrl"
+              class="btn-3d-toggle"
+              @click="show3d = !show3d"
+            >
+              <span v-if="!show3d">&#9654; 查看3D视图</span>
+              <span v-else>&#10005; 返回图片</span>
+            </button>
           </div>
           <div class="product-info-right">
             <span class="product-category-tag">{{ product.category }}</span>
@@ -470,6 +492,8 @@ function goTo(path: string) {
 }
 .product-image-wrap {
   width: 400px;
+  position: relative;
+  position: relative;
   height: 400px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -493,6 +517,29 @@ function goTo(path: string) {
   font-size: 48px;
   color: #c41e3a;
   background: linear-gradient(135deg, #ffe9ec, #fef0f2);
+}
+.btn-3d-toggle { position: absolute; top: 10px; right: 10px; z-index: 20; padding: 6px 14px; font-size: 12px; color: #fff; background: rgba(196, 30, 58, 0.85); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); transition: all 0.2s; }
+.btn-3d-toggle:hover { background: #c41e3a; box-shadow: 0 2px 8px rgba(196, 30, 58, 0.35); }
+
+.btn-3d-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(196, 30, 58, 0.85);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+}
+.btn-3d-toggle:hover {
+  background: #c41e3a;
+  box-shadow: 0 2px 8px rgba(196, 30, 58, 0.35);
 }
 .product-info-right {
   flex: 1;

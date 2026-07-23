@@ -29,4 +29,7 @@ public class UserProfileDTO implements Serializable {
 
     @ApiModelProperty("性别")
     private String sex;
+
+    @ApiModelProperty("头像URL")
+    private String avatarUrl;
 }

@@ -142,6 +142,7 @@ public class ProductServiceImpl implements ProductService {
                 .price(product.getPrice())
                 .stock(product.getStock())
                 .imageUrl(product.getImageUrl())
+                .modelUrl(product.getModelUrl())
                 .category(product.getCategory())
                 .inheritorId(product.getInheritorId())
                 .inheritorName(product.getInheritorName())

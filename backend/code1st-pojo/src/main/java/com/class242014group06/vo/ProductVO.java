@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 商品查询返回视图对象
+ * 鍟嗗搧鏌ヨ杩斿洖瑙嗗浘瀵硅薄
  */
 @Data
 @Builder
@@ -20,39 +20,42 @@ public class ProductVO implements Serializable {
 
     private Long id;
 
-    /** 商品名称 */
+    /** 鍟嗗搧鍚嶇О */
     private String name;
 
-    /** 商品描述 */
+    /** 鍟嗗搧鎻忚堪 */
     private String description;
 
-    /** 商品价格 */
+    /** 鍟嗗搧浠锋牸 */
     private BigDecimal price;
 
-    /** 库存数量 */
+    /** 搴撳瓨鏁伴噺 */
     private Integer stock;
 
-    /** 商品图片URL */
+    /** 鍟嗗搧鍥剧墖URL */
     private String imageUrl;
 
-    /** 商品分类 */
+    /** 3D模型URL（glb/gltf格式），可选 */
+    private String modelUrl;
+
+    /** 鍟嗗搧鍒嗙被 */
     private String category;
 
-    /** 传承人ID */
+    /** 浼犳壙浜篒D */
     private Long inheritorId;
 
-    /** 传承人姓名 */
+    /** 浼犳壙浜哄鍚?*/
     private String inheritorName;
 
-    /** 状态：1-上架 0-下架 */
+    /** 鐘舵€侊細1-涓婃灦 0-涓嬫灦 */
     private Integer status;
 
-    /** 创建时间 */
+    /** 鍒涘缓鏃堕棿 */
     private LocalDateTime createTime;
 
-    /** 综合评分（平均值） */
+    /** 缁煎悎璇勫垎锛堝钩鍧囧€硷級 */
     private Double avgRating;
 
-    /** 评价数量 */
+    /** 璇勪环鏁伴噺 */
     private Long reviewCount;
 }
