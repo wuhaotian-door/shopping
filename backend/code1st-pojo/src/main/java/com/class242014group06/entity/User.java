@@ -28,6 +28,8 @@ public class User implements Serializable {
     private String avatarUrl;
     private String sex;
     private Integer status;
+    /** 封号截止时间（null表示未封号或永久禁用） */
+    private LocalDateTime banUntil;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUser;

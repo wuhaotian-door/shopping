@@ -272,6 +272,21 @@ public class EmployeeServiceImpl implements EmployeeService {
     }
 
     @Override
+    public void banUser(Long id, Integer status, String role, Integer banDays) {
+        java.time.LocalDateTime banUntil = null;
+        if (status == StatusConstant.DISABLE && banDays != null && banDays > 0) {
+            banUntil = java.time.LocalDateTime.now().plusDays(banDays);
+        }
+        if (RoleConstant.ADMIN.equals(role)) {
+            adminMapper.update(Admin.builder().id(id).status(status).banUntil(banUntil).build());
+        } else if (RoleConstant.INHERITOR.equals(role)) {
+            inheritorMapper.update(Inheritor.builder().id(id).status(status).banUntil(banUntil).build());
+        } else {
+            userMapper.update(User.builder().id(id).status(status).banUntil(banUntil).build());
+        }
+    }
+
+    @Override
     public void batchUpdateStatus(java.util.List<Long> ids, Integer status, String role) {
         for (Long id : ids) {
             if (RoleConstant.ADMIN.equals(role)) {
