@@ -118,14 +118,15 @@ public class InheritorProfileServiceImpl implements InheritorProfileService {
         return builder.build();
     }
 
-    @Value("${code1st.upload.path:./uploads}")
-    private String uploadPath;
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
 
     private void deleteAvatarFile(String avatarUrl) {
         if (avatarUrl == null || avatarUrl.isEmpty()) return;
         try {
-            String fileName = avatarUrl.replaceFirst("^/uploads/", "");
-            File file = new File(new File(uploadPath).getAbsoluteFile(), fileName);
+            String fileName = avatarUrl.replaceFirst("^/images/", "");
+            if (fileName.equals(avatarUrl)) return;
+            File file = new File(new File(staticPath).getAbsoluteFile(), "images/" + fileName);
             if (file.exists()) file.delete();
         } catch (Exception e) { /* ignore */ }
     }
