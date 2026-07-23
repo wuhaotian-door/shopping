@@ -6,6 +6,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -30,9 +31,15 @@ public class Inheritor implements Serializable {
     private String region;
     /** 邮箱（用于接收审核通知等） */
     private String email;
-    /** 年龄 */
+    /** 出生日期 */
+    private LocalDate birthDate;
+    /** 出生日期上次修改时间（限制一年只能改一次） */
+    private LocalDateTime birthDateUpdatedAt;
+    /** 年龄（由出生日期自动计算） */
     private Integer age;
     private Integer status;
+    /** 封号截止时间（null表示未封号或永久禁用） */
+    private LocalDateTime banUntil;
     private LocalDateTime createTime;
     private LocalDateTime updateTime;
     private Long createUser;

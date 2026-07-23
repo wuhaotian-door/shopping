@@ -6,6 +6,7 @@ import com.class242014group06.enumeration.OperationType;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -40,4 +41,7 @@ public interface AdminMapper {
 
     @Select("select count(*) from admin where status = #{status}")
     Long countByStatus(Integer status);
+
+    @Update("update admin set password = #{password}, update_time = #{updateTime} where id = #{id}")
+    void updatePassword(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("password") String password, @org.apache.ibatis.annotations.Param("updateTime") java.time.LocalDateTime updateTime);
 }

@@ -2,13 +2,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
-import { getProductById } from '@/api/product'
-import { listReviews, submitReview } from '@/api/review'
+import { useCartStore } from '@/stores/cart'
+import { getProductById, submitProductOrder } from '@/api/product'
+import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
+import CommentItem from '@/components/CommentItem.vue'
+import Product3dViewer from '@/components/Product3dViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const cartStore = useCartStore()
 
 onMounted(() => {
   const id = Number(route.params.id)
@@ -75,6 +79,31 @@ const reviewForm = ref({ rating: 5, content: '' })
 const submitLoading = ref(false)
 const submitMsg = ref('')
 
+// ===== 回复处理 =====
+async function handleReplyClick(parentId: number, content: string) {
+  if (!product.value) return
+  try {
+    await submitReview(product.value.id, {
+      content,
+      parentId,
+    })
+    await loadReviews(product.value.id)
+    await loadProduct(product.value.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '回复失败')
+  }
+}
+
+async function handleDeleteReview(reviewId: number) {
+  try {
+    await deleteReview(reviewId)
+    await loadReviews(product.value!.id)
+    await loadProduct(product.value!.id)
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '删除失败')
+  }
+}
+
 async function handleSubmitReview() {
   if (!reviewForm.value.content.trim()) {
     submitMsg.value = '请输入评价内容'
@@ -100,6 +129,81 @@ async function handleSubmitReview() {
     submitLoading.value = false
   }
 }
+
+// ===== 加入购物车 =====
+function addToCart() {
+  if (!isLoggedIn.value) { router.push('/login'); return }
+  if (!product.value || product.value.stock === 0) return
+  cartStore.add(product.value, authStore.uid)
+  cartToast.value = '已加入购物车'
+  showToast()
+}
+
+// ===== 立即购买 =====
+const showBuyForm = ref(false)
+const buyForm = ref({ phone: '', address: '', remark: '' })
+const buyQuantity = ref(1)
+const buySubmitting = ref(false)
+const buyMsg = ref('')
+
+function buyNow() {
+  if (!isLoggedIn.value) { router.push('/login'); return }
+  if (!product.value || product.value.stock === 0) return
+  buyQuantity.value = 1
+  showBuyForm.value = true
+  buyMsg.value = ''
+}
+
+function incQty() {
+  if (product.value && buyQuantity.value < product.value.stock) buyQuantity.value++
+}
+function decQty() {
+  if (buyQuantity.value > 1) buyQuantity.value--
+}
+
+async function submitBuy() {
+  if (!product.value) return
+  if (!buyForm.value.phone || !buyForm.value.address) {
+    buyMsg.value = '请填写联系电话和收货地址'
+    return
+  }
+  buySubmitting.value = true
+  buyMsg.value = ''
+  try {
+    await submitProductOrder({
+      productId: product.value.id,
+      quantity: buyQuantity.value,
+      phone: buyForm.value.phone,
+      address: buyForm.value.address,
+      remark: buyForm.value.remark,
+    })
+    buyMsg.value = '下单成功！'
+    setTimeout(() => {
+      showBuyForm.value = false
+      router.push('/orders')
+    }, 1200)
+  } catch {
+    buyMsg.value = '下单失败，请稍后重试'
+  } finally {
+    buySubmitting.value = false
+  }
+}
+
+// ===== 轻提示 =====
+const cartToast = ref('')
+const show3d = ref(false)
+let toastTimer: ReturnType<typeof setTimeout> | null = null
+const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
+function showToast() {
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => { cartToast.value = '' }, 2000)
+}
+
+// ===== 侧边栏导航 =====
+function goTo(path: string) {
+  if (!isLoggedIn.value) { router.push('/login'); return }
+  router.push(path)
+}
 </script>
 
 <template>
@@ -116,13 +220,32 @@ async function handleSubmitReview() {
         <!-- 商品信息区 -->
         <div class="product-info-section">
           <div class="product-image-wrap">
-            <img
-              v-if="product.imageUrl"
-              :src="product.imageUrl"
-              :alt="product.name"
-              class="product-image"
+            <!-- 3D / 图片切换 -->
+            <Product3dViewer
+              v-if="show3d"
+              :model-url="modelUrl"
+              :poster-image="product.imageUrl || ''"
+              :product-name="product.name"
+              :auto-rotate="true"
+              credit="CC BY 4.0 · 中国潼关窑茶壶"
             />
-            <div v-else class="img-placeholder">{{ product.category }}</div>
+            <template v-else>
+              <img
+                v-if="product.imageUrl"
+                :src="product.imageUrl"
+                :alt="product.name"
+                class="product-image"
+              />
+              <div v-else class="img-placeholder">{{ product.category }}</div>
+            </template>
+            <button
+              v-if="modelUrl"
+              class="btn-3d-toggle"
+              @click="show3d = !show3d"
+            >
+              <span v-if="!show3d">&#9654; 查看3D视图</span>
+              <span v-else>&#10005; 返回图片</span>
+            </button>
           </div>
           <div class="product-info-right">
             <span class="product-category-tag">{{ product.category }}</span>
@@ -142,6 +265,20 @@ async function handleSubmitReview() {
               <span v-else class="out-stock">｜ 已售罄</span>
             </p>
             <p class="product-desc">{{ product.description }}</p>
+
+            <!-- 操作按钮 -->
+            <div class="action-bar">
+              <button
+                class="btn-add-cart"
+                :disabled="product.stock === 0"
+                @click="addToCart"
+              >{{ product.stock === 0 ? '已售罄' : '加入购物车' }}</button>
+              <button
+                class="btn-buy-now"
+                :disabled="product.stock === 0"
+                @click="buyNow"
+              >立即购买</button>
+            </div>
           </div>
         </div>
 
@@ -197,23 +334,90 @@ async function handleSubmitReview() {
           <div v-if="reviewLoading" class="loading-state">加载评价中...</div>
           <div v-else-if="reviews.length === 0" class="empty-reviews">暂无评价，快来写下第一条评价吧</div>
           <div v-else class="review-list">
-            <div v-for="review in reviews" :key="review.id" class="review-card">
-              <div class="review-top">
-                <div class="review-user-avatar">{{ (review.userName || '用')[0] }}</div>
-                <div class="review-user-info">
-                  <span class="review-user-name">{{ review.userName || '匿名用户' }}</span>
-                  <span class="review-time">{{ review.createTime?.slice(0, 10) }}</span>
-                </div>
-                <span class="review-stars">{{ renderStars(review.rating) }}</span>
-              </div>
-              <p class="review-content">{{ review.content }}</p>
-            </div>
+            <CommentItem
+              v-for="review in reviews"
+              :key="review.id"
+              :comment="review"
+              :current-user-id="authStore.userInfo?.id ?? null"
+              :depth="0"
+              @reply="handleReplyClick"
+              @delete="handleDeleteReview"
+            >
+              <template #extra="{ comment }">
+                <span v-if="(comment as ProductReviewVO).rating != null" class="review-stars">{{ renderStars((comment as ProductReviewVO).rating!) }}</span>
+              </template>
+            </CommentItem>
           </div>
         </div>
       </template>
 
       <div v-else class="empty-state">商品不存在</div>
     </main>
+
+    <!-- ===== 右侧悬浮侧边栏（仿淘宝） ===== -->
+    <aside class="side-toolbar">
+      <button class="side-btn" @click="goTo('/cart')" title="购物车">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="9" cy="21" r="1.2"/>
+          <circle cx="18" cy="21" r="1.2"/>
+          <path d="M2.5 3h2.2l2.4 12.2a2 2 0 0 0 2 1.6h8.7a2 2 0 0 0 2-1.5L21.5 7H6"/>
+        </svg>
+        <span class="side-label">购物车</span>
+        <span v-if="cartStore.count > 0" class="side-badge">{{ cartStore.count }}</span>
+      </button>
+
+      <button class="side-btn" @click="goTo('/orders')" title="我的订单">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/>
+          <polyline points="14 3 14 9 20 9"/>
+          <line x1="8" y1="13" x2="16" y2="13"/>
+          <line x1="8" y1="17" x2="13" y2="17"/>
+        </svg>
+        <span class="side-label">我的订单</span>
+      </button>
+
+      <button class="side-btn" @click="goTo('/profile')" title="个人中心">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="8" r="4"/>
+          <path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8"/>
+        </svg>
+        <span class="side-label">个人中心</span>
+      </button>
+    </aside>
+
+    <!-- ===== 加入购物车轻提示 ===== -->
+    <transition name="toast">
+      <div v-if="cartToast" class="cart-toast">{{ cartToast }}</div>
+    </transition>
+
+    <!-- ===== 立即购买弹窗 ===== -->
+    <div v-if="showBuyForm" class="modal-overlay" @click.self="showBuyForm = false">
+      <div class="modal-box">
+        <h3>确认订单</h3>
+        <div v-if="product" class="modal-product">
+          <span class="modal-product-name">{{ product.name }}</span>
+          <span class="modal-product-price">¥{{ product.price.toFixed(2) }} × {{ buyQuantity }}</span>
+        </div>
+        <!-- 数量选择器 -->
+        <div class="qty-row">
+          <span class="qty-label">数量</span>
+          <div class="qty-selector">
+            <button class="qty-btn" :disabled="buyQuantity <= 1" @click="decQty">−</button>
+            <span class="qty-val">{{ buyQuantity }}</span>
+            <button class="qty-btn" :disabled="!product || buyQuantity >= product.stock" @click="incQty">+</button>
+          </div>
+          <span class="qty-stock">库存 {{ product?.stock ?? 0 }} 件</span>
+        </div>
+        <input v-model="buyForm.phone" placeholder="联系电话（必填）" class="field" />
+        <input v-model="buyForm.address" placeholder="收货地址（必填）" class="field" />
+        <input v-model="buyForm.remark" placeholder="备注（可选）" class="field" />
+        <p v-if="buyMsg" :class="buyMsg.includes('成功') ? 'msg-ok' : 'msg-err'">{{ buyMsg }}</p>
+        <div class="modal-btns">
+          <button class="btn-cancel" @click="showBuyForm = false">取消</button>
+          <button class="btn-submit" :disabled="buySubmitting" @click="submitBuy">{{ buySubmitting ? '提交中…' : '确认下单' }}</button>
+        </div>
+      </div>
+    </div>
 
     <!-- ==================== 页脚 ==================== -->
     <footer class="page-footer">
@@ -231,9 +435,14 @@ async function handleSubmitReview() {
 }
 
 /* ---- 返回栏 ---- */
-.back-bar { padding: 10px 5%; background: #fcf4e8; }
-.nav-btn { padding: 6px 16px; font-size: 13px; color: #c41e3a; background: #fff; border: 1px solid #e8647a; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-.nav-btn:hover { background: #fff5f7; }
+.back-bar { padding: 14px 5%; background: #f8f9fa; }
+.back-bar .nav-btn {
+  padding: 8px 18px; font-size: 14px; color: #fff;
+  background: #c41e3a; border: none;
+  border-radius: 6px; cursor: pointer; transition: 0.2s;
+  font-weight: 600; box-shadow: 0 2px 6px rgba(196,30,58,0.25);
+}
+.back-bar .nav-btn:hover { background: #a8162b; }
 
 /* ---- 旧导航（保留备用） ---- */
 .page-header {
@@ -283,6 +492,8 @@ async function handleSubmitReview() {
 }
 .product-image-wrap {
   width: 400px;
+  position: relative;
+  position: relative;
   height: 400px;
   flex-shrink: 0;
   border-radius: 10px;
@@ -306,6 +517,29 @@ async function handleSubmitReview() {
   font-size: 48px;
   color: #c41e3a;
   background: linear-gradient(135deg, #ffe9ec, #fef0f2);
+}
+.btn-3d-toggle { position: absolute; top: 10px; right: 10px; z-index: 20; padding: 6px 14px; font-size: 12px; color: #fff; background: rgba(196, 30, 58, 0.85); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); transition: all 0.2s; }
+.btn-3d-toggle:hover { background: #c41e3a; box-shadow: 0 2px 8px rgba(196, 30, 58, 0.35); }
+
+.btn-3d-toggle {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  z-index: 20;
+  padding: 6px 14px;
+  font-size: 12px;
+  color: #fff;
+  background: rgba(196, 30, 58, 0.85);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+  transition: all 0.2s;
+}
+.btn-3d-toggle:hover {
+  background: #c41e3a;
+  box-shadow: 0 2px 8px rgba(196, 30, 58, 0.35);
 }
 .product-info-right {
   flex: 1;
@@ -426,45 +660,12 @@ async function handleSubmitReview() {
 .submit-msg.error { color: #dc3545; }
 
 /* ---- 评价列表 ---- */
-.review-list { display: flex; flex-direction: column; gap: 16px; }
-.review-card {
-  padding: 20px;
-  border: 1px solid #f0f0f0;
-  border-radius: 10px;
-  transition: 0.2s;
-}
-.review-card:hover { border-color: #f0c0c8; background: #fffafa; }
-.review-top {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-.review-user-avatar {
-  width: 40px; height: 40px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #e8647a, #c41e3a);
-  color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 18px; font-weight: 700;
-  flex-shrink: 0;
-}
-.review-user-info {
-  flex: 1;
-  display: flex; flex-direction: column;
-}
-.review-user-name { font-size: 15px; color: #333; font-weight: 600; }
-.review-time { font-size: 12px; color: #999; margin-top: 2px; }
+.review-list { display: flex; flex-direction: column; gap: 4px; }
+
 .review-stars {
   color: #f5a623;
   font-size: 16px;
   letter-spacing: 1px;
-}
-.review-content {
-  font-size: 14px;
-  color: #555;
-  line-height: 1.7;
-  padding-left: 52px;
 }
 
 .empty-reviews {
@@ -501,6 +702,156 @@ async function handleSubmitReview() {
   margin-top: auto;
 }
 
+/* ---- 操作按钮 ---- */
+.action-bar {
+  display: flex;
+  gap: 16px;
+  margin-top: 28px;
+}
+.btn-add-cart {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 16px;
+  color: #c41e3a;
+  background: #fff;
+  border: 2px solid #c41e3a;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+}
+.btn-add-cart:hover:not(:disabled) {
+  background: #fff5f7;
+}
+.btn-add-cart:disabled {
+  border-color: #ccc;
+  color: #ccc;
+  cursor: not-allowed;
+}
+.btn-buy-now {
+  flex: 1;
+  padding: 14px 0;
+  font-size: 16px;
+  color: #fff;
+  background: linear-gradient(135deg, #c41e3a, #d43030);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: 0.2s;
+  box-shadow: 0 2px 8px rgba(196,30,58,0.3);
+}
+.btn-buy-now:hover:not(:disabled) {
+  background: linear-gradient(135deg, #a8162b, #c41e3a);
+  box-shadow: 0 4px 12px rgba(196,30,58,0.45);
+}
+.btn-buy-now:disabled {
+  background: #ccc;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* ===== 右侧悬浮侧边栏（仿淘宝） ===== */
+.side-toolbar {
+  position: fixed; right: 16px; top: 50%;
+  transform: translateY(-50%); z-index: 500;
+  display: flex; flex-direction: column; gap: 2px;
+  background: #fff; border-radius: 10px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.10);
+  padding: 6px 0; width: 60px;
+}
+.side-btn {
+  position: relative;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 12px 0; gap: 4px;
+  background: transparent; border: none; cursor: pointer;
+  color: #666; transition: color 0.2s, background 0.2s;
+}
+.side-btn:hover { color: #c41e3a; background: #fff5f7; }
+.side-btn svg { width: 24px; height: 24px; }
+.side-label { font-size: 12px; line-height: 1; user-select: none; }
+.side-badge {
+  position: absolute; top: 6px; right: 10px;
+  min-width: 18px; height: 18px; padding: 0 5px;
+  border-radius: 9px; background: #ff4400; color: #fff;
+  font-size: 11px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center;
+  box-sizing: border-box; line-height: 1;
+}
+
+/* ---- 轻提示 ---- */
+.cart-toast {
+  position: fixed; bottom: 80px; left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.78);
+  color: #fff; padding: 12px 28px;
+  border-radius: 24px; font-size: 14px;
+  z-index: 600; pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+.toast-enter-active, .toast-leave-active { transition: opacity 0.3s, transform 0.3s; }
+.toast-enter-from, .toast-leave-to { opacity: 0; transform: translateX(-50%) translateY(10px); }
+
+/* ---- 立即购买弹窗 ---- */
+.modal-overlay {
+  position: fixed; inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 700;
+}
+.modal-box {
+  background: #fff; border-radius: 12px;
+  padding: 32px; width: 420px; max-width: 90vw;
+}
+.modal-box h3 { margin-bottom: 16px; color: #c41e3a; font-size: 20px; }
+.modal-product {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 14px; background: #fafafa; border-radius: 8px;
+  margin-bottom: 16px;
+}
+.modal-product-name { font-size: 14px; color: #333; font-weight: 600; }
+.modal-product-price { font-size: 14px; color: #c41e3a; font-weight: 600; }
+
+/* ---- 数量选择器 ---- */
+.qty-row {
+  display: flex; align-items: center; gap: 14px;
+  margin-bottom: 16px;
+}
+.qty-label { font-size: 14px; color: #444; font-weight: 600; }
+.qty-selector {
+  display: flex; align-items: center;
+  border: 1px solid #e0e0e0; border-radius: 6px; overflow: hidden;
+}
+.qty-btn {
+  width: 36px; height: 36px;
+  border: none; background: #f5f5f5;
+  font-size: 18px; cursor: pointer; color: #333;
+  transition: background 0.15s;
+}
+.qty-btn:hover:not(:disabled) { background: #e8e8e8; }
+.qty-btn:disabled { color: #ccc; cursor: not-allowed; }
+.qty-val {
+  width: 48px; text-align: center;
+  font-size: 16px; font-weight: 600; color: #333;
+}
+.qty-stock { font-size: 13px; color: #999; }
+
+/* ---- 表单 ---- */
+.field {
+  width: 100%; padding: 10px 14px;
+  border: 1px solid #ddd; border-radius: 6px;
+  margin-bottom: 12px; font-size: 14px; outline: none;
+  box-sizing: border-box;
+}
+.field:focus { border-color: #c41e3a; }
+.msg-ok { color: #28a745; font-size: 13px; }
+.msg-err { color: #c41e3a; font-size: 13px; }
+.modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 16px; }
+.btn-cancel { padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; }
+.btn-submit { padding: 10px 24px; background: #c41e3a; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ---- 响应式 ---- */
 @media (max-width: 768px) {
   .product-info-section { flex-direction: column; padding: 20px; }
@@ -508,5 +859,11 @@ async function handleSubmitReview() {
   .page-header { padding: 0 16px; flex-wrap: wrap; }
   .nav-links { gap: 12px; }
   .nav-item { font-size: 12px; }
+  .action-bar { flex-direction: column; gap: 10px; }
+  .side-toolbar { right: 6px; width: 50px; }
+  .side-btn { padding: 10px 0; }
+  .side-btn svg { width: 20px; height: 20px; }
+  .side-label { font-size: 11px; }
+  .modal-box { padding: 24px; }
 }
 </style>

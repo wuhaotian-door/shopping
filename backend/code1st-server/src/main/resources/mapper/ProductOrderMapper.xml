@@ -9,6 +9,8 @@
             <if test="phone != null">phone = #{phone},</if>
             <if test="address != null">address = #{address},</if>
             <if test="status != null">status = #{status},</if>
+            <if test="courierCompany != null">courier_company = #{courierCompany},</if>
+            <if test="trackingNumber != null">tracking_number = #{trackingNumber},</if>
             <if test="remark != null">remark = #{remark},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>
             <if test="updateUser != null">update_user = #{updateUser},</if>

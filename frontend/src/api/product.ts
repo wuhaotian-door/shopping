@@ -25,6 +25,7 @@ export function addProduct(data: {
   price: number
   stock: number
   imageUrl?: string
+  modelUrl?: string
   category?: string
 }): Promise<Result<string>> {
   return request.post('/product', data)
@@ -37,6 +38,7 @@ export function updateProduct(id: number, data: {
   price?: number
   stock?: number
   imageUrl?: string
+  modelUrl?: string
   category?: string
 }): Promise<Result<string>> {
   return request.put(`/product/${id}`, data)
@@ -69,17 +71,22 @@ export function listMyProductOrders(): Promise<Result<ProductOrderVO[]>> {
   return request.get('/product-order/my')
 }
 
+/** 查询商品订单详情 */
+export function getProductOrderDetail(id: number): Promise<Result<ProductOrderVO>> {
+  return request.get(`/product-order/${id}`)
+}
+
 /** 传承人查看自己商品的订单 */
 export function listInheritorProductOrders(): Promise<Result<ProductOrderVO[]>> {
   return request.get('/product-order/inheritor')
 }
 
-/** 传承人发货 */
-export function shipProductOrder(id: number): Promise<Result<string>> {
-  return request.put(`/product-order/${id}/ship`)
+/** 传承人发货（含快递信息） */
+export function shipProductOrder(id: number, courierCompany?: string, trackingNumber?: string): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/ship`, null, { params: { courierCompany, trackingNumber } })
 }
 
-/** 传承人完成订单 */
+/** 用户确认收货 */
 export function completeProductOrder(id: number): Promise<Result<string>> {
   return request.put(`/product-order/${id}/complete`)
 }
@@ -127,4 +134,9 @@ export function listAllProducts(): Promise<Result<ProductVO[]>> {
 /** 管理员批量删除商品 */
 export function batchDeleteProduct(ids: number[]): Promise<Result<string>> {
   return request.post('/product/batch', { ids })
+}
+
+/** 管理员取消商品订单 */
+export function adminCancelProductOrder(id: number): Promise<Result<string>> {
+  return request.put(`/product-order/${id}/admin/cancel`)
 }

@@ -64,8 +64,10 @@ export interface InheritorRegisterRequest {
   password: string
   phone?: string
   sex?: string
-  email?: string   // 邮箱（用于接收审核结果通知）
+  email?: string
   idNumber: string
+  /** 出生日期，如：1985-03-12 */
+  birthDate?: string
   /** 所属地区，如：江苏省苏州市 */
   region: string
 }
@@ -113,7 +115,6 @@ export interface DashboardStats {
 
 /** 订单状态 */
 export type OrderStatus = 0 | 1 | 2 | 3
-// 0-待确认, 1-已确认, 2-已完成, 3-已取消
 
 /** 订单提交请求 */
 export interface OrderSubmitRequest {
@@ -121,7 +122,7 @@ export interface OrderSubmitRequest {
   phone: string
   inheritorId: number
   projectId?: number
-  appointmentDate: string // yyyy-MM-dd
+  appointmentDate: string
   timeSlot: string
   peopleCount: number
   remark: string
@@ -156,6 +157,8 @@ export interface InheritorProfileVO {
   craftTypes: string
   address: string
   avatarUrl: string
+  birthDate: string | null
+  age: number | null
 }
 
 export interface InheritorProfileDTO {
@@ -205,8 +208,8 @@ export interface HeritageProjectVO {
   maxPeople: number
   currentPeople: number
   status: number
-  projectType: number  // 0-公益(非盈利), 1-非公益(盈利)
-  price?: number       // 价格（非公益项目使用）
+  projectType: number
+  price?: number
   createTime: string
 }
 
@@ -220,8 +223,8 @@ export interface HeritageProjectDTO {
   endDate?: string
   maxPeople?: number
   status?: number
-  projectType?: number  // 0-公益(非盈利), 1-非公益(盈利)
-  price?: number        // 价格（非公益项目使用）
+  projectType?: number
+  price?: number
 }
 
 // ==================== 商城商品 ====================
@@ -233,6 +236,7 @@ export interface ProductVO {
   price: number
   stock: number
   imageUrl: string
+  modelUrl?: string
   category: string
   inheritorId: number
   inheritorName: string
@@ -249,20 +253,26 @@ export interface ProductReviewVO {
   productId: number
   userId: number
   userName: string
-  rating: number
+  rating: number | null
   content: string
+  parentId: number | null
+  replyToUserName: string | null
+  isDeleted: number
+  children: ProductReviewVO[]
   createTime: string
 }
 
 export interface ProductReviewDTO {
-  rating: number
+  rating?: number
   content: string
+  parentId?: number
 }
 
 // ==================== 商品订单 ====================
 
 export interface ProductOrderVO {
   id: number
+  userId?: number
   userName: string
   phone: string
   address: string
@@ -275,6 +285,8 @@ export interface ProductOrderVO {
   inheritorId: number
   remark: string
   status: number
+  courierCompany?: string
+  trackingNumber?: string
   createTime: string
 }
 
@@ -292,9 +304,9 @@ export interface AppointmentSlot {
   id: number
   inheritorId: number
   slotDate: string
-  startTime: string       // "HH:mm"
-  endTime: string         // "HH:mm"
-  recurrenceType: string  // 'NONE' | 'WEEKLY' | 'MONTHLY'
+  startTime: string
+  endTime: string
+  recurrenceType: string
   recurrenceEndDate?: string
   maxPeople: number
   bookedCount: number
@@ -360,6 +372,7 @@ export interface UserProfileVO {
   phone: string
   email: string
   sex: string
+  avatarUrl?: string
 }
 
 export interface UserProfileDTO {
@@ -368,12 +381,13 @@ export interface UserProfileDTO {
   phone?: string
   email?: string
   sex?: string
+  avatarUrl?: string
 }
 
 export interface ChangePasswordDTO {
-  code?: string        // 验证码（忘记密码场景）
-  oldPassword?: string // 旧密码（已登录改密码场景）
-  newPassword: string  // 新密码
+  code?: string
+  oldPassword?: string
+  newPassword: string
 }
 
 // ==================== 好友系统 ====================
@@ -396,11 +410,16 @@ export interface ArticleCommentVO {
   userId: number
   userName: string
   content: string
+  parentId: number | null
+  replyToUserName: string | null
+  isDeleted: number
+  children: ArticleCommentVO[]
   createTime: string
 }
 
 export interface ArticleCommentDTO {
   content: string
+  parentId?: number
 }
 
 // ==================== 操作日志 ====================

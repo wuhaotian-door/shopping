@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500;600;700;900&display=swap');
+
 *,
 *::before,
 *::after {
@@ -6,10 +8,47 @@
   padding: 0;
 }
 
-html, body {
-  height: 100%;
+html, body { height: 100%; }
+
+:root {
+  /* 朱砂红色系 */
+  --red-deep:    #8b1a2b;
+  --red-primary: #c41e3a;
+  --red-bright:  #d43030;
+  --red-light:   #e8647a;
+  --red-pale:    #f0a0b0;
+  --red-wash:    #ffe9ec;
+
+  /* 暖纸底色 */
+  --paper-warm:  #fdf5ec;
+  --paper-base:  #fef9f4;
+  --paper-light: #fffaf7;
+
+  /* 金色点缀 */
+  --gold:        #b8860b;
+  --gold-light:  #d4a030;
+
+  --font-title: 'Noto Serif SC', 'STSong', 'SimSun', serif;
+  --font-body:  'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'STSong', 'SimSun', serif;
 }
 
 body {
-  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  font-family: var(--font-body);
+  font-weight: 500;
+  -webkit-font-smoothing: antialiased;
+  background: var(--paper-base);
+  color: #2c2c2c;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 2px,
+      rgba(196, 30, 58, 0.006) 2px, rgba(196, 30, 58, 0.006) 4px);
+  background-attachment: fixed;
 }
+
+h1, h2, h3, h4, h5, h6 { font-weight: 700; }
+a, button { font-weight: 500; }
+strong, b, label { font-weight: 700; }
+
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: var(--paper-warm); }
+::-webkit-scrollbar-thumb { background: #d8c8c0; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #c0a8a0; }

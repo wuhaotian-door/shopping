@@ -95,6 +95,7 @@ public class KnowledgeArticleController {
     @DeleteMapping("/{id}/admin")
     @ApiOperation("管理员删除文章")
     public Result<String> deleteByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员删除文章，id：{}", id);
         articleService.deleteByAdmin(id);
@@ -106,6 +107,7 @@ public class KnowledgeArticleController {
     @PostMapping("/batch")
     @ApiOperation("管理员批量删除文章")
     public Result<String> batchDelete(@RequestBody BatchIdsDTO dto) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("批量删除文章：{}", dto.getIds());
         articleService.batchDelete(dto.getIds());

@@ -7,6 +7,7 @@ import com.class242014group06.json.JacksonObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeansException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.beans.factory.config.BeanPostProcessor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,6 +41,14 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
 
     @Autowired
     private JwtTokenAdminInterceptor jwtTokenAdminInterceptor;
+
+    /** 上传文件存储路径 */
+    @Value("${code1st.upload.path:./uploads}")
+    private String uploadPath;
+
+    /** 静态文件存储路径（图片、模型等） */
+    @Value("${code1st.static.path:./static}")
+    private String staticPath;
 
     /**
      * 配置跨域
@@ -112,8 +121,27 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         log.info("开始设置静态资源映射...");
+        registry.addResourceHandler("/uploads/**").addResourceLocations("file:uploads/");
+        registry.addResourceHandler("/images/**").addResourceLocations("file:static/images/");
+        registry.addResourceHandler("/models/**").addResourceLocations("file:static/models/");
         registry.addResourceHandler("/doc.html").addResourceLocations("classpath:/META-INF/resources/");
         registry.addResourceHandler("/webjars/**").addResourceLocations("classpath:/META-INF/resources/webjars/");
+
+        // 映射上传目录，使上传的图片可通过 URL 直接访问
+        // 需要解析为绝对路径，否则相对路径会相对于临时目录
+        String absoluteUploadPath = new java.io.File(uploadPath).getAbsolutePath() + java.io.File.separator;
+        log.info("上传文件静态资源映射：/uploads/** -> file:{}", absoluteUploadPath);
+        registry.addResourceHandler("/uploads/**")
+                .addResourceLocations("file:" + absoluteUploadPath);
+
+        // 映射静态目录：上传的图片和3D模型可通过 /images/xxx.jpg、/models/xxx.glb 直接访问
+        String absoluteStaticPath = new java.io.File(staticPath).getAbsolutePath() + java.io.File.separator;
+        log.info("静态资源映射：/images/** -> file:{}images/", absoluteStaticPath);
+        log.info("静态资源映射：/models/** -> file:{}models/", absoluteStaticPath);
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations("file:" + absoluteStaticPath + "images/");
+        registry.addResourceHandler("/models/**")
+                .addResourceLocations("file:" + absoluteStaticPath + "models/");
     }
 
     /**

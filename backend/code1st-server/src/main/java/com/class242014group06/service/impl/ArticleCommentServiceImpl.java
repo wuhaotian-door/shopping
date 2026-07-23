@@ -1,5 +1,7 @@
 package com.class242014group06.service.impl;
 
+import com.class242014group06.constant.RoleConstant;
+import com.class242014group06.context.BaseContext;
 import com.class242014group06.dto.ArticleCommentDTO;
 import com.class242014group06.entity.Admin;
 import com.class242014group06.entity.ArticleComment;
@@ -16,7 +18,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
@@ -41,20 +46,31 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
             throw new OrderBusinessException("评论内容不能为空");
         }
 
-        // 跨表查询用户名（支持普通用户/传承人/管理员评论）
+        // 校验父评论（如果传了 parentId）
+        if (dto.getParentId() != null) {
+            ArticleComment parent = commentMapper.findById(dto.getParentId());
+            if (parent == null || !parent.getArticleId().equals(articleId)) {
+                throw new OrderBusinessException("父评论不存在");
+            }
+        }
+
+        // 根据角色定向查询用户名，避免不同表间 ID 冲突导致名字错乱
+        String role = BaseContext.getCurrentRole();
         String userName = "";
-        User user = userMapper.getById(userId);
-        if (user != null) {
-            userName = user.getName();
-        } else {
+        if (RoleConstant.ADMIN.equals(role)) {
+            Admin admin = adminMapper.getById(userId);
+            if (admin != null) {
+                userName = admin.getName();
+            }
+        } else if (RoleConstant.INHERITOR.equals(role)) {
             Inheritor inheritor = inheritorMapper.getById(userId);
             if (inheritor != null) {
                 userName = inheritor.getName();
-            } else {
-                Admin admin = adminMapper.getById(userId);
-                if (admin != null) {
-                    userName = admin.getName();
-                }
+            }
+        } else {
+            User user = userMapper.getById(userId);
+            if (user != null) {
+                userName = user.getName();
             }
         }
 
@@ -63,6 +79,8 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
                 .userId(userId)
                 .userName(userName)
                 .content(dto.getContent().trim())
+                .parentId(dto.getParentId())
+                .isDeleted(0)
                 .createTime(LocalDateTime.now())
                 .build();
         commentMapper.insert(comment);
@@ -71,12 +89,62 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
     @Override
     public List<ArticleCommentVO> listByArticleId(Long articleId) {
         List<ArticleComment> comments = commentMapper.listByArticleId(articleId);
-        return comments.stream().map(this::toVO).collect(Collectors.toList());
+        List<ArticleCommentVO> flatVos = comments.stream()
+                .map(this::toVO)
+                .collect(Collectors.toList());
+        return buildTree(flatVos);
     }
 
     @Override
     public Long countByArticleId(Long articleId) {
         return commentMapper.countByArticleId(articleId);
+    }
+
+    @Override
+    public void deleteComment(Long userId, Long commentId) {
+        ArticleComment comment = commentMapper.findById(commentId);
+        if (comment == null) {
+            throw new OrderBusinessException("评论不存在");
+        }
+        if (!comment.getUserId().equals(userId)) {
+            throw new OrderBusinessException("无权删除他人评论");
+        }
+        commentMapper.deleteById(commentId);
+    }
+
+    /**
+     * 将扁平评论列表构建为树形结构
+     */
+    private List<ArticleCommentVO> buildTree(List<ArticleCommentVO> flatList) {
+        Map<Long, ArticleCommentVO> map = new LinkedHashMap<>();
+        List<ArticleCommentVO> roots = new ArrayList<>();
+
+        // 第一遍：建立 ID 映射并初始化 children
+        for (ArticleCommentVO vo : flatList) {
+            vo.setChildren(new ArrayList<>());
+            map.put(vo.getId(), vo);
+        }
+
+        // 第二遍：设置 replyToUserName 并挂到父节点
+        for (ArticleCommentVO vo : flatList) {
+            if (vo.getParentId() != null) {
+                ArticleCommentVO parent = map.get(vo.getParentId());
+                if (parent != null) {
+                    vo.setReplyToUserName(
+                            parent.getIsDeleted() != null && parent.getIsDeleted() == 1
+                                    ? "已删除用户"
+                                    : parent.getUserName()
+                    );
+                    parent.getChildren().add(vo);
+                } else {
+                    // 父评论被删除或孤立，降级为顶级评论
+                    roots.add(vo);
+                }
+            } else {
+                roots.add(vo);
+            }
+        }
+        return roots;
     }
 
     private ArticleCommentVO toVO(ArticleComment comment) {
@@ -86,7 +154,10 @@ public class ArticleCommentServiceImpl implements ArticleCommentService {
                 .userId(comment.getUserId())
                 .userName(comment.getUserName())
                 .content(comment.getContent())
+                .parentId(comment.getParentId())
+                .isDeleted(comment.getIsDeleted())
                 .createTime(comment.getCreateTime())
                 .build();
+        // replyToUserName 和 children 在 buildTree() 中设置
     }
 }

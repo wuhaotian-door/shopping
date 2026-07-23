@@ -15,3 +15,8 @@ export function getRatingStats(productId: number): Promise<Result<{ avgRating: n
 export function submitReview(productId: number, data: ProductReviewDTO): Promise<Result<string>> {
   return request.post(`/product-review/${productId}`, data)
 }
+
+/** 删除自己的评价（需登录） */
+export function deleteReview(reviewId: number): Promise<Result<string>> {
+  return request.delete(`/product-review/${reviewId}`)
+}

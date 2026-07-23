@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 /**
  * 传承人个人资料编辑DTO
@@ -24,6 +25,9 @@ public class InheritorProfileDTO implements Serializable {
 
     @ApiModelProperty("所在地")
     private String address;
+
+    @ApiModelProperty("出生日期")
+    private LocalDate birthDate;
 
     @ApiModelProperty("头像URL")
     private String avatarUrl;

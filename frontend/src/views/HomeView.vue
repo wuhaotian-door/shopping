@@ -5,6 +5,7 @@ import { useRouter } from 'vue-router'
 import { listPublicArticles } from '@/api/knowledge'
 import { listPublicProfiles } from '@/api/profile'
 import type { KnowledgeArticleVO, InheritorProfileVO } from '@/types/api'
+import HeroBanner from '@/components/HeroBanner.vue'
 
 const authStore = useAuthStore()
 const router = useRouter()
@@ -21,21 +22,6 @@ const userRole = computed(() => authStore.userInfo?.role)
 const userName = computed(() => authStore.userInfo?.name)
 const isInheritor = computed(() => userRole.value === 'INHERITOR')
 
-// ------- 视频轮播 -------
-const currentSlide = ref(0)
-const slides = [
-  { caption: '汇聚剪纸、刺绣、陶艺、竹编等校园非遗技艺，沉浸式感受传统手工艺魅力' },
-  { caption: '连接校园与民间手工艺传承人，让非遗文化在年轻一代中薪火相传' },
-  { caption: '探索非遗文创产品，体验 AI 智能问答，开启你的非遗文化之旅' },
-]
-
-function prevSlide() {
-  currentSlide.value = (currentSlide.value - 1 + slides.length) % slides.length
-}
-function nextSlide() {
-  currentSlide.value = (currentSlide.value + 1) % slides.length
-}
-
 // ------- 知识库文章（从API加载） -------
 const newsList = ref<KnowledgeArticleVO[]>([])
 async function loadArticles() {
@@ -47,6 +33,12 @@ async function loadArticles() {
 
 /** 首页仅展示前5篇资讯 */
 const topNews = computed(() => newsList.value.slice(0, 5))
+
+/** 封面图加载失败时回退到占位符 */
+const failedImages = ref(new Set<number>())
+function onImgError(articleId: number) {
+  failedImages.value.add(articleId)
+}
 
 // ------- 传承人列表（从API加载） -------
 const masterList = ref<InheritorProfileVO[]>([])
@@ -72,34 +64,8 @@ function handleLogout() {
 </script>
 
 <template>
-  <!-- ==================== 视频轮播横幅 ==================== -->
-  <section class="banner">
-    <div class="banner-video-wrap">
-      <div class="banner-placeholder">
-        <div class="banner-pattern-overlay"></div>
-        <div class="banner-center-text">
-          <h2>码上非遗</h2>
-          <p>感受非遗魅力</p>
-          <button v-if="!isLoggedIn" class="banner-join-btn" @click="router.push('/register')">立即加入</button>
-          <button v-if="isInheritor" class="banner-join-btn inheritor-btn" @click="router.push('/inheritor')">进入我的工坊</button>
-        </div>
-      </div>
-    </div>
-    <div class="banner-caption">
-      <p>{{ slides[currentSlide].caption }}</p>
-    </div>
-    <button class="banner-btn banner-prev" @click="prevSlide">‹</button>
-    <button class="banner-btn banner-next" @click="nextSlide">›</button>
-    <div class="banner-dots">
-      <span
-          v-for="(slide, i) in slides"
-          :key="i"
-          class="dot"
-          :class="{ active: i === currentSlide }"
-          @click="currentSlide = i"
-      ></span>
-    </div>
-  </section>
+  <!-- ==================== 金乌绕日主视觉大图 ==================== -->
+  <HeroBanner />
 
   <!-- ==================== 非遗资讯区域 ==================== -->
   <section class="news-section" id="news">
@@ -107,7 +73,14 @@ function handleLogout() {
     <div class="news-card-list">
         <div v-for="news in topNews" :key="news.id" class="news-card" @click="router.push(`/news/${news.id}`)">
           <div class="news-card-img">
-            <div class="img-placeholder">{{ news.category || '非遗' }}</div>
+            <img
+              v-if="news.coverUrl && !failedImages.has(news.id)"
+              :src="news.coverUrl"
+              :alt="news.title"
+              class="news-card-img-real"
+              @error="onImgError(news.id)"
+            />
+            <div v-else class="img-placeholder">{{ news.category || '非遗' }}</div>
           </div>
           <div class="news-card-text">
             <h4>{{ news.title }}</h4>
@@ -475,6 +448,12 @@ function handleLogout() {
   width: 160px;
   height: 120px;
   flex-shrink: 0;
+  overflow: hidden;
+}
+.news-card-img-real {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 .img-placeholder {
   width: 100%;

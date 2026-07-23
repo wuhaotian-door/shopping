@@ -36,6 +36,12 @@ public class ProductReview implements Serializable {
     /** 评价内容 */
     private String content;
 
+    /** 父评价ID，NULL表示顶级评价 */
+    private Long parentId;
+
+    /** 软删除标记：0正常 1已删除 */
+    private Integer isDeleted;
+
     /** 创建时间 */
     private LocalDateTime createTime;
 }

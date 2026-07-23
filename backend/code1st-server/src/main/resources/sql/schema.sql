@@ -19,8 +19,10 @@ CREATE TABLE `user` (
     `password`    VARCHAR(64)  NOT NULL COMMENT '密码（MD5加密）',
     `phone`       VARCHAR(11)  DEFAULT NULL COMMENT '手机号',
     `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于找回密码）',
+    `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `status`      INT          NOT NULL DEFAULT 1 COMMENT '状态 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -42,9 +44,13 @@ CREATE TABLE `inheritor` (
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `id_number`   VARCHAR(18)  DEFAULT NULL COMMENT '身份证号',
     `region`      VARCHAR(100) DEFAULT NULL COMMENT '所属地区（如：江苏省苏州市）',
-    `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于接收审核结果通知等）',
-    `age`         INT          DEFAULT NULL COMMENT '年龄',
+    `birth_date`            DATE         DEFAULT NULL COMMENT '出生日期',
+    `birth_date_updated_at` DATETIME     DEFAULT NULL COMMENT '出生日期上次修改时间（一年限制）',
+    `age`                   INT          DEFAULT NULL COMMENT '年龄（由出生日期自动计算）',
+    `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于找回密码和审核通知）',
+    `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `status`      INT          NOT NULL DEFAULT 2 COMMENT '状态 2:待审核 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -66,7 +72,9 @@ CREATE TABLE `admin` (
     `password`    VARCHAR(64)  NOT NULL COMMENT '密码（MD5加密）',
     `phone`       VARCHAR(11)  DEFAULT NULL COMMENT '手机号',
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
+    `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `status`      INT          NOT NULL DEFAULT 1 COMMENT '状态 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -102,18 +110,18 @@ VALUES
 -- =====================================================
 -- 非遗传承人测试数据（密码均为 123456 的 MD5，status=1 表示已审核通过）
 -- =====================================================
-INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, age, status)
+INSERT INTO inheritor (name, username, password, phone, sex, id_number, region, birth_date, age, email, status)
 VALUES
-    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     51, 1),
-    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     58, 1),
-    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     54, 1),
-    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     44, 1),
-    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   48, 1),
-    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     41, 1),
-    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     61, 1),
-    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     38, 1),
-    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     36, 1),
-    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', 31, 2);
+    ('李秀英', 'inheritor_li',    'e10adc3949ba59abbe56e057f20f883e', '13920001111', '女', '320501197503120021', '江苏省苏州市',     '1975-03-12', 51, '3326353413@qq.com', 1),
+    ('张德明', 'inheritor_zhang', 'e10adc3949ba59abbe56e057f20f883e', '13920002222', '男', '320282196808150013', '江苏省宜兴市',     '1968-08-15', 58, '3326353413@qq.com', 1),
+    ('王师傅', 'inheritor_wang',  'e10adc3949ba59abbe56e057f20f883e', '13920003333', '男', '330523197211080034', '浙江省安吉县',     '1972-11-08', 54, '3326353413@qq.com', 1),
+    ('陈巧云', 'inheritor_chen',  'e10adc3949ba59abbe56e057f20f883e', '13920004444', '女', '510105198204220025', '四川省成都市',     '1982-04-22', 44, '3326353413@qq.com', 1),
+    ('刘建国', 'inheritor_liu',   'e10adc3949ba59abbe56e057f20f883e', '13920005555', '男', '360202197808160016', '江西省景德镇市',   '1978-08-16', 48, '3326353413@qq.com', 1),
+    ('赵玉兰', 'inheritor_zhao',  'e10adc3949ba59abbe56e057f20f883e', '13920006666', '女', '410204198511200027', '河南省开封市',     '1985-11-20', 41, '3326353413@qq.com', 1),
+    ('孙大师', 'inheritor_sun',   'e10adc3949ba59abbe56e057f20f883e', '13920007777', '男', '350505196503300018', '福建省泉州市',     '1965-03-30', 61, '3326353413@qq.com', 1),
+    ('周小燕', 'inheritor_zhou',  'e10adc3949ba59abbe56e057f20f883e', '13920008888', '女', '530102198811050029', '云南省大理市',     '1988-11-05', 38, '3326353413@qq.com', 1),
+    ('杨志强', 'inheritor_yang',  'e10adc3949ba59abbe56e057f20f883e', '13920009999', '男', '610102199003220010', '陕西省西安市',     '1990-03-22', 36, '3326353413@qq.com', 1),
+    ('待审核传承人', 'inheritor_pending', 'e10adc3949ba59abbe56e057f20f883e', '13920000001', '男', '440101199501010011', '广东省广州市', '1995-01-01', 31, '3326353413@qq.com', 2);
 -- =====================================================
 -- 预约订单表 DDL
 -- 用户向工坊（传承人）发送预约订单
@@ -180,6 +188,7 @@ CREATE TABLE product (
     price            DECIMAL(10,2)  NOT NULL COMMENT '商品价格',
     stock            INT            NOT NULL DEFAULT 0 COMMENT '库存数量',
     image_url        VARCHAR(500)   COMMENT '商品图片URL',
+    model_url        VARCHAR(500)   DEFAULT NULL COMMENT '3D模型URL（glb/gltf格式）',
     category         VARCHAR(100)   COMMENT '商品分类（如剪纸、刺绣、陶艺、竹编等）',
     inheritor_id     BIGINT         COMMENT '传承人ID（关联对应表）',
     inheritor_name   VARCHAR(255)   COMMENT '传承人姓名',
@@ -215,6 +224,8 @@ CREATE TABLE product_order (
     inheritor_id     BIGINT         COMMENT '传承人ID（关联对应表）',
     remark           VARCHAR(500)   COMMENT '用户备注',
     status           INT            NOT NULL DEFAULT 0 COMMENT '订单状态：0-待发货, 1-已发货, 2-已完成, 3-已取消',
+    courier_company  VARCHAR(100)   COMMENT '快递公司',
+    tracking_number  VARCHAR(200)   COMMENT '快递单号',
     create_time      DATETIME       COMMENT '创建时间',
     update_time      DATETIME       COMMENT '更新时间',
     create_user      BIGINT         COMMENT '创建人ID',
@@ -235,12 +246,15 @@ CREATE TABLE `product_review` (
     `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
     `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
     `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
-    `rating`      INT          NOT NULL COMMENT '评分 1-5',
+    `rating`      INT          DEFAULT NULL COMMENT '评分 1-5，顶级评价必填，回复时为 NULL',
     `content`     TEXT         NOT NULL COMMENT '评价内容',
+    `parent_id`   BIGINT       DEFAULT NULL COMMENT '父评价ID，NULL表示顶级评价',
+    `is_deleted`  TINYINT      DEFAULT 0 COMMENT '软删除：0正常 1已删除',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (`id`),
     INDEX `idx_pr_product_id` (`product_id`),
-    INDEX `idx_pr_user_id` (`user_id`)
+    INDEX `idx_pr_user_id` (`user_id`),
+    INDEX `idx_pr_parent_id` (`parent_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';
 
 -- =====================================================
@@ -473,10 +487,13 @@ CREATE TABLE article_comment (
     user_id     BIGINT NOT NULL COMMENT '评论用户ID',
     user_name   VARCHAR(32) NOT NULL COMMENT '评论用户名',
     content     TEXT NOT NULL COMMENT '评论内容',
+    parent_id   BIGINT DEFAULT NULL COMMENT '父评论ID，NULL表示顶级评论',
+    is_deleted  TINYINT DEFAULT 0 COMMENT '软删除：0正常 1已删除',
     create_time DATETIME DEFAULT NULL COMMENT '创建时间',
     PRIMARY KEY (id),
     INDEX idx_ac_article_id (article_id),
-    INDEX idx_ac_user_id (user_id)
+    INDEX idx_ac_user_id (user_id),
+    INDEX idx_ac_parent_id (parent_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='文章评论表';
 
 -- =====================================================
@@ -579,7 +596,9 @@ DROP TABLE IF EXISTS friend_relation;
 CREATE TABLE friend_relation (
     id           BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
     user_id      BIGINT       NOT NULL COMMENT '发起方用户ID',
+    user_role    VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '发起方角色(USER/INHERITOR/ADMIN)',
     friend_id    BIGINT       NOT NULL COMMENT '接收方用户ID',
+    friend_role  VARCHAR(20)  NOT NULL DEFAULT 'USER' COMMENT '接收方角色(USER/INHERITOR/ADMIN)',
     status       TINYINT      NOT NULL DEFAULT 0 COMMENT '状态: 0-待接受, 1-已接受, 2-已拒绝',
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     updated_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
@@ -609,6 +628,30 @@ CREATE TABLE admin_operation_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员操作日志表';
 
 -- =====================================================
+-- 用户举报表 — 聊天举报记录与处理
+-- =====================================================
+DROP TABLE IF EXISTS `user_report`;
+
+CREATE TABLE `user_report` (
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `reporter_id`        BIGINT       NOT NULL COMMENT '举报人ID',
+    `reporter_role`      VARCHAR(20)  NOT NULL COMMENT '举报人角色',
+    `reported_user_id`   BIGINT       NOT NULL COMMENT '被举报人ID',
+    `reported_user_role` VARCHAR(20)  NOT NULL COMMENT '被举报人角色',
+    `reason`             VARCHAR(500) DEFAULT '' COMMENT '举报原因',
+    `screenshot_url`     VARCHAR(500) DEFAULT NULL COMMENT '截图URL',
+    `status`             TINYINT      DEFAULT 0 COMMENT '处理状态 0-待处理 1-已处理',
+    `handle_result`      VARCHAR(500) DEFAULT NULL COMMENT '处理结果',
+    `ban_days`           INT          DEFAULT 0 COMMENT '封号天数（0表示仅驳回不封号）',
+    `handle_time`        DATETIME     DEFAULT NULL COMMENT '处理时间',
+    `create_time`        DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '举报时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_report_reporter` (`reporter_id`),
+    INDEX `idx_report_reported` (`reported_user_id`),
+    INDEX `idx_report_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户举报表';
+
+-- =====================================================
 -- RAG AI 对话会话表 — 存储用户与AI助手的对话记录
 -- =====================================================
 DROP TABLE IF EXISTS rag_chat_message;
@@ -632,16 +675,3 @@ CREATE TABLE rag_chat_message (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
-DROP TABLE IF EXISTS `product_review`;
-CREATE TABLE `product_review` (
-                                  `id`          BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
-                                  `product_id`  BIGINT       NOT NULL COMMENT '商品ID',
-                                  `user_id`     BIGINT       NOT NULL COMMENT '评价用户ID',
-                                  `user_name`   VARCHAR(32)  NOT NULL COMMENT '评价用户名',
-                                  `rating`      INT          NOT NULL COMMENT '评分 1-5',
-                                  `content`     TEXT         NOT NULL COMMENT '评价内容',
-                                  `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
-                                  PRIMARY KEY (`id`),
-                                  INDEX `idx_pr_product_id` (`product_id`),
-                                  INDEX `idx_pr_user_id` (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品评价表';

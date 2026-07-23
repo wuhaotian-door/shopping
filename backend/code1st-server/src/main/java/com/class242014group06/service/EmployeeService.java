@@ -69,16 +69,19 @@ public interface EmployeeService {
     List<Employee> search(String keyword);
 
     /**
-     * 修改员工状态
-     * @param id
-     * @param status
+     * 修改员工状态（需指定角色以防ID跨表重叠）
      */
-    void updateStatus(Long id, Integer status);
+    void updateStatus(Long id, Integer status, String role);
 
     /**
      * 批量修改用户状态
      */
     void batchUpdateStatus(java.util.List<Long> ids, Integer status, String role);
+
+    /**
+     * 封禁用户（设定状态+封禁截止时间）
+     */
+    void banUser(Long id, Integer status, String role, Integer banDays);
 
     /**
      * 获取仪表盘统计数据

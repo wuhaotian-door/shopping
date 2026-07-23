@@ -12,6 +12,7 @@ import com.class242014group06.vo.OrderVO;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -59,6 +60,7 @@ public class OrderServiceImpl implements OrderService {
      * 传承人确认订单
      */
     @Override
+    @Transactional
     public void confirm(Long orderId, Long inheritorId) {
         OrderAppointment order = orderMapper.getById(orderId);
         if (order == null) {
@@ -136,9 +138,10 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 管理员取消订单
+     * 管理员修改订单状态（可能同时修改项目报名人数）
      */
     @Override
+    @Transactional
     public void updateStatusByAdmin(Long orderId, Integer status) {
         OrderAppointment order = orderMapper.getById(orderId);
         if (order == null) {
@@ -172,6 +175,7 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
+    @Transactional
     public void cancelByAdmin(Long orderId) {
         OrderAppointment order = orderMapper.getById(orderId);
         if (order == null) {

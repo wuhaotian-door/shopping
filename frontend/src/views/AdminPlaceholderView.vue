@@ -11,8 +11,9 @@ import {
 } from '@/api/auth'
 import { listAllOrders, cancelOrder as cancelOrderApi, adminUpdateOrderStatus, adminUpdateOrderFields } from '@/api/order'
 import { listAllArticles, adminDeleteArticle, batchDeleteArticle, getArticleById } from '@/api/knowledge'
-import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct } from '@/api/product'
-import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject } from '@/api/project'
+import { listAllProducts, adminDeleteProduct, adminToggleProduct, listAllProductOrders, adminUpdateProductOrderStatus, adminUpdateProductOrderAddress, batchToggleProduct, batchDeleteProduct, adminCancelProductOrder } from '@/api/product'
+import { listAllProjects, adminDeleteProject, adminToggleProject, batchDeleteProject, batchToggleProject } from '@/api/project'
+import { listReports, handleReport, banUser, type UserReportVO } from '@/api/report'
 import { useToast } from '@/composables/useToast'
 import ChatPanel from './components/ChatPanel.vue'
 const AdminMonitorPanel = defineAsyncComponent(() => import('./components/AdminMonitorPanel.vue'))
@@ -23,6 +24,43 @@ const router = useRouter()
 const { toasts, showToast } = useToast()
 const userName = computed(() => authStore?.userInfo?.name ?? '')
 const userRole = computed(() => authStore?.userInfo?.role ?? '')
+
+// ==================== 自定义弹窗系统（替代 confirm / prompt） ====================
+interface DialogState {
+  show: boolean
+  message: string
+  resolve: ((v: boolean) => void) | null
+  type: 'confirm' | 'prompt'
+  inputValue: string
+}
+const confirmState = reactive<DialogState>({ show: false, message: '', resolve: null, type: 'confirm', inputValue: '' })
+
+function showConfirm(msg: string): Promise<boolean> {
+  return new Promise(resolve => {
+    confirmState.message = msg
+    confirmState.type = 'confirm'
+    confirmState.inputValue = ''
+    confirmState.resolve = resolve
+    confirmState.show = true
+  })
+}
+function showPrompt(msg: string): Promise<string | null> {
+  return new Promise(resolve => {
+    confirmState.message = msg
+    confirmState.type = 'prompt'
+    confirmState.inputValue = ''
+    confirmState.resolve = (v: boolean) => resolve(v ? confirmState.inputValue : null)
+    confirmState.show = true
+  })
+}
+function dialogOk() {
+  confirmState.show = false
+  confirmState.resolve?.(true)
+}
+function dialogCancel() {
+  confirmState.show = false
+  confirmState.resolve?.(false)
+}
 
 onMounted(() => {
   document.title = '管理后台——码上非遗'
@@ -38,9 +76,10 @@ const productPage = ref(1)
 const projectPage = ref(1)
 const orderPage = ref(1)
 const prodOrderPage = ref(1)
+const logPage = ref(1)
 
 // ==================== 侧边栏菜单 ====================
-const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'logs' | 'settings'>('dashboard')
+const activeMenu = ref<'dashboard' | 'users' | 'pending' | 'news' | 'products' | 'projects' | 'orders' | 'messages' | 'reports' | 'logs' | 'settings'>('dashboard')
 
 const menuItems = [
   { key: 'dashboard' as const, label: '仪表盘', icon: '📊' },
@@ -51,6 +90,7 @@ const menuItems = [
   { key: 'projects' as const, label: '项目管理', icon: '📋' },
   { key: 'orders' as const, label: '订单管理', icon: '🛒' },
   { key: 'messages' as const, label: '消息管理', icon: '💬' },
+  { key: 'reports' as const, label: '举报管理', icon: '🚨' },
   { key: 'logs' as const, label: '操作日志', icon: '📝' },
   { key: 'settings' as const, label: '系统设置', icon: '⚙️' },
 ]
@@ -62,6 +102,7 @@ const pageTitle = computed(() => (menuItems as typeof menuItems | undefined)?.fi
 const pendingCount = computed(() => pendingList.value.length)
 
 function switchMenu(key: MenuKey) {
+  if (activeMenu.value === key) return
   activeMenu.value = key
   if (key === 'dashboard') loadDashboard()
   else if (key === 'users') loadUsers()
@@ -70,6 +111,7 @@ function switchMenu(key: MenuKey) {
   else if (key === 'products') loadProducts()
   else if (key === 'projects') loadProjects()
   else if (key === 'orders') loadOrders()
+  else if (key === 'reports') loadReports()
   else if (key === 'logs') loadLogs()
 }
 
@@ -122,7 +164,7 @@ async function handleToggleStatus(user: UserInfo) {
   const newStatus = user.status === 1 ? 0 : 1
   userActionLoading.value = { ...userActionLoading.value, [user.id]: true }
   try {
-    await updateUserStatus(user.id, newStatus)
+    await updateUserStatus(user.id, newStatus, user.role)
     user.status = newStatus
   } catch { showToast('操作失败', 'error') }
   finally {
@@ -135,6 +177,10 @@ async function handleToggleStatus(user: UserInfo) {
 const statusLabel = (s: number) => s === 1 ? '启用' : s === 2 ? '待审核' : '禁用'
 const statusClass = (s: number) => s === 1 ? 's-enabled' : s === 2 ? 's-pending' : 's-disabled'
 const roleLabel = (r: string) => r === 'ADMIN' ? '管理员' : r === 'INHERITOR' ? '传承人' : '用户'
+
+// ---------- 查看用户详情（弹窗） ----------
+const viewingUser = ref<UserInfo | null>(null)
+function handleViewUser(user: UserInfo) { viewingUser.value = user }
 
 // ==================== 3. 审核管理 ====================
 const pendingList = ref<PendingUser[]>([])
@@ -163,8 +209,8 @@ async function handleApprove(id: number) {
 }
 
 async function handleReject(id: number) {
-  const reason = prompt('请输入驳回原因（将发送至申请人邮箱）：')
-  if (reason === null) return // 用户取消
+  const reason = await showPrompt('请输入驳回原因（将发送至申请人邮箱）：')
+  if (reason === null) return
   pendingActionLoading.value = { [id]: 'reject' }
   try {
     await rejectInheritor(id, reason || undefined)
@@ -184,7 +230,7 @@ async function loadArticles() {
 }
 
 async function handleDeleteArticle(id: number) {
-  if (!confirm('确定删除该文章吗？')) return
+  if (!await showConfirm('确定删除该文章吗？')) return
   try { await adminDeleteArticle(id); articles.value = articles.value.filter(a => a.id !== id) }
   catch { showToast('删除失败', 'error') }
 }
@@ -217,7 +263,7 @@ async function loadProducts() {
 }
 
 async function handleDeleteProduct(id: number) {
-  if (!confirm('确定删除该商品吗？')) return
+  if (!await showConfirm('确定删除该商品吗？')) return
   try { await adminDeleteProduct(id); products.value = products.value.filter(p => p.id !== id) }
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
 }
@@ -231,7 +277,8 @@ async function handleToggleProduct(product: ProductVO) {
 }
 
 // ---------- 批量选择 ----------
-const selectedUsers = ref(new Set<number>())
+// 用户选择用 "id:role" 复合键（三表ID会重叠）
+const selectedUsers = ref(new Set<string>())
 const selectedPending = ref(new Set<number>())
 const selectedArticles = ref(new Set<number>())
 const selectedProducts = ref(new Set<number>())
@@ -256,6 +303,27 @@ function isAllSelected(set: Set<number>, items: { id: number }[]) {
   return items.length > 0 && items.every(i => set.has(i.id))
 }
 function clearSelect(): Set<number> { return new Set() }
+
+// 用户专用：用 "id:role" 复合键（三表ID可能重叠）
+function userKey(u: { id: number; role: string }) { return `${u.id}:${u.role}` }
+function toggleSelectUser(set: Set<string>, u: { id: number; role: string }): Set<string> {
+  const s = new Set(set)
+  const key = userKey(u)
+  s.has(key) ? s.delete(key) : s.add(key)
+  return s
+}
+function toggleSelectAllUsers(set: Set<string>, pageItems: { id: number; role: string }[]): Set<string> {
+  const pageKeys = new Set(pageItems.map(userKey))
+  const allSelected = pageItems.every(u => set.has(userKey(u)))
+  const s = new Set(set)
+  if (allSelected) { pageKeys.forEach(k => s.delete(k)) }
+  else { pageKeys.forEach(k => s.add(k)) }
+  return s
+}
+function isAllUsersSelected(set: Set<string>, items: { id: number; role: string }[]) {
+  return items.length > 0 && items.every(u => set.has(userKey(u)))
+}
+function clearUserSelect(): Set<string> { return new Set() }
 
 // ---------- 分页辅助 ----------
 function paginate<T>(arr: T[], page: number): T[] {
@@ -300,26 +368,27 @@ const pagedProducts = computed(() => paginate(filteredProducts.value, productPag
 const pagedProjects = computed(() => paginate(filteredProjects.value, projectPage.value))
 const pagedOrders = computed(() => paginate(filteredOrders.value, orderPage.value))
 const pagedProdOrders = computed(() => paginate(filteredProdOrders.value, prodOrderPage.value))
+const pagedLogs = computed(() => paginate(filteredLogList.value, logPage.value))
 
 // ---------- 批量操作 ----------
 async function handleBatchToggleUsers(status: number) {
-  const ids = Array.from(selectedUsers.value)
-  if (!ids.length) { showToast('请先选择用户', 'warning'); return }
+  const keys = Array.from(selectedUsers.value)
+  if (!keys.length) { showToast('请先选择用户', 'warning'); return }
   const label = status === 1 ? '启用' : '禁用'
-  if (!confirm(`确定批量${label} ${ids.length} 个用户吗？`)) return
+  if (!await showConfirm(`确定批量${label} ${keys.length} 个用户吗？`)) return
   try {
-    // 按角色分组，确保更新正确的表
+    // 按角色分组（key格式："id:role"，避免三表ID重叠时找错表）
     const byRole = new Map<string, number[]>()
-    for (const id of ids) {
-      const u = userList.value.find(u => u.id === id)
-      const role = u?.role || 'USER'
+    for (const key of keys) {
+      const [idStr, role] = key.split(':')
+      const id = Number(idStr)
       if (!byRole.has(role)) byRole.set(role, [])
       byRole.get(role)!.push(id)
     }
     for (const [role, roleIds] of byRole) {
       await batchUpdateUserStatus(roleIds, status, role)
     }
-    showToast(`已${label} ${ids.length} 个用户`)
+    showToast(`已${label} ${keys.length} 个用户`)
     selectedUsers.value = new Set()
     loadUsers()
   } catch (e: unknown) { showToast(e instanceof Error ? e.message : '批量操作失败', 'error') }
@@ -328,7 +397,7 @@ async function handleBatchToggleUsers(status: number) {
 async function handleBatchApprove() {
   const ids = Array.from(selectedPending.value)
   if (!ids.length) { showToast('请先选择申请人', 'warning'); return }
-  if (!confirm(`确定批量通过 ${ids.length} 个申请吗？`)) return
+  if (!await showConfirm(`确定批量通过 ${ids.length} 个申请吗？`)) return
   try {
     await batchApprove(ids)
     showToast(`已通过 ${ids.length} 人`)
@@ -340,9 +409,9 @@ async function handleBatchApprove() {
 async function handleBatchReject() {
   const ids = Array.from(selectedPending.value)
   if (!ids.length) { showToast('请先选择申请人', 'warning'); return }
-  const reason = prompt('请输入驳回原因（将发送至各申请人邮箱）：')
+  const reason = await showPrompt('请输入驳回原因（将发送至各申请人邮箱）：')
   if (reason === null) return
-  if (!confirm(`确定驳回 ${ids.length} 个申请吗？`)) return
+  if (!await showConfirm(`确定驳回 ${ids.length} 个申请吗？`)) return
   try {
     await batchReject(ids, reason || '')
     showToast(`已驳回 ${ids.length} 人`)
@@ -354,7 +423,7 @@ async function handleBatchReject() {
 async function handleBatchDeleteArticles() {
   const ids = Array.from(selectedArticles.value)
   if (!ids.length) { showToast('请先选择文章', 'warning'); return }
-  if (!confirm(`确定删除 ${ids.length} 篇文章吗？`)) return
+  if (!await showConfirm(`确定删除 ${ids.length} 篇文章吗？`)) return
   try { await batchDeleteArticle(ids); showToast(`已删除 ${ids.length} 篇`); selectedArticles.value = new Set(); loadArticles() }
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
 }
@@ -363,7 +432,7 @@ async function handleBatchToggleProducts(status: number) {
   const ids = Array.from(selectedProducts.value)
   if (!ids.length) { showToast('请先选择商品', 'warning'); return }
   const label = status === 1 ? '上架' : '下架'
-  if (!confirm(`确定批量${label} ${ids.length} 个商品吗？`)) return
+  if (!await showConfirm(`确定批量${label} ${ids.length} 个商品吗？`)) return
   try { await batchToggleProduct(ids, status); showToast(`已${label} ${ids.length} 个`); selectedProducts.value = new Set(); loadProducts() }
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
 }
@@ -371,7 +440,7 @@ async function handleBatchToggleProducts(status: number) {
 async function handleBatchDeleteProducts() {
   const ids = Array.from(selectedProducts.value)
   if (!ids.length) { showToast('请先选择商品', 'warning'); return }
-  if (!confirm(`确定删除 ${ids.length} 个商品吗？`)) return
+  if (!await showConfirm(`确定删除 ${ids.length} 个商品吗？`)) return
   try { await batchDeleteProduct(ids); showToast(`已删除 ${ids.length} 个`); selectedProducts.value = new Set(); loadProducts() }
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
 }
@@ -379,9 +448,18 @@ async function handleBatchDeleteProducts() {
 async function handleBatchDeleteProjects() {
   const ids = Array.from(selectedProjects.value)
   if (!ids.length) { showToast('请先选择项目', 'warning'); return }
-  if (!confirm(`确定删除 ${ids.length} 个项目吗？`)) return
+  if (!await showConfirm(`确定删除 ${ids.length} 个项目吗？`)) return
   try { await batchDeleteProject(ids); showToast(`已删除 ${ids.length} 个`); selectedProjects.value = new Set(); loadProjects() }
   catch (e: unknown) { showToast(e instanceof Error ? e.message : '删除失败', 'error') }
+}
+
+async function handleBatchToggleProjects(status: number) {
+  const ids = Array.from(selectedProjects.value)
+  if (!ids.length) { showToast('请先选择项目', 'warning'); return }
+  const label = status === 1 ? '上架' : '下架'
+  if (!await showConfirm(`确定批量${label} ${ids.length} 个项目吗？`)) return
+  try { await batchToggleProject(ids, status); showToast(`已${label} ${ids.length} 个`); selectedProjects.value = new Set(); loadProjects() }
+  catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
 }
 
 async function handleToggleProject(p: HeritageProjectVO) {
@@ -404,7 +482,7 @@ async function loadProjects() {
 }
 
 async function handleDeleteProject(id: number) {
-  if (!confirm('确定删除该项目吗？')) return
+  if (!await showConfirm('确定删除该项目吗？')) return
   try { await adminDeleteProject(id); projects.value = projects.value.filter(p => p.id !== id) }
   catch { showToast('删除失败', 'error') }
 }
@@ -443,7 +521,7 @@ async function loadOrders() {
 }
 
 async function handleCancelOrder(id: number) {
-  if (!confirm('确定取消该订单吗？')) return
+  if (!await showConfirm('确定取消该订单吗？')) return
   try {
     await cancelOrderApi(id)
     loadOrders()
@@ -462,6 +540,15 @@ async function handleUpdateProdOrderStatus(order: ProductOrderVO, newStatus: num
     await adminUpdateProductOrderStatus(order.id, newStatus)
     order.status = newStatus
   } catch { showToast('操作失败', 'error') }
+}
+
+async function handleCancelProductOrder(id: number) {
+  if (!await showConfirm('确定取消该商品订单吗？已发货的订单取消不会恢复库存。')) return
+  try {
+    await adminCancelProductOrder(id)
+    showToast('订单已取消')
+    loadOrders()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
 }
 
 // ---------- 预约订单字段编辑 ----------
@@ -493,7 +580,7 @@ async function saveProdAddr(order: ProductOrderVO, value: string) {
   editingProdAddr.value = 0
   order.address = value
   try { await adminUpdateProductOrderAddress(order.id, value) }
-  catch { alert('保存失败'); loadOrders() }
+  catch { showToast('保存失败', 'error'); loadOrders() }
 }
 
 // ==================== 8. 系统设置 ====================
@@ -569,19 +656,66 @@ async function loadLogs() {
   finally { logLoading.value = false }
 }
 
+// ---------- 日志筛选 ----------
+const logTypeFilter = ref('')
+const logDateFrom = ref('')
+const logDateTo = ref('')
+const logTypeOptions = [
+  '', 'APPROVE_INHERITOR', 'REJECT_INHERITOR', 'TOGGLE_USER_STATUS',
+  'CREATE_ADMIN', 'CHANGE_PASSWORD', 'DELETE_PRODUCT', 'TOGGLE_PRODUCT',
+  'DELETE_PROJECT', 'TOGGLE_PROJECT', 'DELETE_ARTICLE',
+  'UPDATE_ORDER_STATUS', 'UPDATE_ORDER_FIELDS', 'UPDATE_ORDER_ADDRESS', 'CANCEL_ORDER',
+]
+const filteredLogList = computed(() => {
+  let list = logList.value
+  if (logTypeFilter.value) list = list.filter(l => l.operationType === logTypeFilter.value)
+  if (logDateFrom.value) list = list.filter(l => l.createTime?.slice(0, 10) >= logDateFrom.value)
+  if (logDateTo.value) list = list.filter(l => l.createTime?.slice(0, 10) <= logDateTo.value)
+  return list
+})
+
 const opTypeLabel = (t: string) => ({
   'APPROVE_INHERITOR': '通过审核', 'REJECT_INHERITOR': '驳回申请',
-  'TOGGLE_USER_STATUS': '启用/禁用', 'CREATE_ADMIN': '创建管理员',
+  'TOGGLE_USER_STATUS': '启禁用户', 'CREATE_ADMIN': '创建管理员',
   'CHANGE_PASSWORD': '修改密码', 'DELETE_PRODUCT': '删除商品',
-  'TOGGLE_PRODUCT': '上下架', 'DELETE_PROJECT': '删除项目',
-  'DELETE_ARTICLE': '删除资讯', 'UPDATE_ORDER_STATUS': '改订单状态',
-  'CANCEL_ORDER': '取消订单',
+  'TOGGLE_PRODUCT': '商品上下架', 'DELETE_PROJECT': '删除项目',
+  'TOGGLE_PROJECT': '项目上下架', 'DELETE_ARTICLE': '删除资讯',
+  'UPDATE_ORDER_STATUS': '改订单状态', 'UPDATE_ORDER_FIELDS': '改订单字段',
+  'UPDATE_ORDER_ADDRESS': '改收货地址', 'CANCEL_ORDER': '取消订单',
+  'HANDLE_REPORT': '处理举报',
 } as Record<string, string>)[t] || t
 
 const opTargetTypeLabel = (t: string) => ({
   'inheritor': '传承人', 'user': '用户', 'admin': '管理员',
-  'product': '商品', 'project': '项目', 'article': '资讯', 'order': '订单',
+  'product': '商品', 'project': '项目', 'article': '资讯',
+  'order': '预约订单', 'product_order': '商城订单',
 } as Record<string, string>)[t] || t
+
+// ==================== 举报管理 ====================
+const reportList = ref<UserReportVO[]>([])
+const reportLoading = ref(false)
+
+async function loadReports() {
+  reportLoading.value = true
+  try { reportList.value = (await listReports()).data || [] } catch { reportList.value = [] }
+  finally { reportLoading.value = false }
+}
+
+// ---------- 处理举报（封号弹窗） ----------
+const handlingReport = ref<UserReportVO | null>(null)
+const handleResultText = ref('')
+const banDaysInput = ref(0)
+
+function openHandleReport(r: UserReportVO) { handlingReport.value = r; handleResultText.value = ''; banDaysInput.value = 0 }
+async function submitHandleReport() {
+  if (!handlingReport.value) return
+  try {
+    await handleReport(handlingReport.value.id, handleResultText.value || '已处理', banDaysInput.value)
+    showToast('处理完成')
+    handlingReport.value = null
+    loadReports()
+  } catch (e: unknown) { showToast(e instanceof Error ? e.message : '操作失败', 'error') }
+}
 
 // ==================== 仪表盘鼠标互动效果 ====================
 function onStatCardMouseMove(e: MouseEvent) {
@@ -685,6 +819,10 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           </div>
           <div v-else-if="!stats" class="empty-text">暂无统计数据</div>
           <template v-else>
+            <div class="dash-toolbar">
+              <span class="dash-updated" v-if="stats">最近更新：{{ new Date().toLocaleTimeString() }}</span>
+              <button class="btn-sm" style="background:#fff;border:1px solid #c41e3a;color:#c41e3a" @click="loadDashboard">🔄 刷新数据</button>
+            </div>
             <div class="stat-grid">
               <div class="stat-card" @mousemove="onStatCardMouseMove" @mouseenter="onStatCardMouseEnter" @mouseleave="onStatCardMouseLeave">
                 <div class="stat-glow"></div>
@@ -751,12 +889,12 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               <span>已选 {{ selectedUsers.size }} 项</span>
               <button class="btn-sm btn-success" @click="handleBatchToggleUsers(1)">批量启用</button>
               <button class="btn-sm btn-danger" @click="handleBatchToggleUsers(0)">批量禁用</button>
-              <button class="btn-sm btn-clear" @click="selectedUsers = clearSelect()">取消选择</button>
+              <button class="btn-sm btn-clear" @click="selectedUsers = clearUserSelect()">取消选择</button>
             </div>
             <table>
               <thead>
                 <tr>
-                  <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedUsers, pagedUsers)" @change="selectedUsers = toggleSelectAll(selectedUsers, userList, pagedUsers)" /></th>
+                  <th style="width:40px"><input type="checkbox" :checked="isAllUsersSelected(selectedUsers, pagedUsers)" @change="selectedUsers = toggleSelectAllUsers(selectedUsers, pagedUsers)" /></th>
                   <th>ID</th>
                   <th>姓名</th>
                   <th>用户名</th>
@@ -769,9 +907,9 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               </thead>
               <tbody>
                 <tr v-for="u in pagedUsers" :key="u.id">
-                  <td><input type="checkbox" :checked="selectedUsers.has(u.id)" @change="selectedUsers = toggleSelect(selectedUsers, u.id)" /></td>
+                  <td><input type="checkbox" :checked="selectedUsers.has(userKey(u))" @change="selectedUsers = toggleSelectUser(selectedUsers, u)" /></td>
                   <td>{{ u.id }}</td>
-                  <td>{{ u.name }}</td>
+                  <td><a class="user-link" @click="handleViewUser(u)">{{ u.name }}</a></td>
                   <td>{{ u.username }}</td>
                   <td>{{ u.phone || '-' }}</td>
                   <td><span class="role-tag" :class="'role-' + u.role.toLowerCase()">{{ roleLabel(u.role) }}</span></td>
@@ -797,6 +935,27 @@ function onQuickCardMouseLeave(e: MouseEvent) {
               <button :disabled="userPage <= 1" @click="userPage--">上一页</button>
               <span>第 {{ userPage }} / {{ totalPages(userList) }} 页，共 {{ userList.length }} 条</span>
               <button :disabled="userPage >= totalPages(userList)" @click="userPage++">下一页</button>
+            </div>
+          </div>
+
+          <!-- 用户详情弹窗 -->
+          <div v-if="viewingUser" class="modal-overlay" @click.self="viewingUser = null">
+            <div class="modal-content article-detail-modal">
+              <div class="modal-header">
+                <h3>用户详情</h3>
+                <button class="modal-close" @click="viewingUser = null">✕</button>
+              </div>
+              <div class="user-detail-body">
+                <div class="user-detail-row"><span class="ud-label">ID</span><span>{{ viewingUser.id }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">姓名</span><span>{{ viewingUser.name }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">用户名</span><span>{{ viewingUser.username }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">手机号</span><span>{{ viewingUser.phone || '-' }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">性别</span><span>{{ viewingUser.sex || '-' }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">身份证号</span><span>{{ viewingUser.idNumber || '-' }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">角色</span><span class="role-tag" :class="'role-' + viewingUser.role.toLowerCase()">{{ roleLabel(viewingUser.role) }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">状态</span><span class="status-dot" :class="statusClass(viewingUser.status)">{{ statusLabel(viewingUser.status) }}</span></div>
+                <div class="user-detail-row"><span class="ud-label">注册时间</span><span>{{ viewingUser.createTime?.replace('T', ' ').slice(0, 19) }}</span></div>
+              </div>
             </div>
           </div>
         </section>
@@ -1012,7 +1171,9 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           <div v-else class="table-wrap">
             <div v-if="selectedProjects.size > 0" class="batch-bar">
               <span>已选 {{ selectedProjects.size }} 项</span>
-              <button class="btn-sm btn-danger" @click="handleBatchDeleteProjects">批量删除</button>
+              <button class="btn-sm btn-success" @click="handleBatchToggleProjects(1)">批量上架</button>
+              <button class="btn-sm btn-danger" @click="handleBatchToggleProjects(0)">批量下架</button>
+              <button class="btn-sm btn-danger" style="background:#c0392b" @click="handleBatchDeleteProjects">批量删除</button>
               <button class="btn-sm btn-clear" @click="selectedProjects = clearSelect()">取消选择</button>
             </div>
             <table>
@@ -1142,7 +1303,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                 <tr>
                   <th style="width:40px"><input type="checkbox" :checked="isAllSelected(selectedProdOrders, pagedProdOrders)" @change="selectedProdOrders = toggleSelectAll(selectedProdOrders, filteredProdOrders, pagedProdOrders)" /></th>
                   <th>ID</th><th>用户</th><th>电话</th><th>地址</th><th>商品</th>
-                  <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th>
+                  <th>单价</th><th>数量</th><th>总价</th><th>状态</th><th>提交时间</th><th>操作</th>
                 </tr>
               </thead>
               <tbody>
@@ -1166,6 +1327,10 @@ function onQuickCardMouseLeave(e: MouseEvent) {
                     </select>
                   </td>
                   <td>{{ o.createTime?.slice(0, 10) }}</td>
+                  <td>
+                    <button v-if="o.status !== 3 && o.status !== 2" class="btn-sm btn-danger" @click="handleCancelProductOrder(o.id)">取消</button>
+                    <span v-else class="no-op">—</span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -1178,29 +1343,119 @@ function onQuickCardMouseLeave(e: MouseEvent) {
           </div>
         </section>
 
-        <!-- ===== 8.5 操作日志 ===== -->
-        <section v-if="activeMenu === 'logs'" class="panel">
-          <div v-if="logLoading" class="loading-text">加载中...</div>
+        <!-- ===== 8.6 举报管理 ===== -->
+        <section v-if="activeMenu === 'reports'" class="panel">
+          <div v-if="reportLoading" class="loading-text">加载中...</div>
           <div v-else class="table-wrap">
             <table>
               <thead>
                 <tr>
+                  <th>ID</th><th>举报人</th><th>被举报人</th><th>原因</th>
+                  <th>截图</th><th>时间</th><th>状态</th><th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="r in reportList" :key="r.id">
+                  <td>{{ r.id }}</td>
+                  <td>{{ r.reporterRole === 'INHERITOR' ? '传承人' : r.reporterRole === 'ADMIN' ? '管理员' : '用户' }}(ID:{{ r.reporterId }})</td>
+                  <td>{{ r.reportedUserRole === 'INHERITOR' ? '传承人' : r.reportedUserRole === 'ADMIN' ? '管理员' : '用户' }}(ID:{{ r.reportedUserId }})</td>
+                  <td class="ellipsis-cell" style="max-width:160px">{{ r.reason }}</td>
+                  <td>
+                    <a v-if="r.screenshotUrl" :href="r.screenshotUrl" target="_blank" style="color:#c41e3a">查看</a>
+                    <span v-else>-</span>
+                  </td>
+                  <td>{{ r.createTime?.replace('T', ' ').slice(0, 16) }}</td>
+                  <td>
+                    <span class="status-dot" :class="r.status === 1 ? 's-enabled' : 's-pending'">
+                      {{ r.status === 1 ? '已处理' : '待处理' }}
+                    </span>
+                  </td>
+                  <td>
+                    <button v-if="r.status === 0" class="btn-sm btn-primary" @click="openHandleReport(r)">处理</button>
+                    <span v-else class="no-op">{{ r.handleResult || '已处理' }}{{ r.banDays ? '（封号' + r.banDays + '天）' : '' }}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+            <div v-if="reportList.length === 0 && !reportLoading" class="empty-text">暂无举报</div>
+          </div>
+
+          <!-- 处理举报弹窗 -->
+          <div v-if="handlingReport" class="modal-overlay" @click.self="handlingReport = null">
+            <div class="modal-content confirm-dialog">
+              <div class="modal-header">
+                <h3>处理举报 #{{ handlingReport.id }}</h3>
+                <button class="modal-close" @click="handlingReport = null">✕</button>
+              </div>
+              <div class="handle-body">
+                <p>被举报人：<strong>{{ handlingReport.reportedUserRole === 'INHERITOR' ? '传承人' : '用户' }}(ID:{{ handlingReport.reportedUserId }})</strong></p>
+                <p>举报原因：{{ handlingReport.reason }}</p>
+                <p v-if="handlingReport.screenshotUrl">
+                  截图：<a :href="handlingReport.screenshotUrl" target="_blank" style="color:#c41e3a">点击查看</a>
+                </p>
+                <label>处理结果：</label>
+                <textarea v-model="handleResultText" placeholder="处理意见..." rows="2" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px;resize:vertical;box-sizing:border-box"></textarea>
+                <label>封号天数：</label>
+                <select v-model="banDaysInput" style="width:100%;padding:8px;border:1px solid #e0e0e0;border-radius:6px">
+                  <option :value="0">不封号（仅驳回）</option>
+                  <option :value="1">封号 1 天</option>
+                  <option :value="3">封号 3 天</option>
+                  <option :value="7">封号 7 天</option>
+                  <option :value="30">封号 30 天</option>
+                  <option :value="999">永久封号</option>
+                </select>
+                <div class="confirm-btns" style="margin-top:16px">
+                  <button class="btn-sm" style="background:#eee;color:#666" @click="handlingReport = null">取消</button>
+                  <button class="btn-sm btn-danger" @click="submitHandleReport">确认处理</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== 8.5 操作日志 ===== -->
+        <section v-if="activeMenu === 'logs'" class="panel">
+          <div v-if="logLoading" class="loading-text">加载中...</div>
+          <div v-else class="table-wrap">
+            <!-- 筛选栏 -->
+            <div class="log-filter-bar">
+              <label>操作类型：</label>
+              <select v-model="logTypeFilter" @change="logPage = 1">
+                <option value="">全部</option>
+                <option v-for="t in logTypeOptions.filter(Boolean)" :key="t" :value="t">{{ opTypeLabel(t) }}</option>
+              </select>
+              <label>日期从：</label>
+              <input type="date" v-model="logDateFrom" @change="logPage = 1" />
+              <label>至：</label>
+              <input type="date" v-model="logDateTo" @change="logPage = 1" />
+              <button v-if="logTypeFilter || logDateFrom || logDateTo" class="btn-sm btn-clear" @click="logTypeFilter = ''; logDateFrom = ''; logDateTo = ''; logPage = 1">清除筛选</button>
+            </div>
+            <table>
+              <thead>
+                <tr>
                   <th>时间</th>
+                  <th>操作人</th>
                   <th>操作类型</th>
                   <th>目标类型</th>
                   <th>操作详情</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="l in logList" :key="l.id">
+                <tr v-for="l in pagedLogs" :key="l.id">
                   <td>{{ l.createTime?.replace('T', ' ').slice(0, 19) }}</td>
+                  <td>{{ l.operatorName }}</td>
                   <td><span class="status-dot" :class="l.operationType === 'APPROVE_INHERITOR' ? 's-enabled' : l.operationType === 'REJECT_INHERITOR' ? 's-disabled' : 's-pending'">{{ opTypeLabel(l.operationType) }}</span></td>
                   <td>{{ opTargetTypeLabel(l.targetType) }}</td>
                   <td>{{ l.detail }}</td>
                 </tr>
               </tbody>
             </table>
-            <div v-if="logList.length === 0 && !logLoading" class="empty-text">暂无操作日志</div>
+            <div v-if="filteredLogList.length === 0 && !logLoading" class="empty-text">{{ logTypeFilter || logDateFrom || logDateTo ? '无匹配结果' : '暂无操作日志' }}</div>
+            <div v-else-if="filteredLogList.length > 0" class="page-bar">
+              <button :disabled="logPage <= 1" @click="logPage--">上一页</button>
+              <span>第 {{ logPage }} / {{ totalPages(filteredLogList) }} 页，共 {{ filteredLogList.length }} 条</span>
+              <button :disabled="logPage >= totalPages(filteredLogList)" @click="logPage++">下一页</button>
+            </div>
           </div>
         </section>
 
@@ -1282,6 +1537,29 @@ function onQuickCardMouseLeave(e: MouseEvent) {
       </main>
     </div>
   </div>
+
+  <!-- 自定义确认/输入弹窗 -->
+  <div v-if="confirmState.show" class="modal-overlay" @click.self="dialogCancel">
+    <div class="modal-content confirm-dialog">
+      <div class="modal-header">
+        <h3>{{ confirmState.type === 'prompt' ? '请输入' : '确认操作' }}</h3>
+        <button class="modal-close" @click="dialogCancel">✕</button>
+      </div>
+      <p class="confirm-msg">{{ confirmState.message }}</p>
+      <textarea
+        v-if="confirmState.type === 'prompt'"
+        v-model="confirmState.inputValue"
+        class="prompt-input"
+        placeholder="请输入驳回原因..."
+        rows="3"
+        @keyup.enter.exact="dialogOk"
+      ></textarea>
+      <div class="confirm-btns">
+        <button class="btn-sm" style="background:#eee;color:#666" @click="dialogCancel">取消</button>
+        <button class="btn-sm btn-primary" @click="dialogOk">确定</button>
+      </div>
+    </div>
+  </div>
 </template>
 
 <style scoped>
@@ -1333,7 +1611,7 @@ function onQuickCardMouseLeave(e: MouseEvent) {
   align-items: center;
   padding: 13px 24px;
   margin: 2px 10px;
-  color: rgba(255,255,255,0.7);
+  color: rgba(255,255,255,0.9);
   cursor: pointer;
   transition: all 0.25s;
   font-size: 14px;
@@ -1439,6 +1717,13 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 }
 
 /* ==================== 仪表盘 — 灵动卡片 ==================== */
+/* 仪表盘工具栏 */
+.dash-toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 20px;
+}
+.dash-updated { font-size: 12px; color: #aaa; }
+
 .stat-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -1751,6 +2036,11 @@ function onQuickCardMouseLeave(e: MouseEvent) {
   display: flex; align-items: center; gap: 10px;
   padding: 10px 16px; background: #fff8e1; border-bottom: 2px solid #ffc107;
   font-size: 13px; color: #856404;
+  animation: batchSlideDown 0.25s ease-out;
+}
+@keyframes batchSlideDown {
+  from { opacity: 0; transform: translateY(-8px); max-height: 0; }
+  to   { opacity: 1; transform: translateY(0); max-height: 48px; }
 }
 .batch-bar span { font-weight: 600; margin-right: 8px; }
 
@@ -1818,4 +2108,48 @@ function onQuickCardMouseLeave(e: MouseEvent) {
 .article-detail-modal .article-body :deep(img) {
   max-width: 100%; border-radius: 8px; margin: 12px 0;
 }
+
+/* ==================== 自定义确认弹窗 ==================== */
+.confirm-dialog { max-width: 480px; }
+.confirm-msg { padding: 24px 28px 12px; font-size: 15px; color: #444; line-height: 1.6; margin: 0; }
+.prompt-input {
+  margin: 12px 28px 0; width: calc(100% - 56px); padding: 10px 14px;
+  border: 1px solid #e0e0e0; border-radius: 8px; font-size: 14px; resize: vertical;
+  outline: none; font-family: inherit;
+}
+.prompt-input:focus { border-color: #c41e3a; box-shadow: 0 0 0 3px rgba(196,30,58,0.08); }
+.confirm-btns {
+  display: flex; justify-content: flex-end; gap: 10px; padding: 20px 28px 8px;
+}
+
+/* ==================== 日志筛选栏 ==================== */
+.log-filter-bar {
+  display: flex; align-items: center; gap: 12px; padding: 12px 24px;
+  border-bottom: 1px solid #ffe9ec; flex-wrap: wrap;
+}
+.log-filter-bar select, .log-filter-bar input {
+  padding: 6px 12px; border: 1px solid #e0e0e0; border-radius: 6px;
+  font-size: 13px; outline: none; background: #fff;
+}
+.log-filter-bar select:focus, .log-filter-bar input:focus {
+  border-color: #c41e3a;
+}
+.log-filter-bar label { font-size: 13px; color: #666; }
+
+/* ==================== 用户详情弹窗 ==================== */
+.user-detail-body { padding: 8px 28px 28px; }
+.user-detail-row {
+  display: flex; align-items: center; padding: 10px 0;
+  border-bottom: 1px solid #f5f0f0; font-size: 14px; color: #444;
+}
+.ud-label { width: 90px; color: #999; font-size: 13px; flex-shrink: 0; }
+
+/* 用户链接 */
+.user-link { color: #c41e3a; cursor: pointer; text-decoration: underline; }
+.user-link:hover { color: #a8162b; }
+
+/* ==================== 举报处理弹窗 ==================== */
+.handle-body { padding: 16px 28px 8px; }
+.handle-body p { margin: 0 0 10px; font-size: 14px; color: #444; }
+.handle-body label { display: block; font-size: 13px; color: #666; margin: 12px 0 6px; }
 </style>

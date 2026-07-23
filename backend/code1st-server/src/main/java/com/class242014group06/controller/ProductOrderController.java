@@ -54,6 +54,17 @@ public class ProductOrderController {
     }
 
     /**
+     * 查询订单详情
+     */
+    @GetMapping("/{id}")
+    @ApiOperation("查询订单详情")
+    public Result<ProductOrderVO> getDetail(@PathVariable Long id) {
+        log.info("查询订单详情，orderId：{}", id);
+        ProductOrderVO order = productOrderService.getDetail(id);
+        return Result.success(order);
+    }
+
+    /**
      * 用户查看自己的商品订单
      */
     @GetMapping("/my")
@@ -78,27 +89,31 @@ public class ProductOrderController {
     }
 
     /**
-     * 传承人发货
+     * 传承人发货（含快递信息）
      */
     @PutMapping("/{id}/ship")
     @ApiOperation("传承人发货")
-    public Result<String> ship(@PathVariable Long id) {
+    public Result<String> ship(@PathVariable Long id,
+                                @RequestParam(required = false) String courierCompany,
+                                @RequestParam(required = false) String trackingNumber) {
         Long inheritorId = BaseContext.getCurrentId();
-        log.info("传承人发货，orderId：{}，inheritorId：{}", id, inheritorId);
-        productOrderService.ship(id, inheritorId);
+        log.info("传承人发货，orderId：{}，courier：{}，tracking：{}", id, courierCompany, trackingNumber);
+        productOrderService.ship(id, inheritorId,
+                courierCompany != null ? courierCompany : "",
+                trackingNumber != null ? trackingNumber : "");
         return Result.success("已发货");
     }
 
     /**
-     * 传承人完成订单
+     * 用户确认收货
      */
     @PutMapping("/{id}/complete")
-    @ApiOperation("传承人完成订单")
+    @ApiOperation("用户确认收货")
     public Result<String> complete(@PathVariable Long id) {
-        Long inheritorId = BaseContext.getCurrentId();
-        log.info("传承人完成订单，orderId：{}，inheritorId：{}", id, inheritorId);
-        productOrderService.complete(id, inheritorId);
-        return Result.success("订单已完成");
+        Long userId = BaseContext.getCurrentId();
+        log.info("用户确认收货，orderId：{}，userId：{}", id, userId);
+        productOrderService.complete(id, userId);
+        return Result.success("确认收货成功");
     }
 
     /**
@@ -117,6 +132,7 @@ public class ProductOrderController {
     @PutMapping("/{id}/admin/status")
     @ApiOperation("管理员修改商品订单状态")
     public Result<String> updateStatusByAdmin(@PathVariable Long id, @RequestParam Integer status) {
+        BaseContext.requireAdmin();
         Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改商品订单状态，orderId：{}，status：{}", id, status);
         productOrderService.updateStatusByAdmin(id, status);
@@ -132,13 +148,33 @@ public class ProductOrderController {
     @PutMapping("/{id}/admin/address")
     @ApiOperation("管理员修改商品订单收货地址")
     public Result<String> updateAddressByAdmin(@PathVariable Long id, @RequestParam String address) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
         log.info("管理员修改商品订单地址，orderId：{}，address：{}", id, address);
         productOrderService.updateAddressByAdmin(id, address);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "UPDATE_ORDER_ADDRESS", "product_order", id,
+                "修改商品订单ID=" + id + "收货地址");
         return Result.success("地址已更新");
     }
 
     /**
-     * 取消订单
+     * 管理员取消商品订单
+     */
+    @PutMapping("/{id}/admin/cancel")
+    @ApiOperation("管理员取消商品订单")
+    public Result<String> cancelByAdmin(@PathVariable Long id) {
+        BaseContext.requireAdmin();
+        Long operatorId = BaseContext.getCurrentId();
+        log.info("管理员取消商品订单，orderId：{}", id);
+        productOrderService.cancelByAdmin(id);
+        operationLogService.log(operatorId, "管理员", RoleConstant.ADMIN,
+                "CANCEL_ORDER", "product_order", id, "取消商品订单ID=" + id);
+        return Result.success("订单已取消");
+    }
+
+    /**
+     * 取消订单（用户/传承人）
      */
     @PutMapping("/{id}/cancel")
     @ApiOperation("取消商品订单")

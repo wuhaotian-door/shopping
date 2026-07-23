@@ -7,6 +7,7 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 商品评价返回视图
@@ -35,6 +36,18 @@ public class ProductReviewVO implements Serializable {
 
     /** 评价内容 */
     private String content;
+
+    /** 父评价ID */
+    private Long parentId;
+
+    /** 被回复的用户名 */
+    private String replyToUserName;
+
+    /** 子评价列表 */
+    private List<ProductReviewVO> children;
+
+    /** 软删除标记：0正常 1已删除 */
+    private Integer isDeleted;
 
     /** 评价时间 */
     private LocalDateTime createTime;

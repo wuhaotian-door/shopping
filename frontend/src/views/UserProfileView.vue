@@ -1,11 +1,24 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
 import { listMyOrders } from '@/api/order'
-import type { UserProfileVO, UserProfileDTO, OrderVO } from '@/types/api'
+import { listMyProductOrders } from '@/api/product'
+import type { UserProfileVO, UserProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
+import { useCartStore } from '@/stores/cart'
+import { uploadFile } from '@/api/upload'
+import { ElMessage } from 'element-plus'
+import AvatarCropper from '@/components/AvatarCropper.vue'
+import { useHistory } from '@/composables/useHistory'
 
 const router = useRouter()
+const cartStore = useCartStore()
+const authStore = useAuthStore()
+const { getUserHistory } = useHistory()
+const cartCount = computed(() => cartStore.count)
+const showHistory = ref(false)
+const historyList = computed(() => getUserHistory())
 
 // ==================== 我的预约 ====================
 const orders = ref<OrderVO[]>([])
@@ -28,10 +41,32 @@ async function loadOrders() {
   }
 }
 
+// ==================== 文创商品订单 ====================
+const productOrders = ref<ProductOrderVO[]>([])
+const loadingProductOrders = ref(false)
+
+const productOrderStatusMap: Record<number, { label: string; cls: string }> = {
+  0: { label: '待发货', cls: 'status-pending' },
+  1: { label: '已发货', cls: 'status-shipped' },
+  2: { label: '已完成', cls: 'status-done' },
+  3: { label: '已取消', cls: 'status-cancelled' },
+}
+
+async function loadProductOrders() {
+  loadingProductOrders.value = true
+  try {
+    const res = await listMyProductOrders()
+    productOrders.value = res.data || []
+  } catch { /* ignore */ } finally {
+    loadingProductOrders.value = false
+  }
+}
+
 onMounted(() => {
   document.title = '个人中心 — 码上非遗'
   loadProfile()
   loadOrders()
+  loadProductOrders()
 })
 
 const profile = ref<UserProfileVO>({
@@ -41,6 +76,7 @@ const profile = ref<UserProfileVO>({
   phone: '',
   email: '',
   sex: '',
+  avatarUrl: '',
 })
 
 // ==================== 编辑模式 ====================
@@ -51,8 +87,14 @@ const form = ref<UserProfileDTO>({
   phone: '',
   email: '',
   sex: '',
+  avatarUrl: '',
 })
 const saveMsg = ref('')
+const uploadingAvatar = ref(false)
+const cropVisible = ref(false)
+const cropImage = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
+let cropResolve: ((blob: Blob) => void) | null = null
 
 async function loadProfile() {
   try {
@@ -70,6 +112,7 @@ function enterEdit() {
     phone: profile.value.phone || '',
     email: profile.value.email || '',
     sex: profile.value.sex || '',
+    avatarUrl: profile.value.avatarUrl || '',
   }
   editMode.value = true
   saveMsg.value = ''
@@ -91,6 +134,27 @@ function cancelEdit() {
   editMode.value = false
   saveMsg.value = ''
 }
+function startAvatarCrop(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['jpg','jpeg','png','webp'].includes(ext)) { ElMessage.error('仅支持 jpg/png/webp 格式'); return }
+  cropImage.value = URL.createObjectURL(file)
+  cropVisible.value = true
+  new Promise<Blob>((resolve) => { cropResolve = resolve }).then(doUploadCropped)
+}
+async function doUploadCropped(blob: Blob) {
+  uploadingAvatar.value = true
+  try {
+    const res = await uploadFile(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'image')
+    profile.value.avatarUrl = res.data
+    form.value.avatarUrl = res.data
+    await updateProfile({ avatarUrl: res.data })
+    authStore.updateAvatar(res.data)
+    ElMessage.success('头像更新成功')
+  } catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '头像上传失败') }
+  finally { uploadingAvatar.value = false }
+}
+function onCropConfirm(blob: Blob) { cropResolve?.(blob); cropResolve = null }
+
 
 // ==================== 修改密码 ====================
 const showPasswordSection = ref(false)
@@ -204,11 +268,15 @@ async function resendCode() {
         <div class="profile-card">
           <!-- 头像区域 -->
           <div class="profile-avatar-section">
-            <div class="profile-avatar-lg">
-              <span class="avatar-initial">{{ (profile.name || '用')[0] }}</span>
+            <div class="profile-avatar-lg" :style="profile.avatarUrl ? { backgroundImage: 'url(' + profile.avatarUrl + ')', backgroundSize: 'cover', backgroundPosition: 'center' } : {}">
+              <span v-if="!profile.avatarUrl" class="avatar-initial">{{ (profile.name || '用')[0] }}</span>
             </div>
             <div class="profile-name-role">
               <h3 v-if="!editMode">{{ profile.name || '未设置姓名' }}</h3>
+              <div v-if="editMode" class="avatar-upload-btn">
+                <input ref="fileInput" type="file" accept=".jpg,.jpeg,.png,.webp" style="display:none" @change="(e) => { const t = e.target as HTMLInputElement; const f = t.files?.[0]; if (f) startAvatarCrop(f); t.value = '' }" />
+                <el-button size="small" :loading="uploadingAvatar" @click="fileInput?.click()">{{ uploadingAvatar ? '上传中...' : '更换头像' }}</el-button>
+              </div>
               <p class="profile-username">@{{ profile.username || '' }}</p>
               <span class="role-badge user-badge">普通用户</span>
             </div>
@@ -252,6 +320,27 @@ async function resendCode() {
             <button class="btn-primary" @click="handleSave">保存修改</button>
             <button class="btn-outline" @click="cancelEdit">取消</button>
             <span v-if="saveMsg" class="save-msg" :class="{ error: saveMsg.includes('失败') || saveMsg.includes('已存在') }">{{ saveMsg }}</span>
+          </div>
+        </div>
+
+        <!-- ========== 快捷入口卡片 ========== -->
+        <div class="quick-cards">
+          <div class="quick-card" @click="$router.push('/cart')">
+            <span class="qc-icon">🛒</span>
+            <span class="qc-label">购物车</span>
+            <span v-if="cartCount > 0" class="qc-badge">{{ cartCount }}</span>
+          </div>
+          <div class="quick-card" @click="showHistory = !showHistory">
+            <span class="qc-icon">👣</span>
+            <span class="qc-label">个人足迹</span>
+          </div>
+        </div>
+        <div v-if="showHistory" class="history-panel">
+          <h3>浏览足迹</h3>
+          <div v-if="historyList.length === 0" class="empty-tip">暂无浏览记录</div>
+          <div v-for="h in historyList.slice(0, 10)" :key="h.path" class="history-item" @click="$router.push(h.path)">
+            <span class="hi-title">{{ h.title }}</span>
+            <span class="hi-time">{{ h.time }}</span>
           </div>
         </div>
 
@@ -361,6 +450,7 @@ async function resendCode() {
         <!-- ========== 我的预约 ========== -->
         <div class="section-header" style="margin-top: 40px">
           <h2>我的预约</h2>
+          <button class="btn-outline" @click="$router.push('/orders')">查看全部订单 →</button>
         </div>
 
         <div class="profile-card">
@@ -399,9 +489,65 @@ async function resendCode() {
             </div>
           </div>
         </div>
+
+        <!-- ========== 文创商品订单 ========== -->
+        <div class="section-header" style="margin-top: 40px">
+          <h2>文创商品订单</h2>
+          <button class="btn-outline" @click="$router.push('/orders')">查看全部订单 →</button>
+        </div>
+
+        <div class="profile-card">
+          <div v-if="loadingProductOrders" class="loading-tip">加载中...</div>
+          <div v-else-if="productOrders.length === 0" class="empty-tip">暂无文创商品订单</div>
+          <div v-else class="order-list">
+            <div v-for="order in productOrders" :key="order.id" class="order-item">
+              <div class="order-header">
+                <span class="order-id">#{{ order.id }}</span>
+                <span class="order-status-badge" :class="productOrderStatusMap[order.status]?.cls">
+                  {{ productOrderStatusMap[order.status]?.label || '未知' }}
+                </span>
+              </div>
+              <div class="order-body product-order-body">
+                <div class="order-field product-field">
+                  <span class="field-label">商品名称</span>
+                  <span class="field-value">{{ order.productName }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">单价</span>
+                  <span class="field-value">¥{{ order.price }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">数量</span>
+                  <span class="field-value">×{{ order.quantity }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">金额</span>
+                  <span class="field-value total-amount">¥{{ order.totalAmount }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">收货电话</span>
+                  <span class="field-value">{{ order.phone }}</span>
+                </div>
+                <div class="order-field full-width">
+                  <span class="field-label">收货地址</span>
+                  <span class="field-value">{{ order.address }}</span>
+                </div>
+                <div class="order-field">
+                  <span class="field-label">下单时间</span>
+                  <span class="field-value">{{ order.createTime?.slice(0, 16) }}</span>
+                </div>
+                <div v-if="order.remark" class="order-field full-width">
+                  <span class="field-label">备注</span>
+                  <span class="field-value">{{ order.remark }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </main>
   </div>
+  <AvatarCropper v-model:visible="cropVisible" :image-url="cropImage" @crop="onCropConfirm" />
 </template>
 
 <style scoped>
@@ -856,6 +1002,10 @@ select.form-input {
   background: #e3f2fd;
   color: #1565c0;
 }
+.status-shipped {
+  background: #fff3e0;
+  color: #e65100;
+}
 .status-cancelled {
   background: #f5f5f5;
   color: #999;
@@ -880,6 +1030,13 @@ select.form-input {
 .field-value {
   font-size: 14px;
   color: #333;
+}
+.total-amount {
+  font-weight: 700;
+  color: #c41e3a;
+}
+.product-order-body {
+  grid-template-columns: 1fr 1fr 1fr;
 }
 
 /* ---- 响应式 ---- */
@@ -906,4 +1063,17 @@ select.form-input {
     gap: 12px;
   }
 }
+/* 快捷入口卡片 */
+.quick-cards { display: flex; gap: 16px; margin-top: 20px; }
+.quick-card { position: relative; flex: 1; background: #fff; border-radius: 14px; padding: 24px 16px; text-align: center; cursor: pointer; box-shadow: 0 2px 12px rgba(0,0,0,0.06); transition: transform 0.2s, box-shadow 0.2s; border: 1px solid rgba(196,30,58,0.08); }
+.quick-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(196,30,58,0.12); }
+.qc-icon { font-size: 32px; display: block; margin-bottom: 8px; }
+.qc-label { font-size: 14px; color: #666; font-weight: 600; }
+.qc-badge { position: absolute; top: 12px; right: 16px; min-width: 22px; height: 22px; border-radius: 11px; background: #c41e3a; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.history-panel { background: #fff; border-radius: 14px; padding: 20px 24px; margin-top: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.history-panel h3 { font-size: 16px; color: #c41e3a; margin-bottom: 12px; }
+.history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
+.history-item:hover { background: #fefafa; margin: 0 -12px; padding: 10px 12px; border-radius: 6px; }
+.hi-title { font-size: 14px; color: #333; }
+.hi-time { font-size: 12px; color: #aaa; }
 </style>

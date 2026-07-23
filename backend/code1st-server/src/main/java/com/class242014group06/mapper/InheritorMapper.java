@@ -6,6 +6,7 @@ import com.class242014group06.enumeration.OperationType;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
 
@@ -19,8 +20,8 @@ public interface InheritorMapper {
     Inheritor getByUsername(String username);
 
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, email, age, create_time, update_time, create_user, update_user, status) " +
-            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{email},#{age},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
+    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, birth_date, email, age, create_time, update_time, create_user, update_user, status) " +
+            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{birthDate},#{email},#{age},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
     void insert(Inheritor inheritor);
 
     @Select("select * from inheritor where id = #{id}")
@@ -46,4 +47,7 @@ public interface InheritorMapper {
 
     @Select("select count(*) from inheritor where status = #{status}")
     Long countByStatus(Integer status);
+
+    @Update("update inheritor set password = #{password}, update_time = #{updateTime} where id = #{id}")
+    void updatePassword(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("password") String password, @org.apache.ibatis.annotations.Param("updateTime") java.time.LocalDateTime updateTime);
 }

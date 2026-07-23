@@ -36,6 +36,9 @@ public class UserProfileVO implements Serializable {
     @ApiModelProperty("邮箱")
     private String email;
 
+    @ApiModelProperty("头像URL")
+    private String avatarUrl;
+
     @ApiModelProperty("性别")
     private String sex;
 }

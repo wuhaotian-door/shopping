@@ -62,9 +62,8 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(admin.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (admin.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
+            checkBanAndAutoUnban(admin.getStatus(), admin.getBanUntil(),
+                    () -> adminMapper.update(Admin.builder().id(admin.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(admin.getId())
                     .userName(admin.getUsername())
@@ -79,12 +78,11 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(inheritor.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (inheritor.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
             if (inheritor.getStatus() == StatusConstant.PENDING) {
                 throw new AccountPendingApprovalException(MessageConstant.ACCOUNT_PENDING);
             }
+            checkBanAndAutoUnban(inheritor.getStatus(), inheritor.getBanUntil(),
+                    () -> inheritorMapper.update(Inheritor.builder().id(inheritor.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(inheritor.getId())
                     .userName(inheritor.getUsername())
@@ -99,9 +97,8 @@ public class AuthServiceImpl implements AuthService {
             if (!password.equals(user.getPassword())) {
                 throw new PasswordErrorException(MessageConstant.PASSWORD_ERROR);
             }
-            if (user.getStatus() == StatusConstant.DISABLE) {
-                throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-            }
+            checkBanAndAutoUnban(user.getStatus(), user.getBanUntil(),
+                    () -> userMapper.update(User.builder().id(user.getId()).status(StatusConstant.ENABLE).banUntil(null).build()));
             return EmployeeLoginVO.builder()
                     .id(user.getId())
                     .userName(user.getUsername())
@@ -111,6 +108,22 @@ public class AuthServiceImpl implements AuthService {
         }
 
         throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+    }
+
+    /** 检查封禁状态：过期自动解封并允许登录，未过期抛异常 */
+    private void checkBanAndAutoUnban(Integer status, LocalDateTime banUntil, Runnable unbanAction) {
+        if (status != StatusConstant.DISABLE) return;
+        if (banUntil != null && banUntil.isBefore(LocalDateTime.now())) {
+            // 封禁已过期，自动解封
+            log.info("用户封禁已过期，自动解封");
+            unbanAction.run();
+            return;
+        }
+        String msg = MessageConstant.ACCOUNT_LOCKED;
+        if (banUntil != null) {
+            msg = "账号已被封禁至 " + banUntil.toLocalDate().toString();
+        }
+        throw new AccountLockedException(msg);
     }
 
     @Override
@@ -147,7 +160,11 @@ public class AuthServiceImpl implements AuthService {
         Inheritor inheritor = new Inheritor();
         BeanUtils.copyProperties(dto, inheritor);
         inheritor.setPassword(DigestUtils.md5DigestAsHex(dto.getPassword().getBytes()));
-        inheritor.setStatus(StatusConstant.PENDING); // 传承人注册后待审核
+        inheritor.setStatus(StatusConstant.PENDING);
+        // 根据出生日期计算年龄
+        if (dto.getBirthDate() != null) {
+            inheritor.setAge(java.time.Period.between(dto.getBirthDate(), java.time.LocalDate.now()).getYears());
+        }
         // 截断手机号防止超出数据库 VARCHAR(11) 限制
         if (inheritor.getPhone() != null && inheritor.getPhone().length() > 11) {
             inheritor.setPhone(inheritor.getPhone().substring(0, 11));
@@ -158,32 +175,46 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void sendResetCode(ForgotPasswordDTO dto) {
         String username = dto.getUsername();
+        String email = null;
+        String role = null;
 
-        // 查找用户（目前仅支持普通用户找回密码）
+        // 查找用户（支持三种角色）
         User user = userMapper.getByUsername(username);
-        if (user == null) {
+        if (user != null) {
+            if (user.getStatus() == StatusConstant.DISABLE) throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+            email = user.getEmail();
+            role = "USER";
+        } else {
+            Inheritor inheritor = inheritorMapper.getByUsername(username);
+            if (inheritor != null) {
+                if (inheritor.getStatus() == StatusConstant.DISABLE) throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+                email = inheritor.getEmail();
+                role = "INHERITOR";
+            } else {
+                Admin admin = adminMapper.getByUsername(username);
+                if (admin != null) {
+                    if (admin.getStatus() == StatusConstant.DISABLE) throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
+                    email = null; // admin 表无 email 字段，使用下方默认值
+                    role = "ADMIN";
+                }
+            }
+        }
+
+        if (role == null) {
             throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
         }
-        if (user.getStatus() == StatusConstant.DISABLE) {
-            throw new AccountLockedException(MessageConstant.ACCOUNT_LOCKED);
-        }
 
-        // 获取邮箱（统一默认值）
-        String email = user.getEmail();
         if (email == null || email.isEmpty()) {
             email = "3326353413@qq.com";
         }
 
-        // 生成 6 位数字验证码
+        // 生成 6 位数字验证码，存储时带上角色标记
         String code = String.format("%06d", ThreadLocalRandom.current().nextInt(1000000));
         long expireTime = System.currentTimeMillis() + CODE_TTL_MS;
+        codeStore.put(username, new String[]{code, String.valueOf(expireTime), role});
 
-        // 存储验证码
-        codeStore.put(username, new String[]{code, String.valueOf(expireTime)});
-
-        // 发送邮件
         emailService.sendVerificationCode(email, code);
-        log.info("密码重置验证码已生成，用户：{}", username);
+        log.info("密码重置验证码已发送，username={}, role={}, email={}", username, role, email);
     }
 
     @Override
@@ -208,17 +239,25 @@ public class AuthServiceImpl implements AuthService {
             throw new PasswordErrorException(MessageConstant.VERIFICATION_CODE_ERROR);
         }
 
-        // 验证码正确，重置密码
-        User user = userMapper.getByUsername(username);
-        if (user == null) {
-            throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+        String md5Password = DigestUtils.md5DigestAsHex(newPassword.getBytes());
+        String role = entry.length > 2 ? entry[2] : "USER";
+
+        // 根据角色更新对应表
+        if ("INHERITOR".equals(role)) {
+            Inheritor inheritor = inheritorMapper.getByUsername(username);
+            if (inheritor == null) throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+            inheritorMapper.updatePassword(inheritor.getId(), md5Password, LocalDateTime.now());
+        } else if ("ADMIN".equals(role)) {
+            Admin admin = adminMapper.getByUsername(username);
+            if (admin == null) throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+            adminMapper.updatePassword(admin.getId(), md5Password, LocalDateTime.now());
+        } else {
+            User user = userMapper.getByUsername(username);
+            if (user == null) throw new AccountNotFoundException(MessageConstant.ACCOUNT_NOT_FOUND);
+            userMapper.updatePassword(user.getId(), md5Password, LocalDateTime.now());
         }
 
-        String md5Password = DigestUtils.md5DigestAsHex(newPassword.getBytes());
-        userMapper.updatePassword(user.getId(), md5Password, LocalDateTime.now());
-
-        // 清除验证码
         codeStore.remove(username);
-        log.info("用户 {} 密码已重置", username);
+        log.info("用户 {} (角色={}) 密码已重置", username, role);
     }
 }

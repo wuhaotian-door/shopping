@@ -15,6 +15,24 @@ export default defineConfig({
       '/admin': {
         target: 'http://localhost:8080',
         changeOrigin: true,
+        bypass(req) {
+          const accept = req.headers?.accept || ''
+          if (accept.includes('text/html')) {
+            return '/index.html'
+          }
+        },
+      },
+      '/uploads': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/images': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/models': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
       },
     },
   },

@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import OrderManager from './components/OrderManager.vue'
 import SlotManager from './components/SlotManager.vue'
 import KnowledgeManager from './components/KnowledgeManager.vue'
@@ -10,41 +10,96 @@ import ProductManager from './components/ProductManager.vue'
 import InheritorProfile from './components/InheritorProfile.vue'
 import ChatPanel from './components/ChatPanel.vue'
 import StatsPanel from './components/StatsPanel.vue'
-import { listInheritorProductOrders, shipProductOrder, completeProductOrder, cancelProductOrder } from '@/api/product'
+import { listInheritorProductOrders, shipProductOrder, cancelProductOrder } from '@/api/product'
 import type { ProductOrderVO } from '@/types/api'
 
 const authStore = useAuthStore()
 const router = useRouter()
+const route = useRoute()
 
 onMounted(() => {
   document.title = '非遗传承人工坊 — 码上非遗'
+  if (activeTab.value === 'productOrders') loadProductOrders()
 })
 
-const userName = computed(() => authStore.userInfo?.name)
+const userName = computed(() => authStore.userInfo?.name || '')
 
-// 当前激活的 tab
-type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
-const activeTab = ref<TabKey>('orders')
-
-const tabs: { key: TabKey; label: string }[] = [
-  { key: 'orders', label: '预约订单' },
-  { key: 'slots', label: '时段管理' },
-  { key: 'knowledge', label: '非遗资讯' },
-  { key: 'projects', label: '非遗项目' },
-  { key: 'products', label: '商品设置' },
-  { key: 'productOrders', label: '订单管理' },
-  { key: 'stats', label: '数据统计' },
-  { key: 'consultation', label: '咨询消息' },
-  { key: 'profile', label: '入驻管理' },
-]
-
-function switchTab(key: TabKey) {
-  activeTab.value = key
+// 多账户切换
+const showAccountMenu = ref(false)
+const switcherRef = ref<HTMLElement | null>(null)
+function toggleAccountMenu() {
+  showAccountMenu.value = !showAccountMenu.value
+}
+const accounts = computed(() => authStore.accounts)
+const activeIndex = computed(() => authStore.activeIndex)
+const avatarUrl = computed(() => authStore.avatarUrl)
+const avatarFailed = ref(false)
+function onAvatarError() { avatarFailed.value = true }
+watch(avatarUrl, () => { avatarFailed.value = false })
+function roleLabel(r: string) {
+  return r === 'INHERITOR' ? '传承人' : r === 'ADMIN' ? '管理员' : '用户'
+}
+function doSwitchAccount(index: number) {
+  authStore.switchAccount(index)
+  showAccountMenu.value = false
+  location.reload()
+}
+function addAccount() {
+  showAccountMenu.value = false
+  router.push('/login?add=1')
 }
 
-function handleLogout() {
-  authStore.logout()
-  router.push('/')
+// 当前激活的 tab — 支持通过 URL query ?tab=xxx 指定
+type TabKey = 'orders' | 'slots' | 'knowledge' | 'projects' | 'products' | 'productOrders' | 'stats' | 'consultation' | 'profile'
+const activeTab = ref<TabKey>((route.query.tab as TabKey) || 'orders')
+
+// 下拉菜单分组
+interface MenuGroup {
+  label: string
+  children: { key: TabKey; label: string }[]
+}
+const menuGroups: (MenuGroup | { key: TabKey; label: string })[] = [
+  { label: '工坊运营', children: [
+    { key: 'orders', label: '预约订单' },
+    { key: 'slots', label: '时段管理' },
+  ]},
+  { label: '内容管理', children: [
+    { key: 'knowledge', label: '非遗资讯' },
+    { key: 'projects', label: '非遗项目' },
+    { key: 'products', label: '商品设置' },
+  ]},
+  { label: '交易管理', children: [
+    { key: 'productOrders', label: '订单管理' },
+  ]},
+  { key: 'stats', label: '数据统计' },
+  { key: 'consultation', label: '咨询消息' },
+  { key: 'profile', label: '个人中心' },
+]
+
+const openMenu = ref<string>('')
+const navRef = ref<HTMLElement | null>(null)
+
+function toggleMenu(label: string) {
+  openMenu.value = openMenu.value === label ? '' : label
+}
+function closeMenu() {
+  openMenu.value = ''
+}
+function onDocClick(e: MouseEvent) {
+  if (navRef.value && !navRef.value.contains(e.target as Node)) {
+    closeMenu()
+  }
+  if (switcherRef.value && !switcherRef.value.contains(e.target as Node)) {
+    showAccountMenu.value = false
+  }
+}
+onMounted(() => document.addEventListener('click', onDocClick))
+onUnmounted(() => document.removeEventListener('click', onDocClick))
+
+function selectTab(key: TabKey) {
+  activeTab.value = key
+  openMenu.value = ''
+  if (key === 'productOrders') loadProductOrders()
 }
 
 // ==================== 商品订单（内联） ====================
@@ -70,21 +125,59 @@ async function loadProductOrders() {
   }
 }
 
-async function handlePOAction(order: ProductOrderVO, action: 'ship' | 'complete' | 'cancel') {
+function viewOrderDetail(orderId: number) {
+  router.push(`/order/${orderId}`)
+}
+
+async function handleCancelPO(order: ProductOrderVO) {
+  if (!confirm('确定要取消该订单吗？')) return
   try {
-    if (action === 'ship') await shipProductOrder(order.id)
-    else if (action === 'complete') await completeProductOrder(order.id)
-    else if (action === 'cancel') await cancelProductOrder(order.id)
+    await cancelProductOrder(order.id)
     await loadProductOrders()
   } catch {
     // ignore
   }
 }
 
-// 切换到商品订单 tab 时加载数据
-function onTabSwitch(key: TabKey) {
-  activeTab.value = key
-  if (key === 'productOrders') loadProductOrders()
+// ==================== 发货弹窗 ====================
+const showShipModal = ref(false)
+const shipOrderId = ref<number | null>(null)
+const shipCourier = ref('')
+const shipTracking = ref('')
+const shipLoading = ref(false)
+
+function openShipModal(order: ProductOrderVO) {
+  shipOrderId.value = order.id
+  shipCourier.value = ''
+  shipTracking.value = ''
+  showShipModal.value = true
+}
+
+async function submitShip() {
+  if (!shipOrderId.value) return
+  if (!shipCourier.value.trim()) {
+    alert('请输入快递公司')
+    return
+  }
+  if (!shipTracking.value.trim()) {
+    alert('请输入快递单号')
+    return
+  }
+  shipLoading.value = true
+  try {
+    await shipProductOrder(shipOrderId.value, shipCourier.value.trim(), shipTracking.value.trim())
+    showShipModal.value = false
+    await loadProductOrders()
+  } catch {
+    alert('发货失败')
+  } finally {
+    shipLoading.value = false
+  }
+}
+
+function handleLogout() {
+  authStore.logout()
+  router.push('/')
 }
 </script>
 
@@ -92,26 +185,75 @@ function onTabSwitch(key: TabKey) {
   <!-- ==================== 顶部导航 ==================== -->
   <header class="page-header">
     <div class="header-left">
-      <div class="logo" @click="router.push('/')">码上非遗</div>
+      <div class="logo" @click="router.push('/')">
+        <img src="/logo.png" alt="码上非遗" class="logo-img" />
+        <span class="logo-text">码上非遗</span>
+      </div>
       <span class="workspace-tag">传承人工坊</span>
     </div>
 
-    <nav class="nav-tabs">
-      <a
-        v-for="tab in tabs"
-        :key="tab.key"
-        class="nav-tab"
-        :class="{ active: activeTab === tab.key }"
-        @click="onTabSwitch(tab.key)"
-      >
-        {{ tab.label }}
-      </a>
+    <nav ref="navRef" class="nav-tabs">
+      <template v-for="item in menuGroups" :key="'label' in item ? item.label : (item as {key:TabKey;label:string}).label">
+        <!-- 下拉菜单项 -->
+        <div v-if="'children' in item" class="nav-dropdown" :class="{ open: openMenu === item.label }">
+          <button class="nav-tab nav-has-sub" :class="{ active: (item as MenuGroup).children.some(c => activeTab === c.key) }" @click="toggleMenu(item.label)">
+            {{ item.label }}
+            <span class="arrow">▾</span>
+          </button>
+          <div class="dropdown-menu">
+            <a
+              v-for="child in (item as MenuGroup).children"
+              :key="child.key"
+              class="dropdown-item"
+              :class="{ active: activeTab === child.key }"
+              @click="selectTab(child.key)"
+            >{{ child.label }}</a>
+          </div>
+        </div>
+        <!-- 直接跳转项 -->
+        <a
+          v-else
+          class="nav-tab"
+          :class="{ active: activeTab === (item as {key:TabKey;label:string}).key }"
+          @click="selectTab((item as {key:TabKey;label:string}).key)"
+        >{{ (item as {key:TabKey;label:string}).label }}</a>
+      </template>
     </nav>
 
     <div class="header-right">
       <span class="inheritor-badge">非遗传承人</span>
-      <span class="user-name">{{ userName }}</span>
-      <button class="home-btn" @click="router.push('/')">返回首页</button>
+      <!-- 多账户切换 -->
+      <div class="account-switcher" ref="switcherRef" v-if="accounts.length > 0">
+        <button class="account-btn" @click.stop="toggleAccountMenu" :class="{ open: showAccountMenu }">
+          <img v-if="avatarUrl && !avatarFailed" :src="avatarUrl" class="header-avatar" @error="onAvatarError" />
+          <span v-else class="header-avatar-placeholder">{{ userName.charAt(0) }}</span>
+          <span class="user-name">{{ userName }}</span>
+          <span class="account-arrow" :class="{ flipped: showAccountMenu }">&#9662;</span>
+        </button>
+        <Transition name="menu-fade">
+        <div class="account-menu" v-if="showAccountMenu">
+          <div
+            v-for="(acc, idx) in accounts"
+            :key="idx"
+            class="account-item"
+            :class="{ active: idx === activeIndex }"
+            @click.stop="doSwitchAccount(idx)"
+          >
+            <span class="account-avatar">{{ acc.name.charAt(0) }}</span>
+            <span class="account-info">
+              <span class="account-name">{{ acc.name }}</span>
+              <span class="account-detail">{{ acc.username }} · {{ roleLabel(acc.role) }}</span>
+            </span>
+            <span v-if="idx === activeIndex" class="account-check-icon">&#10003;</span>
+          </div>
+          <div class="account-divider"></div>
+          <div class="account-item add-account" @click.stop="addAccount">
+            <span class="account-add-icon">+</span>
+            <span class="account-name">添加其他账号</span>
+          </div>
+        </div>
+        </Transition>
+      </div>      <button class="home-btn" @click="router.push('/')">返回首页</button>
       <button class="logout-btn" @click="handleLogout">退出</button>
     </div>
   </header>
@@ -186,12 +328,10 @@ function onTabSwitch(key: TabKey) {
                   </span>
                 </td>
                 <td class="action-cell">
+                  <button class="btn-view" @click="viewOrderDetail(order.id)">查看</button>
                   <template v-if="order.status === 0">
-                    <button class="btn-confirm" style="background: #17a2b8" @click="handlePOAction(order, 'ship')">发货</button>
-                    <button class="btn-reject" @click="handlePOAction(order, 'cancel')">取消</button>
-                  </template>
-                  <template v-else-if="order.status === 1">
-                    <button class="btn-confirm" @click="handlePOAction(order, 'complete')">完成</button>
+                    <button class="btn-confirm" style="background: #17a2b8" @click="openShipModal(order)">发货</button>
+                    <button class="btn-reject" @click="handleCancelPO(order)">取消</button>
                   </template>
                   <span v-else class="no-action">—</span>
                 </td>
@@ -200,6 +340,27 @@ function onTabSwitch(key: TabKey) {
           </table>
           <div v-if="productOrderLoading" class="empty-state">加载中…</div>
           <div v-else-if="productOrderList.length === 0" class="empty-state">暂无商品订单</div>
+        </div>
+
+        <!-- 发货弹窗 -->
+        <div v-if="showShipModal" class="modal-overlay" @click.self="showShipModal = false">
+          <div class="modal-box">
+            <h3>填写快递信息</h3>
+            <div class="field">
+              <label>快递公司</label>
+              <input v-model="shipCourier" placeholder="如：顺丰速运" class="modal-input" />
+            </div>
+            <div class="field">
+              <label>快递单号</label>
+              <input v-model="shipTracking" placeholder="请输入快递单号" class="modal-input" />
+            </div>
+            <div class="modal-btns">
+              <button class="btn-cancel" @click="showShipModal = false">取消</button>
+              <button class="btn-submit" :disabled="shipLoading" @click="submitShip">
+                {{ shipLoading ? '发货中...' : '确认发货' }}
+              </button>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -224,16 +385,19 @@ function onTabSwitch(key: TabKey) {
 <style scoped>
 /* ==================== 顶部导航 ==================== */
 .page-header {
-  background-color: #c41e3a;
+  background: linear-gradient(135deg, #8b1a2b 0%, #a01e35 40%, #c41e3a 100%);
   color: #fff;
-  padding: 0 5%;
-  height: 64px;
+  padding: 0 6%;
+  height: 72px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   position: sticky;
   top: 0;
   z-index: 100;
+  font-family: 'Noto Serif SC', 'STKaiti', 'KaiTi', '楷体', 'STSong', serif;
+  letter-spacing: 1px;
+  box-shadow: 0 2px 16px rgba(139, 26, 43, 0.35);
 }
 .header-left {
   display: flex;
@@ -241,11 +405,11 @@ function onTabSwitch(key: TabKey) {
   gap: 14px;
 }
 .logo {
-  font-size: 20px;
-  font-weight: bold;
-  cursor: pointer;
-  white-space: nowrap;
+  display: flex; align-items: center; gap: 10px;
+  cursor: pointer; white-space: nowrap;
 }
+.logo-img { height: 42px; width: auto; }
+.logo-text { font-size: 22px; font-weight: 700; letter-spacing: 4px; color: #fff; }
 .workspace-tag {
   font-size: 12px;
   background: #ffd700;
@@ -257,35 +421,74 @@ function onTabSwitch(key: TabKey) {
 }
 
 .nav-tabs {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  overflow-x: auto;
+  display: flex; align-items: center; gap: 4px;
 }
-.nav-tab {
-  color: rgba(255,255,255,0.8);
-  text-decoration: none;
-  font-size: 14px;
-  cursor: pointer;
-  padding: 8px 16px;
+
+/* 下拉菜单容器 */
+.nav-dropdown { position: relative; }
+.nav-has-sub {
+  display: flex; align-items: center; gap: 4px;
+  background: none; border: none; font-family: inherit;
+}
+.arrow { font-size: 10px; transition: transform 0.2s; }
+.nav-dropdown.open .arrow { transform: rotate(180deg); }
+
+/* 下拉菜单面板（朱砂红主题） */
+.dropdown-menu {
+  position: absolute; top: 100%; left: 0;
+  margin-top: 4px;
+  min-width: 140px;
+  background: linear-gradient(180deg, #fffaf8 0%, #fff5f2 100%);
+  border: 1px solid rgba(196, 30, 58, 0.15);
   border-radius: 6px;
-  transition: all 0.2s;
-  white-space: nowrap;
+  box-shadow: 0 6px 24px rgba(139, 26, 43, 0.18);
+  padding: 4px 0;
+  opacity: 0; visibility: hidden;
+  transform: translateY(-4px);
+  transition: all 0.2s ease;
+  z-index: 200;
 }
-.nav-tab:hover {
-  color: #fff;
-  background: rgba(255,255,255,0.12);
+.nav-dropdown.open .dropdown-menu {
+  opacity: 1; visibility: visible;
+  transform: translateY(0);
 }
-.nav-tab.active {
+.dropdown-item {
+  display: block;
+  padding: 10px 20px;
+  font-size: 14px;
+  color: #5c3030;
+  cursor: pointer; white-space: nowrap;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+.dropdown-item:hover {
+  background: rgba(196, 30, 58, 0.06);
   color: #c41e3a;
-  background: #fff;
-  font-weight: bold;
+  border-left-color: #c41e3a;
 }
+.dropdown-item.active {
+  color: #c41e3a;
+  font-weight: 700;
+  background: rgba(196, 30, 58, 0.08);
+  border-left-color: #c41e3a;
+}
+
+/* 基础 tab 样式 */
+.nav-tab {
+  color: rgba(255,255,255,0.85);
+  text-decoration: none; font-size: 14px;
+  cursor: pointer; padding: 8px 16px; border-radius: 6px;
+  transition: all 0.2s; white-space: nowrap;
+  letter-spacing: 1px;
+}
+.nav-tab:hover { color: #fff; background: rgba(255,255,255,0.12); }
+.nav-tab.active { color: #c41e3a; background: #fff; font-weight: 700; }
 
 .header-right {
   display: flex;
   align-items: center;
   gap: 10px;
+  position: relative;
 }
 .inheritor-badge {
   font-size: 11px;
@@ -300,6 +503,88 @@ function onTabSwitch(key: TabKey) {
   font-size: 14px;
   white-space: nowrap;
 }
+
+.header-avatar {
+  width: 28px !important;
+  height: 28px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  flex-shrink: 0;
+  border: 2px solid rgba(255,255,255,0.4);
+}
+.header-avatar-placeholder {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.2);
+  color: #fff;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+/* 多账户切换器 */
+.account-switcher { position: relative; z-index: 150; }
+.account-btn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 5px 12px; font-size: 14px;
+  color: #fff; background: rgba(255,255,255,0.1);
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 6px;
+  cursor: pointer; font-family: inherit; white-space: nowrap;
+  transition: all 0.2s;
+}
+.account-btn:hover, .account-btn.open {
+  background: rgba(255,255,255,0.22);
+  border-color: rgba(255,255,255,0.5);
+}
+.account-arrow { font-size: 10px; transition: transform 0.25s; }
+.account-arrow.flipped { transform: rotate(180deg); }
+.account-menu {
+  position: absolute; top: calc(100% + 8px); right: 0;
+  min-width: 240px;
+  background: linear-gradient(160deg, #3d0a12 0%, #5c1522 40%, #7a1e2d 100%);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 0 1px rgba(255,215,0,0.08);
+  overflow: hidden;
+  padding: 6px 0;
+}
+.account-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; cursor: pointer; transition: background 0.15s;
+  color: rgba(255,255,255,0.9); font-size: 14px;
+  position: relative;
+}
+.account-item:hover { background: rgba(255,255,255,0.1); }
+.account-item.active { background: rgba(255,215,0,0.12); color: #ffd700; }
+.account-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: rgba(255,255,255,0.15); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.account-item.active .account-avatar { background: #ffd700; color: #5c1522; }
+.account-info { display: flex; flex-direction: column; }
+.account-name { font-weight: 600; }
+.account-detail { font-size: 11px; color: rgba(255,255,255,0.5); }
+.account-item.active .account-detail { color: rgba(255,215,0,0.7); }
+.account-check-icon { margin-left: auto; color: #ffd700; font-size: 16px; font-weight: 700; }
+.account-divider { height: 1px; background: rgba(255,255,255,0.1); margin: 4px 0; }
+.add-account { color: rgba(255,255,255,0.7); }
+.add-account:hover { color: #fff; background: rgba(255,255,255,0.1); }
+.account-add-icon {
+  width: 32px; height: 32px; border-radius: 50%;
+  border: 1.5px dashed rgba(255,255,255,0.4); color: rgba(255,255,255,0.6);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.add-account:hover .account-add-icon { border-color: #ffd700; color: #ffd700; }
+.menu-fade-enter-active { transition: all 0.2s ease-out; }
+.menu-fade-leave-active { transition: all 0.15s ease-in; }
+.menu-fade-enter-from { opacity: 0; transform: translateY(-6px); }
+.menu-fade-leave-to { opacity: 0; transform: translateY(-4px); }
 .home-btn {
   padding: 6px 12px;
   font-size: 12px;
@@ -473,6 +758,26 @@ function onTabSwitch(key: TabKey) {
   color: #999;
   font-size: 14px;
 }
+
+/* "查看" 按钮 */
+.btn-view {
+  padding: 5px 14px; font-size: 12px; color: #c41e3a; background: #fff;
+  border: 1px solid #c41e3a; border-radius: 4px; cursor: pointer; transition: 0.2s; margin-right: 6px;
+}
+.btn-view:hover { background: #c41e3a; color: #fff; }
+
+/* ==================== 发货弹窗 ==================== */
+.modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.45); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+.modal-box { background: #fff; border-radius: 12px; padding: 32px; max-width: 420px; width: 90%; }
+.modal-box h3 { font-size: 18px; color: #333; margin-bottom: 20px; text-align: center; }
+.field { margin-bottom: 16px; }
+.field label { display: block; font-size: 13px; color: #666; margin-bottom: 6px; }
+.modal-input { width: 100%; padding: 10px 14px; border: 1px solid #ddd; border-radius: 6px; font-size: 14px; outline: none; box-sizing: border-box; }
+.modal-input:focus { border-color: #c41e3a; }
+.modal-btns { display: flex; gap: 12px; justify-content: flex-end; margin-top: 20px; }
+.btn-cancel { padding: 10px 24px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; font-size: 14px; }
+.btn-submit { padding: 10px 24px; background: #c41e3a; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
 
 /* ==================== 页脚 ==================== */
 .page-footer {

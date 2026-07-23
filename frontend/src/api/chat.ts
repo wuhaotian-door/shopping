@@ -16,9 +16,9 @@ export function sendMessage(data: ChatSendDTO): Promise<Result<ChatMessageVO>> {
   return request.post('/chat/send', data)
 }
 
-/** 按用户名搜索用户（在user和inheritor表中查找） */
-export function searchUser(username: string): Promise<Result<{
+/** 模糊搜索用户（后端应在 user 表和 inheritor 表中 LIKE 查询，支持返回多条） */
+export function searchUser(keyword: string): Promise<Result<{
   id: number; name: string; username: string; role: string; isFriend: number
-}>> {
-  return request.get('/chat/search', { params: { username } })
+}[]>> {
+  return request.get('/chat/search', { params: { keyword } })
 }

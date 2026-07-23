@@ -52,8 +52,8 @@ export function searchUsers(keyword: string): Promise<Result<UserInfo[]>> {
 }
 
 /** 修改用户状态（管理员专用） */
-export function updateUserStatus(id: number, status: number): Promise<Result<string>> {
-  return request.put(`/employee/${id}/status`, null, { params: { status } })
+export function updateUserStatus(id: number, status: number, role: string): Promise<Result<string>> {
+  return request.put(`/employee/${id}/status`, null, { params: { status, role } })
 }
 
 /** 获取仪表盘统计数据（管理员专用） */

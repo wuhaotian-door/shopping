@@ -5,7 +5,9 @@
     <resultMap id="friendRelationResultMap" type="com.class242014group06.entity.FriendRelation">
         <id property="id" column="id"/>
         <result property="userId" column="user_id"/>
+        <result property="userRole" column="user_role"/>
         <result property="friendId" column="friend_id"/>
+        <result property="friendRole" column="friend_role"/>
         <result property="status" column="status"/>
         <result property="createdAt" column="created_at"/>
         <result property="updatedAt" column="updated_at"/>
@@ -22,6 +24,13 @@
     <select id="listPendingRequests" resultMap="friendRelationResultMap">
         SELECT * FROM friend_relation
         WHERE friend_id = #{userId} AND status = 0
+        ORDER BY created_at DESC
+    </select>
+
+    <!-- 查询我发出的好友申请 -->
+    <select id="listMyRequests" resultMap="friendRelationResultMap">
+        SELECT * FROM friend_relation
+        WHERE user_id = #{userId} AND status = 0
         ORDER BY created_at DESC
     </select>
 

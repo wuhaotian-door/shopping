@@ -5,6 +5,7 @@ import io.swagger.annotations.ApiModelProperty;
 import lombok.Data;
 
 import java.io.Serializable;
+import java.time.LocalDate;
 
 @Data
 @ApiModel(description = "非遗传承人注册时传递的数据模型（无需登录，比普通用户更详细）")
@@ -27,6 +28,9 @@ public class InheritorRegisterDTO implements Serializable {
 
     @ApiModelProperty("身份证号")
     private String idNumber;
+
+    @ApiModelProperty("出生日期（yyyy-MM-dd）")
+    private LocalDate birthDate;
 
     @ApiModelProperty("邮箱（用于接收审核结果通知）")
     private String email;
