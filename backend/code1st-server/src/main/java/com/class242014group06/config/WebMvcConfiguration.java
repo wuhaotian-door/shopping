@@ -89,7 +89,8 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                         "/admin/article-comment/public/**",
                         "/admin/project/public",
                         "/admin/slot/available",
-                        "/admin/product-review/public/**"
+                        "/admin/product-review/public/**",
+                        "/admin/upload"
                 );
     }
     /**

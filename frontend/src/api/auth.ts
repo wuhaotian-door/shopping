@@ -95,3 +95,8 @@ export function batchApprove(ids: number[]): Promise<Result<string>> {
 export function batchReject(ids: number[], reason: string): Promise<Result<string>> {
   return request.post('/auth/batch-reject', { ids, reason })
 }
+
+/** 注销当前账号（删除个人全部数据） */
+export function deleteMyAccount(): Promise<Result<string>> {
+  return request.delete('/auth/account')
+}

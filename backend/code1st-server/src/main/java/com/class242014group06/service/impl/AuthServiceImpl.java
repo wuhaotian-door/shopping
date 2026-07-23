@@ -39,6 +39,10 @@ public class AuthServiceImpl implements AuthService {
     @Autowired
     private AdminMapper adminMapper;
     @Autowired
+    private com.class242014group06.mapper.FriendRelationMapper friendRelationMapper;
+    @Autowired
+    private com.class242014group06.mapper.ChatMapper chatMapper;
+    @Autowired
     private InheritorMapper inheritorMapper;
     @Autowired
     private UserMapper userMapper;
@@ -259,5 +263,22 @@ public class AuthServiceImpl implements AuthService {
 
         codeStore.remove(username);
         log.info("用户 {} (角色={}) 密码已重置", username, role);
+    }
+
+    @Override
+    @org.springframework.transaction.annotation.Transactional
+    public void deleteAccount(Long userId, String role) {
+        log.info("注销账号：userId={}, role={}", userId, role);
+        // 1. 删除好友关系（双向）
+        friendRelationMapper.deleteByUser(userId);
+        // 2. 删除聊天相关数据
+        chatMapper.deleteByUser(userId, role);
+        // 3. 删除用户/传承人记录
+        if ("INHERITOR".equals(role)) {
+            inheritorMapper.deleteById(userId);
+        } else {
+            userMapper.deleteById(userId);
+        }
+        log.info("账号已注销：userId={}, role={}", userId, role);
     }
 }

@@ -36,4 +36,7 @@ public interface AuthService {
      * 验证码校验并重置密码
      */
     void resetPassword(ResetPasswordDTO dto);
+
+    /** 注销账号，删除用户全部数据 */
+    void deleteAccount(Long userId, String role);
 }
