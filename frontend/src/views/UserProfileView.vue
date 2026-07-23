@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import { getMyProfile, updateProfile, sendChangePasswordCode, changePassword } from '@/api/user'
 import { listMyOrders } from '@/api/order'
 import { listMyProductOrders } from '@/api/product'
+import { deleteMyAccount } from '@/api/auth'
 import type { UserProfileVO, UserProfileDTO, OrderVO, ProductOrderVO } from '@/types/api'
 import { useCartStore } from '@/stores/cart'
 import { uploadFile } from '@/api/upload'
@@ -252,6 +253,21 @@ async function resendCode() {
   if (pwCountdown.value > 0) return
   await handleSendCode()
 }
+
+const deletingAccount = ref(false)
+async function handleDeleteAccount() {
+  if (!confirm('确定要注销账号吗？此操作不可恢复，所有个人数据（好友关系、聊天记录、订单等）将被永久删除。')) return
+  if (!confirm('再次确认：注销后将无法找回任何数据。是否继续？')) return
+  deletingAccount.value = true
+  try {
+    await deleteMyAccount()
+    alert('账号已注销')
+    authStore.logout()
+    router.push('/')
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '注销失败')
+  } finally { deletingAccount.value = false }
+}
 </script>
 
 <template>
@@ -444,6 +460,20 @@ async function resendCode() {
                 返回上一步
               </button>
             </div>
+          </div>
+        </div>
+
+        <!-- ========== 注销账号 ========== -->
+        <div class="section-header" style="margin-top: 40px">
+          <h2>账号管理</h2>
+        </div>
+        <div class="profile-card">
+          <div class="delete-account-row">
+            <div>
+              <span class="delete-label">注销账号</span>
+              <span class="delete-desc">注销后所有个人数据将被永久删除，不可恢复</span>
+            </div>
+            <button class="btn-delete" @click="handleDeleteAccount">注销账号</button>
           </div>
         </div>
 
@@ -1076,4 +1106,9 @@ select.form-input {
 .history-item:hover { background: #fefafa; margin: 0 -12px; padding: 10px 12px; border-radius: 6px; }
 .hi-title { font-size: 14px; color: #333; }
 .hi-time { font-size: 12px; color: #aaa; }
+.delete-account-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.delete-label { font-size: 15px; font-weight: 600; color: #dc3545; display: block; }
+.delete-desc { font-size: 12px; color: #999; display: block; margin-top: 4px; }
+.btn-delete { padding: 10px 24px; font-size: 14px; color: #fff; background: #dc3545; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; white-space: nowrap; }
+.btn-delete:hover { background: #c82333; }
 </style>

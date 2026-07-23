@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyProfile, saveProfile } from '@/api/profile'
 import { uploadFile } from '@/api/upload'
+import { deleteMyAccount } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import AvatarCropper from '@/components/AvatarCropper.vue'
 import { sendResetCode, resetPassword } from '@/api/auth'
@@ -161,6 +162,21 @@ async function handleSendCode() {
   } finally { pwdLoading.value = false }
 }
 
+const deletingAccount = ref(false)
+async function handleDeleteAccount() {
+  if (!confirm('确定要注销账号吗？此操作不可恢复，所有个人数据（好友关系、聊天记录、订单等）将被永久删除。')) return
+  if (!confirm('再次确认：注销后将无法找回任何数据。是否继续？')) return
+  deletingAccount.value = true
+  try {
+    await deleteMyAccount()
+    alert('账号已注销')
+    authStore.logout()
+    router.push('/')
+  } catch (e: unknown) {
+    alert(e instanceof Error ? e.message : '注销失败')
+  } finally { deletingAccount.value = false }
+}
+
 async function handleChangePwd() {
   if (!pwdCode.value) { pwdMsg.value = '请输入验证码'; return }
   if (newPassword.value.length < 6) { pwdMsg.value = '新密码至少6位'; return }
@@ -307,6 +323,15 @@ async function handleChangePwd() {
       </div>
     </div>
 
+    <!-- ===== 注销账号 ===== -->
+    <div class="section-header" style="margin-top:36px"><h2>账号管理</h2></div>
+    <div class="delete-card">
+      <div class="delete-row">
+        <div><span class="delete-label">注销账号</span><span class="delete-desc">注销后所有个人数据将被永久删除，不可恢复</span></div>
+        <button class="btn-delete" @click="handleDeleteAccount" :disabled="deletingAccount">{{ deletingAccount ? '注销中...' : '注销账号' }}</button>
+      </div>
+    </div>
+
     <!-- ===== 工坊预约订单 ===== -->
     <div class="section-header" style="margin-top:36px"><h2>工坊预约</h2><button class="btn-outline" @click="router.push('/orders')">查看全部订单 →</button></div>
     <div class="order-card">
@@ -441,5 +466,12 @@ async function handleChangePwd() {
 .hi-time { font-size: 12px; color: #aaa; }
 
 @media (max-width: 992px) { .profile-detail-grid { grid-template-columns: 1fr; } }
+.delete-card { background: #fff; border-radius: 14px; padding: 20px 24px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.delete-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
+.delete-label { font-size: 15px; font-weight: 600; color: #dc3545; display: block; }
+.delete-desc { font-size: 12px; color: #999; display: block; margin-top: 4px; }
+.btn-delete { padding: 10px 24px; font-size: 14px; color: #fff; background: #dc3545; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: 0.2s; white-space: nowrap; }
+.btn-delete:hover { background: #c82333; }
+
 @media (max-width: 768px) { .profile-avatar-section { flex-direction: column; text-align: center; } }
 </style>

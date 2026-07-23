@@ -78,4 +78,8 @@ public interface ChatMapper {
             "AND p2.user_id = #{otherId} AND p2.user_role = #{otherRole}")
     int existsPrivateConversation(@Param("userId") Long userId, @Param("userRole") String userRole,
                                    @Param("otherId") Long otherId, @Param("otherRole") String otherRole);
+
+    /** 删除用户的所有聊天数据（参与者 + 消息） */
+    @Delete("DELETE p, m FROM chat_participant p LEFT JOIN chat_message m ON m.conversation_id = p.conversation_id WHERE p.user_id = #{userId} AND p.user_role = #{userRole}")
+    void deleteByUser(@Param("userId") Long userId, @Param("userRole") String userRole);
 }

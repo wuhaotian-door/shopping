@@ -2,6 +2,9 @@
 import { ref, reactive, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { selfRegister, inheritorRegister } from '@/api/auth'
+import { uploadFile } from '@/api/upload'
+import AvatarCropper from '@/components/AvatarCropper.vue'
+import DecoCard from '@/components/DecoCard.vue'
 import type { RoleType } from '@/types/api'
 
 onMounted(() => {
@@ -21,11 +24,50 @@ const form = reactive({
   idNumber: '',
   region: '',
   birthDate: '',
+  avatarUrl: '',
   role: '' as RoleType | '',
 })
 
 const errorMsg = ref('')
 const loading = ref(false)
+const uploadingAvatar = ref(false)
+const avatarPreview = ref('')
+const cropperVisible = ref(false)
+const cropperImageUrl = ref('')
+
+function handleAvatarSelect(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (!['image/jpeg','image/png','image/webp'].includes(file.type)) {
+    errorMsg.value = '仅支持 JPG/PNG/WebP 格式'; return
+  }
+  errorMsg.value = ''
+  cropperImageUrl.value = URL.createObjectURL(file)
+  cropperVisible.value = true
+  // 重置 input 以便重新选择同一文件
+  ;(input as HTMLInputElement).value = ''
+}
+
+async function onCropperCrop(blob: Blob) {
+  // 先展示本地预览（即时反馈）
+  avatarPreview.value = URL.createObjectURL(blob)
+  uploadingAvatar.value = true
+  try {
+    const res = await uploadFile(new File([blob], 'avatar.jpg', { type: 'image/jpeg' }), 'image')
+    form.avatarUrl = res.data
+    // 上传成功后替换为服务器 URL
+    URL.revokeObjectURL(avatarPreview.value)
+    avatarPreview.value = res.data
+  } catch (e: unknown) {
+    errorMsg.value = e instanceof Error ? e.message : '头像上传失败'
+    URL.revokeObjectURL(avatarPreview.value)
+    avatarPreview.value = ''
+  } finally {
+    uploadingAvatar.value = false
+    URL.revokeObjectURL(cropperImageUrl.value)
+  }
+}
 
 const fieldErrors = reactive<Record<string, string>>({
   username: '',
@@ -207,36 +249,9 @@ async function handleRegister() {
   </header>
 
   <div class="page-wrap">
-    <!-- 左侧国风灵动互动窗口 -->
+    <!-- 左侧国风装饰卡片 -->
     <div class="float-left-box">
-      <div
-          class="float-card"
-          @mousemove="onMouseMove"
-          @mouseenter="onMouseEnter"
-          @mouseleave="onMouseLeave"
-      >
-        <!-- 背景流光 -->
-        <div class="flow-light"></div>
-
-        <!-- 国风纹样层 -->
-        <div class="pattern-layer pattern-1"></div>
-        <div class="pattern-layer pattern-2"></div>
-        <div class="pattern-layer pattern-3"></div>
-
-        <!-- 浮动装饰 -->
-        <div class="float-deco deco1"></div>
-        <div class="float-deco deco2"></div>
-        <div class="float-deco deco3"></div>
-
-        <!-- 鼠标跟随粒子 -->
-        <div class="particle" v-for="i in 6" :key="i" :style="particleStyle(i)"></div>
-
-        <div class="float-text-wrap">
-          <h2>码上非遗</h2>
-          <p class="slogan">感受非遗魅力</p>
-          <p class="desc">汇聚剪纸、刺绣、陶艺、竹编传统技艺<br>连接校园与民间手工艺传承人</p>
-        </div>
-      </div>
+      <DecoCard />
     </div>
 
     <!-- 右侧注册表单 -->
@@ -285,6 +300,21 @@ async function handleRegister() {
               </div>
             </div>
             <span class="field-error">{{ fieldErrors.role }}</span>
+          </div>
+          <!-- 头像上传 -->
+          <div class="form-item">
+            <label>头像（可选）</label>
+            <div class="avatar-upload-row">
+              <div class="avatar-preview-box">
+                <img v-if="avatarPreview" :src="avatarPreview" class="avatar-preview-img" />
+                <span v-else class="avatar-preview-empty">?</span>
+              </div>
+              <label class="avatar-upload-btn" :class="{ disabled: uploadingAvatar }">
+                {{ uploadingAvatar ? '上传中...' : '选择图片' }}
+                <input type="file" accept="image/jpeg,image/png,image/webp" hidden @change="handleAvatarSelect" :disabled="uploadingAvatar" />
+              </label>
+            </div>
+            <span class="field-error" v-if="form.avatarUrl && !uploadingAvatar">✓ 头像已上传</span>
           </div>
           <!-- 用户名 | 姓名 -->
           <div class="form-item">
@@ -446,50 +476,9 @@ async function handleRegister() {
   <footer class="page-footer">
     <p>校园非遗与文创传承人平台 © 2026 码上非遗</p>
   </footer>
+  <AvatarCropper :visible="cropperVisible" :image-url="cropperImageUrl" @update:visible="cropperVisible = $event" @crop="onCropperCrop" />
 </template>
 
-<script lang="ts">
-export default {
-  methods: {
-    onMouseMove(e: MouseEvent) {
-      const card = e.currentTarget as HTMLElement
-      const rect = card.getBoundingClientRect()
-      const x = e.clientX - rect.left - rect.width / 2
-      const y = e.clientY - rect.top - rect.height / 2
-
-      card.style.transform = `
-        translateY(-6px)
-        perspective(1000px)
-        rotateY(${x * 0.008}deg)
-        rotateX(${-y * 0.008}deg)
-      `
-
-      card.style.setProperty('--mouse-x', `${e.clientX - rect.left}px`)
-      card.style.setProperty('--mouse-y', `${e.clientY - rect.top}px`)
-    },
-    onMouseEnter(e: MouseEvent) {
-      const card = e.currentTarget as HTMLElement
-      card.style.transition = 'transform 0.15s ease-out, box-shadow 0.2s ease'
-      card.style.boxShadow = '0 12px 36px rgba(196, 30, 58, 0.35)'
-    },
-    onMouseLeave(e: MouseEvent) {
-      const card = e.currentTarget as HTMLElement
-      card.style.transition = 'transform 0.3s ease, box-shadow 0.3s ease'
-      card.style.transform = 'translateY(0) perspective(1000px) rotateY(0) rotateX(0)'
-      card.style.boxShadow = '0 8px 30px rgba(196, 30, 58, 0.2)'
-    },
-    particleStyle(index: number) {
-      const size = 8 + index * 2
-      return {
-        width: `${size}px`,
-        height: `${size}px`,
-        left: `${15 + index * 15}%`,
-        animationDelay: `${index * 0.4}s`,
-      }
-    }
-  }
-}
-</script>
 
 <style scoped>
 /* ===== 复用的 LoginView 样式 ===== */
@@ -977,6 +966,30 @@ export default {
 .role-card.active .role-desc {
   color: #e8647a;
 }
+
+/* 头像上传 */
+.avatar-upload-row {
+  display: flex; align-items: center; gap: 16px;
+}
+.avatar-preview-box {
+  width: 64px; height: 64px; border-radius: 50%;
+  border: 2px dashed #e8647a;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; flex-shrink: 0; background: #fef5f7;
+}
+.avatar-preview-img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.avatar-preview-empty {
+  font-size: 28px; color: #e8647a; font-weight: 600;
+}
+.avatar-upload-btn {
+  padding: 8px 18px; font-size: 13px; color: #c41e3a;
+  background: #fff; border: 1px solid #c41e3a; border-radius: 6px;
+  cursor: pointer; transition: all 0.2s; font-weight: 600;
+}
+.avatar-upload-btn:hover { background: #fff5f7; }
+.avatar-upload-btn.disabled { opacity: 0.5; pointer-events: none; }
 
 /* ===== 响应式 ===== */
 @media (max-width: 992px) {

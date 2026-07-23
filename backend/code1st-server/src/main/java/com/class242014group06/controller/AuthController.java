@@ -281,4 +281,14 @@ public class AuthController {
                 "批量驳回" + count + "个传承人，原因：" + (dto.getReason() != null ? dto.getReason() : "未提供"));
         return Result.success("已驳回" + count + "人");
     }
+
+    @DeleteMapping("/account")
+    @ApiOperation("注销当前账号（删除个人全部数据）")
+    public Result<String> deleteAccount() {
+        Long userId = BaseContext.getCurrentId();
+        String role = BaseContext.getCurrentRole();
+        log.info("注销账号：userId={}, role={}", userId, role);
+        authService.deleteAccount(userId, role);
+        return Result.success("账号已注销");
+    }
 }

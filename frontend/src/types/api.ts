@@ -43,6 +43,7 @@ export interface RegisterRequest {
   phone?: string
   sex?: string
   email?: string
+  avatarUrl?: string
 }
 
 /** 忘记密码 — 发送验证码请求 */
@@ -66,9 +67,8 @@ export interface InheritorRegisterRequest {
   sex?: string
   email?: string
   idNumber: string
-  /** 出生日期，如：1985-03-12 */
+  avatarUrl?: string
   birthDate?: string
-  /** 所属地区，如：江苏省苏州市 */
   region: string
 }
 
