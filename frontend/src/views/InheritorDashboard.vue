@@ -42,6 +42,7 @@ function roleLabel(r: string) {
 function doSwitchAccount(index: number) {
   authStore.switchAccount(index)
   showAccountMenu.value = false
+  location.reload()
 }
 function addAccount() {
   showAccountMenu.value = false

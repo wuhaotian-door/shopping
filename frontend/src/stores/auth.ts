@@ -41,7 +41,7 @@ export const useAuthStore = defineStore('auth', () => {
     return { id: a.id, userName: a.username, name: a.name, token: a.token, role: a.role as any }
   })
 
-  const isLoggedIn = computed(() => accounts.value.length > 0 && !!activeAccount.value)
+  const isLoggedIn = computed(() => !!token.value)
 
   const isAdmin = computed(() => userInfo.value?.role === 'ADMIN')
 
@@ -88,18 +88,25 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
+  // 退出登录：保留账号信息（仅清空 token），下次可直接切回
   function logout() {
     const idx = activeIndex.value
-    if (idx >= 0 && idx < accounts.value.length) {
-      accounts.value.splice(idx, 1)
-      if (accounts.value.length === 0) {
-        activeIndex.value = 0
-      } else if (idx >= accounts.value.length) {
-        activeIndex.value = accounts.value.length - 1
-      }
+    const a = accounts.value[idx]
+    if (a) {
+      accounts.value[idx] = { ...a, token: '' }
       persist()
     }
     import('@/stores/cart').then(m => m.useCartStore().clear())
+  }
+
+  // 完全删除账号
+  function removeAccount(index: number) {
+    if (index < 0 || index >= accounts.value.length) return
+    accounts.value.splice(index, 1)
+    if (index === activeIndex.value) {
+      activeIndex.value = Math.min(index, accounts.value.length - 1)
+    }
+    persist()
   }
 
   function persist() {
@@ -111,7 +118,7 @@ export const useAuthStore = defineStore('auth', () => {
     if (accounts.value.length === 0) return
     const idx = activeIndex.value
     const a = accounts.value[idx]
-    if (a) {
+    if (a && a.token) {
       try {
         let apiAvatar = ''
         if (a.role === 'INHERITOR') {
@@ -142,5 +149,5 @@ export const useAuthStore = defineStore('auth', () => {
     persist()
   }
 
-  return { accounts, activeIndex, activeAccount, avatarUrl, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, initAuth, updateAvatar }
+  return { accounts, activeIndex, activeAccount, avatarUrl, token, userInfo, isLoggedIn, isAdmin, isInheritor, uid, login, switchAccount, logout, removeAccount, initAuth, updateAvatar }
 })
