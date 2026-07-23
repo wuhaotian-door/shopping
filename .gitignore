@@ -66,9 +66,26 @@ $RECYCLE.BIN/
 *.lnk
 
 # =====================
+# Claude Code
+# =====================
+CLAUDE.md
+skills-lock.json
+.claude/
+
+# =====================
+# Python / AI Server
+# =====================
+.env
+__pycache__/
+*.pyc
+.venv/
+chroma_db/
+
+# =====================
 # Logs
 # =====================
 logs/
 *.log
 *.CLAUDE.md
 .workbuddy
+ai-server/.cache.db
