@@ -271,8 +271,8 @@ function splitCrafts(craftTypes: string): string[] {
   position: relative;
 }
 .master-avatar-big {
-  width: 100px;
-  height: 100px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
   background: linear-gradient(135deg, #e8647a, #c41e3a);
   border: 4px solid #fff;
@@ -280,6 +280,12 @@ function splitCrafts(craftTypes: string): string[] {
   align-items: center;
   justify-content: center;
 }
+.master-avatar-img {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .master-avatar-initial {
   font-size: 42px;
   color: #fff;

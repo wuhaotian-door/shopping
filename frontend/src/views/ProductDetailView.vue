@@ -8,7 +8,6 @@ import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
 import CommentItem from '@/components/CommentItem.vue'
 import Product3dViewer from '@/components/Product3dViewer.vue'
-import Product3dViewer from '@/components/Product3dViewer.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -193,9 +192,7 @@ async function submitBuy() {
 // ===== 轻提示 =====
 const cartToast = ref('')
 const show3d = ref(false)
-const show3d = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
-const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 function showToast() {
   if (toastTimer) clearTimeout(toastTimer)
