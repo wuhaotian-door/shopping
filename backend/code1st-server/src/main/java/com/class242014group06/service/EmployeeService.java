@@ -79,6 +79,11 @@ public interface EmployeeService {
     void batchUpdateStatus(java.util.List<Long> ids, Integer status, String role);
 
     /**
+     * 封禁用户（设定状态+封禁截止时间）
+     */
+    void banUser(Long id, Integer status, String role, Integer banDays);
+
+    /**
      * 获取仪表盘统计数据
      * @return Map包含各维度统计数量
      */

@@ -22,6 +22,7 @@ CREATE TABLE `user` (
     `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `status`      INT          NOT NULL DEFAULT 1 COMMENT '状态 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -49,6 +50,7 @@ CREATE TABLE `inheritor` (
     `email`       VARCHAR(128) DEFAULT NULL COMMENT '邮箱（用于找回密码和审核通知）',
     `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `status`      INT          NOT NULL DEFAULT 2 COMMENT '状态 2:待审核 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -72,6 +74,7 @@ CREATE TABLE `admin` (
     `sex`         VARCHAR(2)   DEFAULT NULL COMMENT '性别',
     `avatar_url`  VARCHAR(500) DEFAULT NULL COMMENT '头像URL',
     `status`      INT          NOT NULL DEFAULT 1 COMMENT '状态 1:启用 0:禁用',
+    `ban_until`   DATETIME     DEFAULT NULL COMMENT '封号截止时间',
     `create_time` DATETIME     DEFAULT NULL COMMENT '创建时间',
     `update_time` DATETIME     DEFAULT NULL COMMENT '修改时间',
     `create_user` BIGINT       DEFAULT NULL COMMENT '创建人',
@@ -623,6 +626,30 @@ CREATE TABLE admin_operation_log (
     INDEX idx_type (operation_type),
     INDEX idx_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='管理员操作日志表';
+
+-- =====================================================
+-- 用户举报表 — 聊天举报记录与处理
+-- =====================================================
+DROP TABLE IF EXISTS `user_report`;
+
+CREATE TABLE `user_report` (
+    `id`                 BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `reporter_id`        BIGINT       NOT NULL COMMENT '举报人ID',
+    `reporter_role`      VARCHAR(20)  NOT NULL COMMENT '举报人角色',
+    `reported_user_id`   BIGINT       NOT NULL COMMENT '被举报人ID',
+    `reported_user_role` VARCHAR(20)  NOT NULL COMMENT '被举报人角色',
+    `reason`             VARCHAR(500) DEFAULT '' COMMENT '举报原因',
+    `screenshot_url`     VARCHAR(500) DEFAULT NULL COMMENT '截图URL',
+    `status`             TINYINT      DEFAULT 0 COMMENT '处理状态 0-待处理 1-已处理',
+    `handle_result`      VARCHAR(500) DEFAULT NULL COMMENT '处理结果',
+    `ban_days`           INT          DEFAULT 0 COMMENT '封号天数（0表示仅驳回不封号）',
+    `handle_time`        DATETIME     DEFAULT NULL COMMENT '处理时间',
+    `create_time`        DATETIME     DEFAULT CURRENT_TIMESTAMP COMMENT '举报时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_report_reporter` (`reporter_id`),
+    INDEX `idx_report_reported` (`reported_user_id`),
+    INDEX `idx_report_status` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户举报表';
 
 -- =====================================================
 -- RAG AI 对话会话表 — 存储用户与AI助手的对话记录
