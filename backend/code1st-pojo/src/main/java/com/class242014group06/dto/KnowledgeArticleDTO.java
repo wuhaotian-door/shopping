@@ -25,6 +25,12 @@ public class KnowledgeArticleDTO implements Serializable {
     @ApiModelProperty("封面图")
     private String coverUrl;
 
+    @ApiModelProperty("视频URL")
+    private String videoUrl;
+
+    @ApiModelProperty("多张图片URL（逗号分隔）")
+    private String images;
+
     @ApiModelProperty("状态：0-草稿 1-已发布")
     private Integer status;
 }

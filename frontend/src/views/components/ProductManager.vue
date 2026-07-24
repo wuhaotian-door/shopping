@@ -21,6 +21,7 @@ const form = ref({
   stock: 0,
   imageUrl: '',
   modelUrl: '',
+  videoUrl: '',
 })
 
 const submitMsg = ref('')
@@ -56,6 +57,20 @@ async function handleModelUpload(options: { file: File }) {
   finally { uploadingModel.value = false }
 }
 
+const uploadingVideo = ref(false)
+function beforeVideoUpload(file: File) {
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  if (!ext || !['mp4','webm','mov'].includes(ext)) { ElMessage.error('仅支持 mp4/webm/mov 格式的视频'); return false }
+  if (file.size > 50 * 1024 * 1024) { ElMessage.error('视频大小不能超过 50MB'); return false }
+  return true
+}
+async function handleVideoUpload(options: { file: File }) {
+  uploadingVideo.value = true
+  try { const res = await uploadFile(options.file, 'video'); form.value.videoUrl = res.data; ElMessage.success('视频上传成功') }
+  catch (e: unknown) { ElMessage.error(e instanceof Error ? e.message : '视频上传失败') }
+  finally { uploadingVideo.value = false }
+}
+
 /** 图片加载失败时回退到占位符 */
 const failedImages = ref(new Set<number>())
 
@@ -75,7 +90,7 @@ async function loadProducts() {
 
 function openCreate() {
   editingId.value = null
-  form.value = { name: '', category: '', description: '', price: 0, stock: 0, imageUrl: '', modelUrl: '' }
+  form.value = { name: '', category: '', description: '', price: 0, stock: 0, imageUrl: '', modelUrl: '', videoUrl: '' }
   showEditor.value = true
   submitMsg.value = ''
 }
@@ -90,6 +105,7 @@ function openEdit(product: ProductVO) {
     stock: product.stock,
     imageUrl: product.imageUrl || '',
     modelUrl: product.modelUrl || '',
+    videoUrl: product.videoUrl || '',
   }
   showEditor.value = true
   submitMsg.value = ''
@@ -176,7 +192,27 @@ async function handleToggle(product: ProductVO) {
               </el-upload>
               <input v-model="form.modelUrl" type="text" class="form-input" placeholder="留空则使用默认茶壶模型" />
             </div>
-            <div v-if="form.modelUrl" class="preview-box preview-model-box"><model-viewer :src="form.modelUrl" auto-rotate camera-controls shadow-intensity="0.3" exposure="1" style="width:100%;height:200px;"></model-viewer><span class="preview-hint">3D 模型预览</span></div>
+            <!-- 模型预览：始终显示（form有值用form，无值用默认） -->
+            <model-viewer
+              :src="form.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb'"
+              auto-rotate camera-controls shadow-intensity="0.3" exposure="1"
+              style="width:100%;height:200px;border-radius:8px;margin-top:6px;"
+            ></model-viewer>
+            <span class="preview-hint">{{ form.modelUrl ? '当前模型预览' : '默认模型预览' }}</span>
+          </div>
+          <!-- 视频上传 -->
+          <div class="form-group">
+            <label>宣传视频（可选，mp4/webm/mov格式）</label>
+            <div class="upload-row">
+              <el-upload :http-request="handleVideoUpload" :before-upload="beforeVideoUpload" :accept="VIDEO_ACCEPT" :show-file-list="false" :disabled="uploadingVideo">
+                <el-button type="primary" :loading="uploadingVideo" size="small">{{ uploadingVideo ? '上传中...' : '上传视频' }}</el-button>
+              </el-upload>
+              <input v-model="form.videoUrl" type="text" class="form-input" placeholder="或手动输入视频链接" />
+            </div>
+            <div v-if="form.videoUrl" class="preview-box">
+              <video :src="form.videoUrl" controls playsinline preload="metadata" class="preview-video"></video>
+              <span class="preview-hint">视频预览</span>
+            </div>
           </div>
           <div class="form-group">
             <label>商品描述</label>
@@ -641,4 +677,5 @@ async function handleToggle(product: ProductVO) {
   .form-row { flex-direction: column; gap: 0; }
   .product-img { height: 160px; }
 }
+.preview-video { width: 100%; max-height: 300px; margin-top: 6px; border-radius: 8px; background: #000; }
 </style>

@@ -32,11 +32,17 @@ public class FileUploadController {
     /** 允许的模型格式 */
     private static final Set<String> MODEL_EXTENSIONS = Set.of("glb", "gltf");
 
+    /** 允许的视频格式 */
+    private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "webm", "mov");
+
     /** 图片最大大小：5MB */
     private static final long IMAGE_MAX_SIZE = 5 * 1024 * 1024;
 
     /** 模型最大大小：20MB */
     private static final long MODEL_MAX_SIZE = 20 * 1024 * 1024;
+
+    /** 视频最大大小：50MB */
+    private static final long VIDEO_MAX_SIZE = 50 * 1024 * 1024;
 
     /**
      * 通用文件上传接口
@@ -72,6 +78,10 @@ public class FileUploadController {
             subDir = "models";
             allowedExtensions = MODEL_EXTENSIONS;
             maxSize = MODEL_MAX_SIZE;
+        } else if ("video".equals(type)) {
+            subDir = "videos";
+            allowedExtensions = VIDEO_EXTENSIONS;
+            maxSize = VIDEO_MAX_SIZE;
         } else {
             // 默认走图片逻辑
             subDir = "images";

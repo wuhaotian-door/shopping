@@ -192,6 +192,7 @@ async function submitBuy() {
 // ===== 轻提示 =====
 const cartToast = ref('')
 const show3d = ref(false)
+const showVideo = ref(false)
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 function showToast() {
@@ -220,32 +221,24 @@ function goTo(path: string) {
         <!-- 商品信息区 -->
         <div class="product-info-section">
           <div class="product-image-wrap">
-            <!-- 3D / 图片切换 -->
-            <Product3dViewer
-              v-if="show3d"
-              :model-url="modelUrl"
-              :poster-image="product.imageUrl || ''"
-              :product-name="product.name"
-              :auto-rotate="true"
-              credit="CC BY 4.0 · 中国潼关窑茶壶"
-            />
+            <!-- 3D 视图 -->
+            <Product3dViewer v-if="show3d && modelUrl" :model-url="modelUrl" :poster-image="product.imageUrl || ''" :product-name="product.name" :auto-rotate="true" credit="CC BY 4.0 · 中国潼关窑茶壶" />
+            <!-- 视频播放 -->
+            <template v-else-if="showVideo && product.videoUrl">
+              <video :src="product.videoUrl" controls playsinline class="product-video"></video>
+            </template>
+            <!-- 默认图片 -->
             <template v-else>
-              <img
-                v-if="product.imageUrl"
-                :src="product.imageUrl"
-                :alt="product.name"
-                class="product-image"
-              />
+              <img v-if="product.imageUrl" :src="product.imageUrl" :alt="product.name" class="product-image" />
               <div v-else class="img-placeholder">{{ product.category }}</div>
             </template>
-            <button
-              v-if="modelUrl"
-              class="btn-3d-toggle"
-              @click="show3d = !show3d"
-            >
-              <span v-if="!show3d">&#9654; 查看3D视图</span>
-              <span v-else>&#10005; 返回图片</span>
-            </button>
+            <!-- 悬浮按钮 -->
+            <div class="float-btns">
+              <button v-if="modelUrl && !show3d" class="float-btn" @click="show3d = true; showVideo = false">🔍 3D</button>
+              <button v-if="show3d" class="float-btn" @click="show3d = false">✕ 返回</button>
+              <button v-if="product.videoUrl && !showVideo" class="float-btn" @click="showVideo = true; show3d = false">▶ 视频</button>
+              <button v-if="showVideo" class="float-btn" @click="showVideo = false">✕ 返回</button>
+            </div>
           </div>
           <div class="product-info-right">
             <span class="product-category-tag">{{ product.category }}</span>
@@ -866,4 +859,15 @@ function goTo(path: string) {
   .side-label { font-size: 11px; }
   .modal-box { padding: 24px; }
 }
+.media-carousel { width: 100%; min-height: 300px; position: relative; }
+.carousel-slide { width: 100%; animation: carouselFade 0.35s ease-out; }
+@keyframes carouselFade { 0%{opacity:0} 100%{opacity:1} }
+.product-video { width: 100%; max-height: 420px; object-fit: contain; border-radius: 8px; background: #000; }
+.carousel-dots { display: flex; gap: 8px; margin-top: 10px; justify-content: center; }
+.carousel-dot { width: 32px; height: 24px; border-radius: 4px; background: #f0f0f0; color: #999; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; transition: all 0.2s; border: 1px solid #e0e0e0; }
+.carousel-dot:hover { border-color: #c41e3a; color: #c41e3a; }
+.carousel-dot.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
+.float-btns { position: absolute; top: 10px; right: 10px; z-index: 20; display: flex; gap: 6px; }
+.float-btn { padding: 6px 12px; font-size: 12px; color: #fff; background: rgba(196,30,58,0.85); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); transition: all 0.2s; }
+.float-btn:hover { background: #c41e3a; box-shadow: 0 2px 8px rgba(196,30,58,0.35); }
 </style>

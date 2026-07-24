@@ -5,6 +5,7 @@ import { useAuthStore } from '@/stores/auth'
 import AppHeader from '@/components/AppHeader.vue'
 import SplashScreen from '@/components/SplashScreen.vue'
 import HeritageBg from '@/components/HeritageBg.vue'
+import AiFab from '@/components/AiFab.vue'
 import { useHistory } from '@/composables/useHistory'
 import { useUnread } from '@/composables/useUnread'
 
@@ -76,17 +77,25 @@ function startRipple() {
   <Transition name="page-enter">
     <div v-if="showContent" class="app-main">
       <HeritageBg />
+      <AiFab />
       <AppHeader v-if="showHeader" />
       <div v-if="renderError" style="padding:40px;color:red;font-family:monospace;white-space:pre-wrap;background:#fff;min-height:100vh;">
         <h2>页面渲染错误</h2>
         {{ renderError }}
       </div>
-      <router-view v-else />
+      <div v-else class="page-view" :key="route.fullPath">
+        <router-view />
+      </div>
     </div>
   </Transition>
 </template>
 
 <style>
+.page-view { animation: pageIn 0.3s cubic-bezier(0.22,0.61,0.36,1); }
+@keyframes pageIn {
+  0% { opacity: 0; transform: translateY(12px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
 /* ===== 朱砂水波过渡覆盖层 ===== */
 .ripple-overlay {
   position: fixed; inset: 0; z-index: 9998;

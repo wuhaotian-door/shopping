@@ -38,6 +38,7 @@ public class Product implements Serializable {
     private String imageUrl;
 
     /** 3D模型URL（glb/gltf格式），可选 */
+    private String videoUrl;
     private String modelUrl;
 
     /** 鍟嗗搧鍒嗙被 */

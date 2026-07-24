@@ -17,9 +17,9 @@ public interface ProductMapper {
      * 新增商品
      */
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into product (name, description, price, stock, image_url, model_url, category, inheritor_id, inheritor_name, " +
+    @Insert("insert into product (name, description, price, stock, image_url, model_url, video_url, category, inheritor_id, inheritor_name, " +
             "status, create_time, update_time, create_user, update_user) " +
-            "values (#{name}, #{description}, #{price}, #{stock}, #{imageUrl}, #{modelUrl}, #{category}, #{inheritorId}, #{inheritorName}, " +
+            "values (#{name}, #{description}, #{price}, #{stock}, #{imageUrl}, #{modelUrl}, #{videoUrl}, #{category}, #{inheritorId}, #{inheritorName}, " +
             "#{status}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})")
     void insert(Product product);
 

@@ -57,18 +57,103 @@ def _get_embeddings() -> HuggingFaceEmbeddings:
       - 384 维向量，支持中文
       - 本地 CPU 推理，首次加载约 15 秒（下载 ~400MB）
       - 归一化向量（normalize_embeddings=True）提高余弦相似度精度
+
+    模型加载策略:
+      ① 本地缓存 MODEL_CACHE_DIR → 直接加载（0 网络开销）
+      ② huggingface_hub 下载（尊重 HF_ENDPOINT 环境变量）
+      ③ 直接 HTTP 分片下载（requests + HF_MIRROR，流式写盘）
+      ④ 回退到 HuggingFace 原始 ID（让 sentence-transformers 处理）
     """
     global _embeddings
     if _embeddings is None:
-        logger.info("加载 Embedding 模型: paraphrase-multilingual-MiniLM-L12-v2")
+        model_path = _resolve_model_path()
+        logger.info(f"加载 Embedding 模型: {model_path}")
         t0 = time.time()
         _embeddings = HuggingFaceEmbeddings(
-            model_name="paraphrase-multilingual-MiniLM-L12-v2",
+            model_name=str(model_path),
             model_kwargs={"device": "cpu"},
             encode_kwargs={"normalize_embeddings": True},
         )
         logger.info(f"Embedding 模型加载完成 | {time.time() - t0:.1f}s")
     return _embeddings
+
+
+def _resolve_model_path():
+    """
+    解析模型路径：本地缓存 → 镜像下载 → HuggingFace 直连
+
+    策略:
+      ① 本地缓存 MODEL_CACHE_DIR → 直接加载（0 网络开销）
+      ② huggingface_hub 下载（尊重 HF_ENDPOINT/HF_MIRROR 环境变量）
+      ③ 直接 HTTP 下载（requests，绕过 hf_hub 的重定向问题）
+      ④ 回退到 HuggingFace 原始 ID（让 sentence-transformers 处理）
+    """
+    import requests
+
+    hf_model_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    cache_dir = os.environ.get(
+        "MODEL_CACHE_DIR",
+        os.path.join(BASE, "models", "paraphrase-multilingual-MiniLM-L12-v2"),
+    )
+
+    # ① 本地缓存已存在，直接使用
+    if os.path.isfile(os.path.join(cache_dir, "config.json")):
+        logger.info(f"使用本地缓存: {cache_dir}")
+        return cache_dir
+
+    # ② 通过 huggingface_hub 下载（优先使用 HF_ENDPOINT 镜像）
+    try:
+        from huggingface_hub import snapshot_download
+        logger.info(f"下载模型到 {cache_dir}（首次约 400MB）...")
+        snapshot_download(
+            hf_model_id,
+            local_dir=cache_dir,
+            local_dir_use_symlinks=False,
+            resume_download=True,
+        )
+        if os.path.isfile(os.path.join(cache_dir, "config.json")):
+            logger.info("模型下载完成")
+            return cache_dir
+    except Exception as e:
+        logger.warning(f"huggingface_hub 下载失败: {e}")
+
+    # ③ 直接 HTTP 下载（流式，绕过 hf_hub 的重定向问题）
+    mirror = os.environ.get("HF_MIRROR", "https://hf-mirror.com")
+    files = [
+        "config.json", "tokenizer_config.json", "tokenizer.json",
+        "special_tokens_map.json", "sentence_bert_config.json",
+        "modules.json", "vocab.txt", "1_Pooling/config.json",
+        "model.safetensors",  # ~400MB，流式写盘
+    ]
+    try:
+        logger.info(f"尝试直接 HTTP 下载 [{mirror}]...")
+        os.makedirs(cache_dir, exist_ok=True)
+        session = requests.Session()
+        for fname in files:
+            fdir = os.path.join(cache_dir, os.path.dirname(fname))
+            os.makedirs(fdir, exist_ok=True)
+            fpath = os.path.join(cache_dir, fname)
+            if os.path.isfile(fpath):
+                continue
+            url = f"{mirror}/{hf_model_id}/resolve/main/{fname}"
+            resp = session.get(url, timeout=120, allow_redirects=True, stream=True)
+            if resp.status_code == 200:
+                with open(fpath, "wb") as fout:
+                    for chunk in resp.iter_content(chunk_size=8192):
+                        fout.write(chunk)
+                size_mb = os.path.getsize(fpath) / (1024 * 1024)
+                logger.info(f"  ✓ {fname} ({size_mb:.1f}MB)")
+            else:
+                logger.warning(f"  ✗ {fname} → HTTP {resp.status_code}")
+        if os.path.isfile(os.path.join(cache_dir, "config.json")):
+            logger.info("HTTP 下载完成")
+            return cache_dir
+    except Exception as e:
+        logger.warning(f"HTTP 下载失败: {e}")
+
+    # ④ 回退到 HuggingFace 原始 ID
+    logger.warning("所有自动下载方式均失败，回退到 HuggingFace 直连")
+    return hf_model_id
 
 
 # ============================================================
