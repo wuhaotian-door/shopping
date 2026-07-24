@@ -116,7 +116,7 @@ const router = createRouter({
       path: '/stats',
       name: 'Stats',
       component: () => import('@/views/StatsView.vue'),
-      meta: { requiresAuth: true },
+      meta: { requiresAuth: false },
     },
     {
       path: '/rag',

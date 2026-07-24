@@ -70,6 +70,12 @@ export function aiSessions() {
   return fetch(`${AI}/sessions`).then(r => r.json())
 }
 
+// AI 全局搜索（暂未实现）
+export interface SearchResult { results: any[]; total: number }
+export async function aiSearch(query: string, type?: string): Promise<{ results: any[]; total: number }> {
+  return request.get('/ai/search', { params: { query, type } })
+}
+
 export function aiSessionDelete(tid: string) {
   return fetch(`${AI}/sessions/${tid}`, { method: 'DELETE' })
 }
