@@ -30,6 +30,10 @@ from langchain_core.callbacks import BaseCallbackHandler
 from langchain_core.outputs import LLMResult
 from langchain_openai import ChatOpenAI
 
+from logger_config import get_logger
+
+logger = get_logger(__name__)
+
 # ============================================================
 # ① LLM 缓存 — SQLite 持久化，重启不丢失
 # ============================================================
@@ -55,7 +59,7 @@ def setup_cache(db_path: str = ".cache.db") -> None:
     import os as _os
     cache_path = _os.path.join(_os.path.dirname(__file__), db_path)
     set_llm_cache(SQLiteCache(database_path=cache_path))
-    print(f"[Production] LLM 缓存已启用: {cache_path}")
+    logger.info("LLM 缓存已启用: %s", cache_path)
 
 
 def get_cache_stats() -> dict:
@@ -268,4 +272,4 @@ def setup(cache: bool = True) -> None:
     if cache:
         setup_cache()
 
-    print("[Production] 生产级功能初始化完成")
+    logger.info("生产级功能初始化完成")

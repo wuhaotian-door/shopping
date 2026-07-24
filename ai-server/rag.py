@@ -16,6 +16,7 @@ Level 2 RAG — 检索增强生成
 """
 
 import os
+import threading
 from typing import Iterator, List
 
 from dotenv import load_dotenv
@@ -28,7 +29,10 @@ from langchain_core.runnables import RunnablePassthrough
 from langchain_openai import ChatOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from tenacity import retry, stop_after_attempt, wait_exponential
-import threading
+
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -64,7 +68,7 @@ embeddings = HuggingFaceEmbeddings(
 # ============================================================
 def build_knowledge_base():
     """(重新)构建知识库 — 加载 knowledge/ 下所有 md 文件"""
-    print("[RAG] 加载文档...")
+    logger.info("开始构建知识库...")
     loader = DirectoryLoader(
         KNOWLEDGE_DIR,
         glob="*.md",
@@ -72,7 +76,7 @@ def build_knowledge_base():
         loader_kwargs={"encoding": "utf-8"},
     )
     docs = loader.load()
-    print(f"[RAG] 加载了 {len(docs)} 篇文档")
+    logger.info("加载了 %d 篇文档", len(docs))
 
     # Day 2 关键点: RecursiveCharacterTextSplitter
     # chunk_size=500: 每个片段 500 字
@@ -83,16 +87,16 @@ def build_knowledge_base():
         separators=["\n\n", "\n", "。", "，", " ", ""],  # 中文友好的分割优先级
     )
     chunks = splitter.split_documents(docs)
-    print(f"[RAG] 切分为 {len(chunks)} 个片段")
+    logger.info("切分为 %d 个片段", len(chunks))
 
     # 向量化 + 存入 Chroma
-    print("[RAG] 向量化中（首次需要下载模型，约400MB）...")
+    logger.info("向量化中（首次需要下载模型，约400MB）...")
     vector_store = Chroma.from_documents(
         documents=chunks,
         embedding=embeddings,
         persist_directory=CHROMA_DIR,
     )
-    print(f"[RAG] 知识库构建完成，数据存于 {CHROMA_DIR}")
+    logger.info("知识库构建完成，数据存于 %s", CHROMA_DIR)
     return vector_store
 
 

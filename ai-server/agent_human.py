@@ -29,6 +29,9 @@ from langgraph.types import Command, interrupt
 from typing_extensions import TypedDict
 
 from tools import ALL_TOOLS, ALL_TOOLS_BY_NAME, APPROVAL_REQUIRED
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -78,10 +81,10 @@ def tool_node(state: AgentState) -> Dict[str, Any]:
     last_msg = state["messages"][-1]
 
     if not (hasattr(last_msg, "tool_calls") and last_msg.tool_calls):
-        print("[DEBUG tool_node] 没有 tool_calls，跳过")
+        logger.debug("tool_node: 没有 tool_calls，跳过")
         return {"messages": []}
 
-    print(f"[DEBUG tool_node] tool_calls: {[tc['name'] for tc in last_msg.tool_calls]}")
+    logger.debug("tool_node: tool_calls=%s", [tc['name'] for tc in last_msg.tool_calls])
 
     tool_messages = []
 
@@ -90,16 +93,16 @@ def tool_node(state: AgentState) -> Dict[str, Any]:
         # ④ interrupt() — 需要审批的工具在此暂停
         # ========================================================
         if tc["name"] in APPROVAL_REQUIRED:
-            print(f"[DEBUG tool_node] {tc['name']} 需要审批，调用 interrupt()...")
+            logger.info("tool_node: %s 需要审批，调用 interrupt()...", tc['name'])
             approval = interrupt({
                 "message": f"Agent 想要执行「{tc['name']}」",
                 "tool_name": tc["name"],
                 "tool_args": tc["args"],
             })
-            print(f"[DEBUG tool_node] interrupt 返回: {approval}")
+            logger.debug("tool_node: interrupt 返回: %s", approval)
 
             if not approval or not approval.get("approved"):
-                print(f"[DEBUG tool_node] 审批未通过，跳过 {tc['name']}")
+                logger.info("tool_node: 审批未通过，跳过 %s", tc['name'])
                 tool_messages.append(ToolMessage(
                     content=f"用户拒绝了「{tc['name']}」操作。",
                     tool_call_id=tc["id"],
@@ -107,20 +110,20 @@ def tool_node(state: AgentState) -> Dict[str, Any]:
                 continue
 
         # 审批通过（或无需审批），执行工具
-        print(f"[DEBUG tool_node] 执行工具: {tc['name']}")
+        logger.debug("tool_node: 执行工具 %s", tc['name'])
         tool_func = ALL_TOOLS_BY_NAME.get(tc["name"])
         if tool_func:
             try:
                 result = tool_func.invoke(tc["args"])
-                print(f"[DEBUG tool_node] 工具结果: {result[:100]}")
+                logger.debug("tool_node: 工具结果: %s", str(result)[:100])
             except Exception as e:
                 result = f"工具执行失败: {e}"
-                print(f"[DEBUG tool_node] 工具异常: {e}")
+                logger.error("tool_node: 工具异常: %s", e, exc_info=True)
             tool_messages.append(ToolMessage(
                 content=str(result), tool_call_id=tc["id"]
             ))
         else:
-            print(f"[DEBUG tool_node] 未知工具: {tc['name']}")
+            logger.warning("tool_node: 未知工具 %s", tc['name'])
             tool_messages.append(ToolMessage(
                 content=f"未知工具: {tc['name']}", tool_call_id=tc["id"]
             ))
@@ -162,16 +165,17 @@ def human_agent_start(question: str, thread_id: str = "default") -> dict:
     """
     config = {"configurable": {"thread_id": thread_id}}
 
-    print("[DEBUG start] 开始 invoke...")
+    logger.info("human_agent_start: thread_id=%s, question=%.60s...", thread_id, question)
     agent_with_interrupt.invoke(
         {"messages": [HumanMessage(content=question)]},
         config=config,
     )
-    print("[DEBUG start] invoke 返回")
+    logger.debug("human_agent_start: invoke 返回")
 
     # 检查是否被 interrupt() 暂停
     state = agent_with_interrupt.get_state(config)
-    print(f"[DEBUG start] state.interrupts = {state.interrupts if state else None}")
+    logger.debug("human_agent_start: state.interrupts = %s",
+                 state.interrupts if state else None)
 
     if state and state.interrupts:
         interrupts_data = []
@@ -182,7 +186,7 @@ def human_agent_start(question: str, thread_id: str = "default") -> dict:
                 interrupts_data.append(iv.get('value', iv))
             else:
                 interrupts_data.append(iv)
-        print("[DEBUG start] 返回 interrupted")
+        logger.info("human_agent_start: 返回 interrupted，%d 个中断", len(interrupts_data))
         return {
             "status": "interrupted",
             "thread_id": thread_id,
@@ -190,7 +194,7 @@ def human_agent_start(question: str, thread_id: str = "default") -> dict:
         }
 
     # 没触发 interrupt()，正常完成，从 state 提取最终答案
-    print("[DEBUG start] 无 interrupt，提取答案")
+    logger.info("human_agent_start: 无 interrupt，正常完成")
     answer = ""
     tool_calls_log = []
     messages = state.values.get("messages", []) if state and state.values else []

@@ -3,6 +3,7 @@
 
 启动方式:
   cd ai-server
+  conda activate ai-server
   uvicorn main:app --reload --port 8000
 
 API 端点:
@@ -27,13 +28,16 @@ API 端点:
   GET  /ai/cache/stats      — 缓存命中统计（Level 4）
 """
 
+import time
+import uuid
 from typing import Any, Dict, List
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
+from logger_config import setup_logging, get_logger, set_request_id
 from chain import ask, ask_batch, ask_enhanced, ask_stream
 from rag import build_knowledge_base, rag_ask, rag_ask_stream
 from tools import agent_chat
@@ -43,6 +47,10 @@ from agent_subgraph import subgraph_agent_start, subgraph_agent_resume, subgraph
 from agent_multi import multi_agent_start, multi_agent_resume, multi_agent_get_state
 from agent_advanced import advanced_agent_ask
 from production import setup_cache, create_rate_limit_middleware, get_usage, get_cache_stats
+
+# ---- 日志初始化（最先执行） ----
+setup_logging()
+logger = get_logger(__name__)
 
 app = FastAPI(title="码上非遗 AI 服务")
 
@@ -54,6 +62,35 @@ setup_cache()
 # ② 添加频率限制中间件
 from starlette.middleware.base import BaseHTTPMiddleware
 app.add_middleware(BaseHTTPMiddleware, dispatch=create_rate_limit_middleware())
+
+# ---- 请求追踪中间件（记录每个请求的进入/离开和耗时） ----
+
+@app.middleware("http")
+async def request_logging_middleware(request: Request, call_next):
+    """为每个 HTTP 请求生成 request_id，记录进入、离开和耗时"""
+    rid = uuid.uuid4().hex[:8]
+    set_request_id(rid)
+    start = time.time()
+
+    logger.info(
+        "--> %s %s from %s",
+        request.method,
+        request.url.path,
+        request.client.host if request.client else "unknown",
+    )
+
+    response = await call_next(request)
+
+    elapsed_ms = round((time.time() - start) * 1000, 1)
+    logger.info(
+        "<-- %s %s → %d (%sms)",
+        request.method,
+        request.url.path,
+        response.status_code,
+        elapsed_ms,
+    )
+
+    return response
 
 # 托管静态文件（前端聊天页面）
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -409,3 +446,12 @@ async def ai_agent_advanced(req: ThreadRequest):
     示例: "对比分析紫砂壶、景泰蓝和蜀绣的艺术特点"
     """
     return advanced_agent_ask(req.question, req.thread_id)
+
+
+# ============================================================
+# 入口 — 支持 python main.py 直接启动
+# ============================================================
+if __name__ == "__main__":
+    import uvicorn
+    logger.info("启动 ai-server (uvicorn) ...")
+    uvicorn.run(app, host="0.0.0.0", port=8000)

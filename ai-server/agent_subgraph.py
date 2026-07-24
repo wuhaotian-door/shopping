@@ -35,6 +35,9 @@ from langgraph.types import Command, interrupt
 from typing_extensions import TypedDict
 
 from tools import ALL_TOOLS, ALL_TOOLS_BY_NAME, APPROVAL_REQUIRED
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -80,12 +83,12 @@ def check_approval_node(state: AgentState) -> Dict[str, Any]:
     last_msg = state["messages"][-1]
 
     if not (hasattr(last_msg, "tool_calls") and last_msg.tool_calls):
-        print("[子图 check] 没有 tool_calls")
+        logger.debug("子图 check: 没有 tool_calls")
         return {"messages": []}
 
     names = [tc["name"] for tc in last_msg.tool_calls]
     dangerous = [n for n in names if n in APPROVAL_REQUIRED]
-    print(f"[子图 check] tool_calls: {names}, 需审批: {dangerous if dangerous else '无'}")
+    logger.debug("子图 check: tool_calls=%s, 需审批=%s", names, dangerous if dangerous else "无")
     return {}  # state 不变，信息已存在于 messages 中
 
 
@@ -99,16 +102,16 @@ def request_approval_node(state: AgentState) -> Dict[str, Any]:
 
     for tc in last_msg.tool_calls:
         if tc["name"] in APPROVAL_REQUIRED:
-            print(f"[子图 approve] {tc['name']} 需要审批，调用 interrupt()...")
+            logger.info("子图 approve: %s 需要审批，调用 interrupt()...", tc['name'])
             approval = interrupt({
                 "message": f"Agent 想要执行「{tc['name']}」",
                 "tool_name": tc["name"],
                 "tool_args": tc["args"],
             })
-            print(f"[子图 approve] interrupt 返回: {approval}")
+            logger.debug("子图 approve: interrupt 返回: %s", approval)
 
             if not approval or not approval.get("approved"):
-                print(f"[子图 approve] 审批未通过，跳过 {tc['name']}")
+                logger.info("子图 approve: 审批未通过，跳过 %s", tc['name'])
                 # 返回拒绝消息 — 注意这里直接返回 messages
                 return {"messages": [ToolMessage(
                     content=f"用户拒绝了「{tc['name']}」操作。",
@@ -141,15 +144,15 @@ def execute_tools_node(state: AgentState) -> Dict[str, Any]:
             continue
 
         try:
-            print(f"[子图 execute] 执行: {tool_name}({tool_args})")
+            logger.debug("子图 execute: 执行 %s(%s)", tool_name, tool_args)
             result = tool_func.invoke(tool_args)
-            print(f"[子图 execute] 结果: {str(result)[:100]}")
+            logger.debug("子图 execute: 结果: %s", str(result)[:100])
             tool_messages.append(ToolMessage(
                 content=str(result),
                 tool_call_id=tc["id"],
             ))
         except Exception as e:
-            print(f"[子图 execute] 异常: {e}")
+            logger.error("子图 execute: 异常: %s", e, exc_info=True)
             tool_messages.append(ToolMessage(
                 content=f"执行失败: {e}",
                 tool_call_id=tc["id"],
@@ -252,15 +255,16 @@ def subgraph_agent_start(question: str, thread_id: str = "default") -> dict:
     """
     config = {"configurable": {"thread_id": thread_id}}
 
-    print("[DEBUG subgraph start] 开始 invoke...")
+    logger.info("subgraph_agent_start: thread_id=%s, question=%.60s...", thread_id, question)
     agent_with_subgraph.invoke(
         {"messages": [HumanMessage(content=question)]},
         config=config,
     )
-    print("[DEBUG subgraph start] invoke 返回")
+    logger.debug("subgraph_agent_start: invoke 返回")
 
     state = agent_with_subgraph.get_state(config)
-    print(f"[DEBUG subgraph start] state.interrupts = {state.interrupts if state else None}")
+    logger.debug("subgraph_agent_start: state.interrupts = %s",
+                 state.interrupts if state else None)
 
     if state and state.interrupts:
         interrupts_data = []
@@ -271,7 +275,7 @@ def subgraph_agent_start(question: str, thread_id: str = "default") -> dict:
                 interrupts_data.append(iv.get('value', iv))
             else:
                 interrupts_data.append(iv)
-        print("[DEBUG subgraph start] 返回 interrupted")
+        logger.info("subgraph_agent_start: 返回 interrupted，%d 个中断", len(interrupts_data))
         return {
             "status": "interrupted",
             "thread_id": thread_id,
@@ -279,7 +283,7 @@ def subgraph_agent_start(question: str, thread_id: str = "default") -> dict:
         }
 
     # 无 interrupt，提取最终答案
-    print("[DEBUG subgraph start] 无 interrupt，提取答案")
+    logger.info("subgraph_agent_start: 无 interrupt，正常完成")
     answer = ""
     tool_calls_log = []
     messages = state.values.get("messages", []) if state and state.values else []

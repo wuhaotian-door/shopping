@@ -40,6 +40,9 @@ from langgraph.types import Send
 from typing_extensions import TypedDict
 
 from tools import TOOLS
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -86,8 +89,7 @@ def parser_node(state: FanOutState) -> Dict[str, Any]:
     """解析用户问题 → 提取 topic 列表"""
     user_msg = state["messages"][-1].content
 
-    print(f"\n{'='*50}")
-    print(f"[Parser] 输入: {user_msg}")
+    logger.info("Parser: 输入=%.80s", user_msg)
 
     response = parser_model.invoke([
         SystemMessage(content=PARSER_PROMPT),
@@ -97,8 +99,8 @@ def parser_node(state: FanOutState) -> Dict[str, Any]:
     raw = response.content.strip()
     topics = [t.strip() for t in raw.replace("、", ",").split(",") if t.strip()]
 
-    print(f"[Parser] LLM 原始输出: '{raw}'")
-    print(f"[Parser] 拆出 {len(topics)} 个 topics: {topics}")
+    logger.debug("Parser: LLM 原始输出='%s'", raw)
+    logger.info("Parser: 拆出 %d 个 topics: %s", len(topics), topics)
 
     return {
         "topics": topics,
@@ -145,8 +147,7 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
     topic = state.get("topic", "")
     t_start = time.time()
 
-    print(f"\n{'='*50}")
-    print(f"[Searcher:{topic}] 开始搜索...")
+    logger.info("Searcher[%s]: 开始搜索...", topic)
 
     sys_prompt = SEARCHER_PROMPT.replace("{topic}", topic)
 
@@ -158,7 +159,7 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
 
     if not response1.tool_calls:
         elapsed = round(time.time() - t_start, 1)
-        print(f"[Searcher:{topic}] 无工具调用，直接返回 (耗时 {elapsed}s)")
+        logger.info("Searcher[%s]: 无工具调用，直接返回 (耗时 %.1fs)", topic, elapsed)
         return {
             "messages": [response1],
             "trace": [{
@@ -171,7 +172,7 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
         }
 
     # 第 2 轮: 执行工具
-    print(f"[Searcher:{topic}] LLM 决定调用工具: {[tc['name'] for tc in response1.tool_calls]}")
+    logger.debug("Searcher[%s]: LLM 决定调用工具: %s", topic, [tc['name'] for tc in response1.tool_calls])
     tool_msgs = []
     tools_by_name = {t.name: t for t in TOOLS}
     tool_log = []
@@ -179,9 +180,9 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
     for tc in response1.tool_calls:
         tool_func = tools_by_name.get(tc["name"])
         if tool_func:
-            print(f"[Searcher:{topic}] 执行工具: {tc['name']}({tc['args']})")
+            logger.debug("Searcher[%s]: 执行工具 %s(%s)", topic, tc['name'], tc['args'])
             result = tool_func.invoke(tc["args"])
-            print(f"[Searcher:{topic}] 工具返回 {len(str(result))} 字符")
+            logger.debug("Searcher[%s]: 工具返回 %d 字符", topic, len(str(result)))
             tool_msgs.append(ToolMessage(content=str(result), tool_call_id=tc["id"]))
             tool_log.append({
                 "tool": tc["name"],
@@ -190,7 +191,7 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
             })
 
     # 第 3 轮: 总结
-    print(f"[Searcher:{topic}] LLM 总结中...")
+    logger.debug("Searcher[%s]: LLM 总结中...", topic)
     response2 = searcher_with_tools.invoke([
         SystemMessage(content=sys_prompt),
         HumanMessage(content=f"请查询「{topic}」的相关信息"),
@@ -200,7 +201,7 @@ def searcher_node(state: FanOutState) -> Dict[str, Any]:
 
     elapsed = round(time.time() - t_start, 1)
     summary = response2.content
-    print(f"[Searcher:{topic}] 完成 (耗时 {elapsed}s), 总结长度: {len(summary)} 字符")
+    logger.info("Searcher[%s]: 完成 (耗时 %.1fs), 总结长度: %d 字符", topic, elapsed, len(summary))
 
     return {
         "messages": [AIMessage(content=f"## {topic}\n{summary}")],
@@ -245,13 +246,11 @@ def synthesizer_node(state: FanOutState) -> Dict[str, Any]:
         msg for msg in state["messages"]
         if isinstance(msg, AIMessage) and msg.content.startswith("## ")
     ]
-    print(f"\n{'='*50}")
-    print(f"[Synthesizer] 汇总中，收到 {len(searcher_msgs)} 份搜索结果:")
+    logger.info("Synthesizer: 汇总中，收到 %d 份搜索结果", len(searcher_msgs))
     for msg in searcher_msgs:
-        # 提取项目名（## 后面的部分）
         lines = msg.content.split("\n")
         title = lines[0] if lines else "(空)"
-        print(f"  - {title} ({len(msg.content)} 字符)")
+        logger.debug("Synthesizer:   - %s (%d 字符)", title, len(msg.content))
 
     response = synth_model.invoke([
         SystemMessage(content=SYNTH_PROMPT),
@@ -259,7 +258,7 @@ def synthesizer_node(state: FanOutState) -> Dict[str, Any]:
     ])
 
     elapsed = round(time.time() - t_start, 1)
-    print(f"[Synthesizer] 完成 (耗时 {elapsed}s)")
+    logger.info("Synthesizer: 完成 (耗时 %.1fs)", elapsed)
 
     return {
         "messages": [response],
@@ -287,15 +286,15 @@ def fan_out_router(state: FanOutState):
     count = len(topics)
 
     if count >= 2:
-        print(f"\n[FanOut] ★ 创建 {count} 个并行 Send → 3 个 searcher 同时跑")
+        logger.info("FanOut: ★ 创建 %d 个并行 Send → searcher 同时跑", count)
         return [Send("searcher", {"topic": t}) for t in topics]
 
     elif count == 1:
-        print(f"\n[FanOut] 单 topic → 1 个 Send")
+        logger.info("FanOut: 单 topic → 1 个 Send")
         return Send("searcher", {"topic": topics[0]})
 
     else:
-        print(f"\n[FanOut] 无 topic → 直接到 synthesizer")
+        logger.info("FanOut: 无 topic → 直接到 synthesizer")
         return "synthesizer"
 
 
@@ -350,11 +349,9 @@ def advanced_agent_ask(question: str, thread_id: str = "default") -> dict:
 
     trace = result.get("trace", [])
 
-    print(f"\n{'='*50}")
-    print(f"[完成] 总耗时: {total_elapsed}s")
-    print(f"[完成] trace 条目: {len(trace)}")
+    logger.info("advanced_agent: 总耗时 %.1fs, trace 条目: %d", total_elapsed, len(trace))
     for t in trace:
-        print(f"  {t['step']} ({t.get('elapsed_s', '?')}s)")
+        logger.debug("  %s (%.1fs)", t['step'], t.get('elapsed_s', 0))
 
     return {
         "answer": answer,

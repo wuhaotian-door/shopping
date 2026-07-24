@@ -44,6 +44,9 @@ from typing_extensions import TypedDict
 from tools import (ALL_TOOLS, ALL_TOOLS_BY_NAME, TOOLS,
                    APPROVAL_REQUIRED, search_knowledge_base, list_documents,
                    add_knowledge)
+from logger_config import get_logger
+
+logger = get_logger(__name__)
 
 load_dotenv()
 
@@ -92,7 +95,7 @@ def supervisor_node(state: MultiAgentState) -> Dict[str, Any]:
     response = supervisor_model.invoke(supervisor_messages)
     decision = response.content.strip().lower()
 
-    print(f"[Supervisor] 路由决策: '{decision}'")
+    logger.debug("Supervisor: 路由决策='%s'", decision)
 
     # 解析决策
     if "researcher" in decision:
@@ -140,8 +143,9 @@ def researcher_node(state: MultiAgentState) -> Dict[str, Any]:
 
     # 第 1 轮: LLM 思考 + 决定是否调工具
     response1 = researcher_with_tools.invoke([sys, *messages])
-    print(f"[Researcher] 第 1 轮: tool_calls={bool(response1.tool_calls)}, "
-          f"content={response1.content[:80] if response1.content else '(空)'}")
+    logger.debug("Researcher: 第1轮 tool_calls=%s, content=%.80s",
+                 bool(response1.tool_calls),
+                 response1.content if response1.content else "(空)")
 
     # 如果没有工具调用，直接返回
     if not response1.tool_calls:
@@ -198,8 +202,9 @@ def writer_node(state: MultiAgentState) -> Dict[str, Any]:
 
     # 第 1 轮: LLM 思考
     response1 = writer_model_with_tools.invoke([sys, *messages])
-    print(f"[Writer] 第 1 轮: tool_calls={bool(response1.tool_calls)}, "
-          f"content={response1.content[:80] if response1.content else '(空)'}")
+    logger.debug("Writer: 第1轮 tool_calls=%s, content=%.80s",
+                 bool(response1.tool_calls),
+                 response1.content if response1.content else "(空)")
 
     if not response1.tool_calls:
         return {"messages": [response1], "next": "supervisor"}
@@ -209,7 +214,7 @@ def writer_node(state: MultiAgentState) -> Dict[str, Any]:
     for tc in response1.tool_calls:
         if tc["name"] == "add_knowledge":
             # add_knowledge 需要审批，这里用 interrupt
-            print(f"[Writer] add_knowledge 需要审批: {tc['args']}")
+            logger.info("Writer: add_knowledge 需要审批: %s", tc['args'])
             approval = interrupt({
                 "message": "Writer Agent 想要保存新文档",
                 "tool_name": tc["name"],
@@ -282,12 +287,12 @@ def multi_agent_start(question: str, thread_id: str = "default") -> dict:
     """
     config = {"configurable": {"thread_id": thread_id}}
 
-    print("[DEBUG multi] 开始 invoke...")
+    logger.info("multi_agent_start: thread_id=%s, question=%.60s...", thread_id, question)
     multi_agent.invoke(
         {"messages": [HumanMessage(content=question)], "next": ""},
         config=config,
     )
-    print("[DEBUG multi] invoke 返回")
+    logger.debug("multi_agent_start: invoke 返回")
 
     state = multi_agent.get_state(config)
 
