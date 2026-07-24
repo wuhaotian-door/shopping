@@ -89,15 +89,41 @@ onUnmounted(() => abortFn?.())
 
     <!-- 主区 -->
     <main class="main">
-      <div class="main-hd">💬 智能对话 · AI 自主查资料、推荐内容</div>
+      <div class="main-hd">
+        💬 智能对话 · AI 自主查资料、推荐内容
+        <span class="demo-tip">↓ 面试演示：点击下方预设问题快速体验</span>
+      </div>
       <div ref="msgBox" class="msgs">
         <div v-if="!msgs.length" class="welcome">
           <div class="w-icon">🤖</div>
           <h2>非遗 AI 助手</h2>
-          <p>问我任何问题，我会自动查资料、推荐内容</p>
-          <div class="quick">
-            <button v-for="q in ['什么是景泰蓝？', '苏州有哪些刺绣传承人？', '推荐适合新手的非遗']" :key="q"
-              class="q-btn" @click="input = q; send()">{{ q }}</button>
+          <p>问我任何问题，我会自动查资料、推荐内容。点击下方按钮快速体验：</p>
+        </div>
+
+        <!-- 预设问题 — 始终可见，按功能分类 -->
+        <div class="preset-area">
+          <div class="preset-group">
+            <span class="preset-label">📚 知识检索</span>
+            <button class="preset-btn" @click="input='紫砂壶有什么特点'; send()">紫砂壶有什么特点</button>
+            <button class="preset-btn" @click="input='景泰蓝的制作工艺有哪些步骤'; send()">景泰蓝制作工艺</button>
+            <button class="preset-btn" @click="input='京剧有哪些艺术特征'; send()">京剧的艺术特征</button>
+            <button class="preset-btn" @click="input='蜀绣和苏绣有什么区别'; send()">蜀绣和苏绣区别</button>
+          </div>
+          <div class="preset-group">
+            <span class="preset-label">👤 传承人查询</span>
+            <button class="preset-btn" @click="input='苏州有哪些刺绣传承人'; send()">苏州刺绣传承人</button>
+            <button class="preset-btn" @click="input='张德明是谁'; send()">张德明是谁</button>
+            <button class="preset-btn" @click="input='宜兴紫砂壶有哪些传承人'; send()">宜兴紫砂传承人</button>
+          </div>
+          <div class="preset-group">
+            <span class="preset-label">🎯 推荐 & 探索</span>
+            <button class="preset-btn" @click="input='推荐适合新手的非遗项目'; send()">适合新手的非遗</button>
+            <button class="preset-btn" @click="input='推荐适合送长辈的非遗礼物'; send()">送礼推荐</button>
+            <button class="preset-btn" @click="input='我想学一门传统手工艺，有什么建议'; send()">学手艺建议</button>
+          </div>
+          <div class="preset-group">
+            <span class="preset-label">💬 闲聊</span>
+            <button class="preset-btn" @click="input='你好，介绍一下你自己'; send()">自我介绍</button>
           </div>
         </div>
         <div v-for="m in msgs" :key="m.id" class="msg-row" :class="'m-' + m.role">
@@ -134,13 +160,10 @@ onUnmounted(() => abortFn?.())
 .main { flex:1; display:flex; flex-direction:column; min-width:0; }
 .main-hd { padding:14px 20px; border-bottom:1px solid rgba(196,30,58,0.06); font-size:14px; font-weight:600; color:#c41e3a; background:#fff; }
 .msgs { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
-.welcome { text-align:center; margin:auto; padding:40px 20px; }
+.welcome { text-align:center; margin:auto; padding:30px 20px; }
 .w-icon { font-size:60px; margin-bottom:12px; }
 .welcome h2 { font-size:22px; color:#c41e3a; margin:0 0 8px; }
-.welcome p { font-size:14px; color:#999; margin:0 0 20px; }
-.quick { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; }
-.q-btn { padding:8px 16px; font-size:13px; background:#fff5f7; border:1px solid #ffe9ec; border-radius:18px; cursor:pointer; color:#c41e3a; }
-.q-btn:hover { background:#ffe9ec; }
+.welcome p { font-size:14px; color:#999; margin:0; }
 
 .msg-row { display:flex; }
 .m-user { justify-content:flex-end; }
@@ -160,5 +183,19 @@ onUnmounted(() => abortFn?.())
 .bar button:disabled { opacity:0.4; cursor:not-allowed; }
 .btn-stop { background:#fff!important; color:#c41e3a!important; border:1px solid #c41e3a!important; }
 .empty { text-align:center; padding:30px; color:#ccc; font-size:13px; }
-@media(max-width:768px) { .rag-layout{flex-direction:column} .sidebar{width:100%;max-height:160px} }
+.demo-tip { font-size:11px; color:#d4a574; font-weight:400; margin-left:12px; }
+
+/* 预设问题 */
+.preset-area { padding:0 20px 16px; display:flex; flex-direction:column; gap:12px; flex-shrink:0; }
+.preset-group { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.preset-label { font-size:11px; color:#999; font-weight:600; white-space:nowrap; min-width:90px; }
+.preset-btn {
+  padding:5px 14px; font-size:12px; background:#fff;
+  border:1px solid rgba(196,30,58,0.12); border-radius:14px;
+  cursor:pointer; color:#666; transition:all 0.2s; white-space:nowrap;
+  font-family:inherit;
+}
+.preset-btn:hover { background:#fff5f7; border-color:#c41e3a; color:#c41e3a; transform:translateY(-1px); }
+
+@media(max-width:768px) { .rag-layout{flex-direction:column} .sidebar{width:100%;max-height:160px} .preset-area{padding:0 12px 12px} }
 </style>
