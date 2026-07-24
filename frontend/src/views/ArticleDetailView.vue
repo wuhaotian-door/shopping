@@ -215,9 +215,9 @@ async function handleDeleteComment(commentId: number) {
 }
 
 /* ---- 返回栏 ---- */
-.back-bar { padding: 10px 5%; background: #fcf4e8; }
-.nav-btn { padding: 6px 16px; font-size: 13px; color: #c41e3a; background: #fff; border: 1px solid #e8647a; border-radius: 6px; cursor: pointer; transition: 0.2s; }
-.nav-btn:hover { background: #fff5f7; }
+.back-bar { padding: 14px 5%; background: #f8f9fa; }
+.back-bar .nav-btn { padding: 8px 18px; font-size: 13px; color: #fff; background: #c41e3a; border: none; border-radius: 6px; cursor: pointer; transition: 0.2s; box-shadow: 0 2px 6px rgba(196,30,58,0.25); }
+.back-bar .nav-btn:hover { background: #a8162b; }
 
 /* ---- 旧导航（保留备用） ---- */
 .page-header {
