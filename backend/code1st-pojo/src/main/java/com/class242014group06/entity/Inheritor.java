@@ -44,4 +44,5 @@ public class Inheritor implements Serializable {
     private LocalDateTime updateTime;
     private Long createUser;
     private Long updateUser;
+    private String avatarUrl;
 }

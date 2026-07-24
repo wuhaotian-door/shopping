@@ -40,4 +40,7 @@ public class InheritorRegisterDTO implements Serializable {
 
     @ApiModelProperty("角色：INHERITOR-非遗传承人")
     private String role;
+
+    @ApiModelProperty("头像URL")
+    private String avatarUrl;
 }

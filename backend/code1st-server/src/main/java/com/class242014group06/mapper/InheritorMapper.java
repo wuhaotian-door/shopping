@@ -3,6 +3,7 @@ package com.class242014group06.mapper;
 import com.class242014group06.annotation.AutoFill;
 import com.class242014group06.entity.Inheritor;
 import com.class242014group06.enumeration.OperationType;
+import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Insert;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
@@ -20,8 +21,8 @@ public interface InheritorMapper {
     Inheritor getByUsername(String username);
 
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, birth_date, email, age, create_time, update_time, create_user, update_user, status) " +
-            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{birthDate},#{email},#{age},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
+    @Insert("insert into inheritor (name, username, password, phone, sex, id_number, region, birth_date, email, age, avatar_url, create_time, update_time, create_user, update_user, status) " +
+            "values (#{name},#{username},#{password},#{phone},#{sex},#{idNumber},#{region},#{birthDate},#{email},#{age},#{avatarUrl},#{createTime},#{updateTime},#{createUser},#{updateUser},#{status})")
     void insert(Inheritor inheritor);
 
     @Select("select * from inheritor where id = #{id}")
@@ -50,4 +51,7 @@ public interface InheritorMapper {
 
     @Update("update inheritor set password = #{password}, update_time = #{updateTime} where id = #{id}")
     void updatePassword(@org.apache.ibatis.annotations.Param("id") Long id, @org.apache.ibatis.annotations.Param("password") String password, @org.apache.ibatis.annotations.Param("updateTime") java.time.LocalDateTime updateTime);
+
+    @Delete("delete from inheritor where id = #{id}")
+    void deleteById(Long id);
 }

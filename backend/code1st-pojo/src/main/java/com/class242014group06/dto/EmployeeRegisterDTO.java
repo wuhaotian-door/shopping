@@ -30,4 +30,7 @@ public class EmployeeRegisterDTO implements Serializable {
 
     @ApiModelProperty("角色：USER-普通用户")
     private String role;
+
+    @ApiModelProperty("头像URL")
+    private String avatarUrl;
 }

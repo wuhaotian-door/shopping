@@ -35,6 +35,10 @@ public interface FriendRelationMapper {
     /** 查询我发出的好友申请 */
     List<FriendRelation> listMyRequests(@Param("userId") Long userId);
 
+    /** 删除用户的所有好友关系（双向） */
+    @Delete("DELETE FROM friend_relation WHERE user_id = #{userId} OR friend_id = #{userId}")
+    void deleteByUser(@Param("userId") Long userId);
+
     /** 检查是否为好友 */
     @Select("SELECT COUNT(*) FROM friend_relation WHERE status = 1 AND " +
             "((user_id = #{userId} AND friend_id = #{friendId}) OR (user_id = #{friendId} AND friend_id = #{userId}))")
