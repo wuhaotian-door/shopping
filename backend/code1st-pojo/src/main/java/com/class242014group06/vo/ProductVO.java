@@ -37,6 +37,7 @@ public class ProductVO implements Serializable {
 
     /** 3D模型URL（glb/gltf格式），可选 */
     private String modelUrl;
+    private String videoUrl;
 
     /** 鍟嗗搧鍒嗙被 */
     private String category;

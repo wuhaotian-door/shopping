@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { aiChatStream, aiSessions, aiSessionDelete, type StreamEvent } from '@/api/ai'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { aiChatStream, aiSessions, aiSessionDelete, aiSessionMessages, type StreamEvent } from '@/api/ai'
+import { useAuthStore } from '@/stores/auth'
 
 interface Message {
   id: number; role: 'user' | 'ai' | 'tool' | 'system'
@@ -9,36 +10,72 @@ interface Message {
 
 interface Session { id: string; title: string; created_at: string; msg_count: number }
 
+const authStore = useAuthStore()
+const uid = computed(() => authStore.uid)
+
 const sessions = ref<Session[]>([])
-const activeSid = ref('session-' + Date.now())
+const activeSid = ref('')
 const msgs = ref<Message[]>([])
 const input = ref('')
 const streaming = ref(false)
 const msgBox = ref<HTMLElement | null>(null)
 let mid = 0, abortFn: (() => void) | null = null
 
+// 本地消息缓存（按 sessionId 存储）
+const sessionMessages = new Map<string, Message[]>()
+
 async function loadSessions() {
-  try { sessions.value = (await aiSessions()).sessions } catch { /* */ }
+  if (!uid.value) { sessions.value = []; return }
+  try { sessions.value = (await aiSessions(uid.value)).sessions } catch { /* */ }
 }
 
 function newSession() {
-  if (streaming.value) return
-  activeSid.value = 'session-' + Date.now(); msgs.value = []
+  if (streaming.value || !uid.value) return
+  const sid = uid.value + '_session-' + Date.now()
+  sessionMessages.set(sid, [])
+  activeSid.value = sid
+  msgs.value = []
+  mid = 0
 }
 
+const switching = ref(false)
+
 async function switchSession(sid: string) {
-  if (streaming.value) return; activeSid.value = sid
-  // 从后端加载消息历史
-  try {
-    const resp = await fetch(`/ai/sessions`); const data = await resp.json()
-    const s = data.sessions.find((s: any) => s.id === sid)
-    msgs.value = [] // 简化：后端目前不返回完整消息内容，仅显示空
-  } catch { msgs.value = [] }
+  if (streaming.value || switching.value || sid === activeSid.value) return
+  switching.value = true
+  // 保存当前会话消息到本地缓存
+  if (activeSid.value) sessionMessages.set(activeSid.value, [...msgs.value])
+  activeSid.value = sid
+  await nextTick()
+
+  // 优先从本地缓存取，没有则从 AI 服务拉取历史消息
+  let cached = sessionMessages.get(sid)
+  if (!cached) {
+    try {
+      const res = await aiSessionMessages(sid)
+      const remote = (res.messages || []) as Array<{ role: string; content: string; tool_name?: string }>
+      cached = []
+      let localMid = 0
+      for (const m of remote) {
+        const role = m.role === 'ai' ? 'ai' : m.role === 'user' ? 'user' : m.role === 'tool' ? 'tool' : 'system'
+        cached.push({ id: ++localMid, role, content: m.content, toolName: m.tool_name })
+      }
+      sessionMessages.set(sid, cached)
+    } catch {
+      cached = []
+    }
+  }
+
+  msgs.value = cached || []
+  mid = msgs.value.reduce((max, m) => Math.max(max, m.id), 0)
+  await nextTick()
+  scroll()
+  switching.value = false
 }
 
 async function delSession(sid: string) {
-  if (streaming.value) return
-  await aiSessionDelete(sid)
+  if (streaming.value || !uid.value) return
+  await aiSessionDelete(sid, uid.value)
   if (activeSid.value === sid) newSession()
   loadSessions()
 }
@@ -52,24 +89,40 @@ function addMsg(role: Message['role'], content: string, extra?: Partial<Message>
 function scroll() { nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight }) }
 
 async function send() {
-  const q = input.value.trim(); if (!q || streaming.value) return
+  const q = input.value.trim(); if (!q || streaming.value || !uid.value) return
+  // 如果还没有活跃会话，自动创建一个
+  if (!activeSid.value) newSession()
   input.value = ''; addMsg('user', q); scroll()
 
   streaming.value = true
   const aiMsg = addMsg('ai', '')
   let buf = ''
 
-  abortFn = aiChatStream(q, activeSid.value,
+  abortFn = aiChatStream(q, activeSid.value, uid.value,
     (e: StreamEvent) => {
       if (e.type === 'token' && e.content) { buf += e.content; aiMsg.content = buf; scroll() }
       else if (e.type === 'tool_start') { addMsg('tool', '', { toolName: e.name, toolArgs: JSON.stringify(e.input) }); scroll() }
     },
     (err) => { aiMsg.content = `错误: ${err.message}`; streaming.value = false },
-    () => { streaming.value = false; aiMsg.content ||= '(无回答)'; loadSessions() }
+    () => { streaming.value = false; aiMsg.content ||= '(无回答)'; sessionMessages.set(activeSid.value, [...msgs.value]); loadSessions() }
   )
 }
 
-onMounted(loadSessions)
+// UID 变化时重新加载会话列表（切换账号 / 登录登出）
+watch(uid, (newUid, oldUid) => {
+  if (newUid && newUid !== oldUid) {
+    sessionMessages.clear()
+    newSession()
+    loadSessions()
+  }
+})
+
+onMounted(() => {
+  if (uid.value) {
+    newSession()
+    loadSessions()
+  }
+})
 onUnmounted(() => abortFn?.())
 </script>
 
@@ -93,7 +146,7 @@ onUnmounted(() => abortFn?.())
         💬 智能对话 · AI 自主查资料、推荐内容
         <span class="demo-tip">↓ 面试演示：点击下方预设问题快速体验</span>
       </div>
-      <div ref="msgBox" class="msgs">
+      <div ref="msgBox" class="msgs" :class="{ switching }">
         <div v-if="!msgs.length" class="welcome">
           <div class="w-icon">🤖</div>
           <h2>非遗 AI 助手</h2>
@@ -149,7 +202,7 @@ onUnmounted(() => abortFn?.())
 .side-hd h3 { font-size:15px; color:#c41e3a; cursor:pointer; margin:0; }
 .btn-icon { width:30px; height:30px; border:1px solid rgba(196,30,58,0.15); background:#fff; border-radius:8px; font-size:18px; cursor:pointer; color:#c41e3a; }
 .session-list { flex:1; overflow-y:auto; }
-.s-item { display:flex; align-items:center; padding:12px 16px; cursor:pointer; border-bottom:1px solid rgba(196,30,58,0.04); gap:8px; }
+.s-item { display:flex; align-items:center; padding:12px 16px; cursor:pointer; border-bottom:1px solid rgba(196,30,58,0.04); gap:8px; transition: background 0.2s, border-color 0.2s; }
 .s-item:hover { background:rgba(196,30,58,0.03); }
 .s-item.active { background:rgba(196,30,58,0.06); border-left:3px solid #c41e3a; }
 .s-title { flex:1; font-size:13px; color:#555; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -159,7 +212,8 @@ onUnmounted(() => abortFn?.())
 
 .main { flex:1; display:flex; flex-direction:column; min-width:0; }
 .main-hd { padding:14px 20px; border-bottom:1px solid rgba(196,30,58,0.06); font-size:14px; font-weight:600; color:#c41e3a; background:#fff; }
-.msgs { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; }
+.msgs { flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:12px; transition: opacity 0.2s ease; }
+.msgs.switching { opacity: 0.5; }
 .welcome { text-align:center; margin:auto; padding:30px 20px; }
 .w-icon { font-size:60px; margin-bottom:12px; }
 .welcome h2 { font-size:22px; color:#c41e3a; margin:0 0 8px; }
@@ -168,7 +222,8 @@ onUnmounted(() => abortFn?.())
 .msg-row { display:flex; }
 .m-user { justify-content:flex-end; }
 .m-ai, .m-tool, .m-system { justify-content:flex-start; }
-.bubble { max-width:76%; padding:12px 18px; border-radius:14px; font-size:14px; line-height:1.7; animation:up 0.3s; }
+.bubble { max-width:76%; padding:12px 18px; border-radius:14px; font-size:14px; line-height:1.7; animation: msgSlide 0.35s cubic-bezier(0.22,0.61,0.36,1) both; }
+@keyframes msgSlide { 0% { opacity: 0; transform: translateY(12px); } 100% { opacity: 1; transform: translateY(0); } }
 @keyframes up { from { opacity:0; transform:translateY(8px); } }
 .bu { background:linear-gradient(135deg,#c41e3a,#d43030); color:#fff; border-bottom-right-radius:4px; }
 .ba { background:#fff; border:1px solid rgba(0,0,0,0.04); box-shadow:0 1px 3px rgba(0,0,0,0.06); border-bottom-left-radius:4px; color:#333; }

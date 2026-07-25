@@ -61,6 +61,11 @@ public class ProductServiceImpl implements ProductService {
             && product.getModelUrl() != null && !product.getModelUrl().equals(dto.getModelUrl())) {
             deleteOldModelFile(product.getModelUrl());
         }
+        // 删除旧视频文件（保护默认文件）
+        if (dto.getVideoUrl() != null && !dto.getVideoUrl().isEmpty()
+            && product.getVideoUrl() != null && !product.getVideoUrl().equals(dto.getVideoUrl())) {
+            deleteOldVideoFile(product.getVideoUrl());
+        }
         Product update = new Product();
         BeanUtils.copyProperties(dto, update);
         update.setId(productId);
@@ -70,6 +75,16 @@ public class ProductServiceImpl implements ProductService {
     @Value("${code1st.static.path:./static}")
     private String staticPath;
     private static final String DEFAULT_MODEL = "a_chinese_tongguan_kiln_teapot-1.glb";
+
+    private void deleteOldVideoFile(String videoUrl) {
+        if (videoUrl == null || videoUrl.isEmpty()) return;
+        try {
+            String fileName = videoUrl.replaceFirst("^.*/", "");
+            if (fileName.isEmpty()) return;
+            File file = new File(new File(staticPath).getAbsoluteFile(), "videos/" + fileName);
+            if (file.exists()) file.delete();
+        } catch (Exception e) { /* ignore */ }
+    }
 
     private void deleteOldModelFile(String modelUrl) {
         if (modelUrl == null || modelUrl.isEmpty()) return;
@@ -165,6 +180,7 @@ public class ProductServiceImpl implements ProductService {
                 .stock(product.getStock())
                 .imageUrl(product.getImageUrl())
                 .modelUrl(product.getModelUrl())
+                .videoUrl(product.getVideoUrl())
                 .category(product.getCategory())
                 .inheritorId(product.getInheritorId())
                 .inheritorName(product.getInheritorName())

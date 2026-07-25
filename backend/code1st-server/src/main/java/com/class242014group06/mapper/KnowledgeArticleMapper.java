@@ -17,8 +17,8 @@ public interface KnowledgeArticleMapper {
      * 新增文章
      */
     @AutoFill(value = OperationType.INSERT)
-    @Insert("insert into knowledge_article (author_id, title, category, content, cover_url, status, view_count, create_time, update_time, create_user, update_user) " +
-            "values (#{authorId}, #{title}, #{category}, #{content}, #{coverUrl}, #{status}, #{viewCount}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})")
+    @Insert("insert into knowledge_article (author_id, title, category, content, cover_url, video_url, images, status, view_count, create_time, update_time, create_user, update_user) " +
+            "values (#{authorId}, #{title}, #{category}, #{content}, #{coverUrl}, #{videoUrl}, #{images}, #{status}, #{viewCount}, #{createTime}, #{updateTime}, #{createUser}, #{updateUser})")
     void insert(KnowledgeArticle article);
 
     /**

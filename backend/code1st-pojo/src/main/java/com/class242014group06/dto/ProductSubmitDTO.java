@@ -29,6 +29,9 @@ public class ProductSubmitDTO implements Serializable {
     /** 3D模型URL（glb/gltf格式），可选 */
     private String modelUrl;
 
+    /** 宣传视频URL */
+    private String videoUrl;
+
     /** 鍟嗗搧鍒嗙被 */
     private String category;
 }

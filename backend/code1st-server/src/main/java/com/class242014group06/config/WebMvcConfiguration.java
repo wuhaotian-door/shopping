@@ -143,6 +143,8 @@ public class WebMvcConfiguration implements WebMvcConfigurer {
                 .addResourceLocations("file:" + absoluteStaticPath + "images/");
         registry.addResourceHandler("/models/**")
                 .addResourceLocations("file:" + absoluteStaticPath + "models/");
+        registry.addResourceHandler("/videos/**")
+                .addResourceLocations("file:" + absoluteStaticPath + "videos/");
     }
 
     /**

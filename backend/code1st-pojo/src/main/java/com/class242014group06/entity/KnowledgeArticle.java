@@ -35,6 +35,9 @@ public class KnowledgeArticle implements Serializable {
 
     /** 封面图 */
     private String coverUrl;
+    private String videoUrl;
+    /** 多张图片（逗号分隔的URL列表） */
+    private String images;
 
     /** 状态：0-草稿 1-已发布 */
     private Integer status;

@@ -2,9 +2,11 @@ package com.class242014group06.service.impl;
 
 import com.class242014group06.entity.Inheritor;
 import com.class242014group06.entity.InheritorProfile;
+import com.class242014group06.entity.ProductOrder;
 import com.class242014group06.entity.User;
 import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.InheritorProfileMapper;
+import com.class242014group06.mapper.PageViewMapper;
 import com.class242014group06.mapper.ProductOrderMapper;
 import com.class242014group06.mapper.UserMapper;
 import com.class242014group06.service.StatisticsService;
@@ -29,6 +31,8 @@ public class StatisticsServiceImpl implements StatisticsService {
     private UserMapper userMapper;
     @Autowired
     private ProductOrderMapper productOrderMapper;
+    @Autowired
+    private PageViewMapper pageViewMapper;
 
     @Override
     public List<Map<String, Object>> getRegionDistribution() {
@@ -284,5 +288,136 @@ public class StatisticsServiceImpl implements StatisticsService {
                 .filter(i -> i.getAge() != null)
                 .mapToInt(Inheritor::getAge).average().orElse(0));
         return overview;
+    }
+
+    @Override
+    public List<Map<String, Object>> getEndangered() {
+        // 获取所有启用传承人及其技艺
+        List<Inheritor> inheritors = inheritorMapper.getAllEnabled();
+        List<InheritorProfile> profiles = inheritorProfileMapper.listAll();
+
+        // 构建技艺→传承人年龄列表的映射
+        Map<String, List<Map<String, Object>>> craftInheritors = new LinkedHashMap<>();
+
+        for (InheritorProfile p : profiles) {
+            if (p.getCraftTypes() == null || p.getCraftTypes().isEmpty()) continue;
+            // 找到对应的传承人信息
+            Inheritor inheritor = null;
+            for (Inheritor i : inheritors) {
+                if (i.getId().equals(p.getEmployeeId())) {
+                    inheritor = i;
+                    break;
+                }
+            }
+            if (inheritor == null) continue;
+
+            String[] crafts = p.getCraftTypes().split("[,，]");
+            for (String c : crafts) {
+                String craft = c.trim();
+                if (craft.isEmpty()) continue;
+                Map<String, Object> info = new HashMap<>();
+                info.put("name", inheritor.getName());
+                info.put("age", inheritor.getAge());
+                info.put("region", inheritor.getRegion());
+                craftInheritors.computeIfAbsent(craft, k -> new ArrayList<>()).add(info);
+            }
+        }
+
+        // 筛选传承人数 ≤ 3 的技艺，按人数升序排列（最濒危的在前）
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map.Entry<String, List<Map<String, Object>>> e : craftInheritors.entrySet()) {
+            int count = e.getValue().size();
+            if (count <= 3) {
+                Map<String, Object> m = new HashMap<>();
+                m.put("craft", e.getKey());
+                m.put("count", count);
+                // 计算该技艺传承人的平均年龄
+                double avgAge = e.getValue().stream()
+                        .filter(v -> v.get("age") != null)
+                        .mapToInt(v -> (Integer) v.get("age"))
+                        .average().orElse(0);
+                m.put("avgAge", Math.round(avgAge * 10.0) / 10.0);
+                m.put("level", count == 1 ? "严重濒危" : count == 2 ? "高度濒危" : "濒危");
+                m.put("inheritors", e.getValue());
+                result.add(m);
+            }
+        }
+        result.sort((a, b) -> Integer.compare((Integer) a.get("count"), (Integer) b.get("count")));
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getHotRanking() {
+        List<InheritorProfile> profiles = inheritorProfileMapper.listAll();
+        Map<String, Long> craftCount = new HashMap<>();
+        Map<String, List<String>> craftRegions = new LinkedHashMap<>();
+
+        for (InheritorProfile p : profiles) {
+            if (p.getCraftTypes() == null || p.getCraftTypes().isEmpty()) continue;
+            String[] crafts = p.getCraftTypes().split("[,，]");
+            for (String c : crafts) {
+                String craft = c.trim();
+                if (!craft.isEmpty()) {
+                    craftCount.merge(craft, 1L, Long::sum);
+                }
+            }
+        }
+
+        // 取前10，按人数降序
+        List<Map<String, Object>> result = craftCount.entrySet().stream()
+                .sorted((a, b) -> Long.compare(b.getValue(), a.getValue()))
+                .limit(10)
+                .map(e -> {
+                    Map<String, Object> m = new HashMap<>();
+                    m.put("name", e.getKey());
+                    m.put("value", e.getValue().intValue());
+                    return m;
+                })
+                .collect(Collectors.toList());
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getDailyViews() {
+        List<Map<String, Object>> rows = pageViewMapper.countByDay30();
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Map<String, Object> row : rows) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("date", row.get("date") != null ? row.get("date").toString().substring(5, 10) : ""); // MM-dd
+            m.put("count", row.get("count"));
+            result.add(m);
+        }
+        return result;
+    }
+
+    @Override
+    public List<Map<String, Object>> getTransactionTrend() {
+        // 按月统计商品订单总额（已完成+已发货状态，即 status IN (1,2)）
+        List<ProductOrder> orders = productOrderMapper.listAll();
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("yyyy-MM");
+
+        Map<String, Double> monthlyAmount = new TreeMap<>();
+        for (ProductOrder o : orders) {
+            if (o.getCreateTime() == null) continue;
+            if (o.getStatus() != null && (o.getStatus() == 1 || o.getStatus() == 2)) {
+                String month = o.getCreateTime().format(fmt);
+                monthlyAmount.merge(month, o.getTotalAmount() != null ? o.getTotalAmount().doubleValue() : 0.0, Double::sum);
+            }
+        }
+
+        // 取最近12个月
+        List<String> months = new ArrayList<>(monthlyAmount.keySet());
+        if (months.size() > 12) {
+            months = months.subList(months.size() - 12, months.size());
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (String month : months) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("month", month);
+            m.put("amount", Math.round(monthlyAmount.getOrDefault(month, 0.0) * 100.0) / 100.0);
+            result.add(m);
+        }
+        return result;
     }
 }

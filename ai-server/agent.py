@@ -28,7 +28,14 @@ logger = logging.getLogger("ai-server.agent")
 
 # ---- 路径 ----
 BASE = os.path.dirname(os.path.abspath(__file__))
-SESSION_INDEX = os.path.join(BASE, "sessions", "index.json")
+SESSION_DIR = os.path.join(BASE, "sessions")  # 会话目录，按 UID 分子目录
+
+
+def _index_path(uid: str) -> str:
+    """获取指定 UID 的会话索引文件路径"""
+    d = os.path.join(SESSION_DIR, uid)
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, "index.json")
 
 
 # ============================================================
@@ -67,7 +74,7 @@ class UnifiedAgent:
         # ---- 1. 从环境变量读取 LLM 配置 ----
         api_key = os.getenv("DEEPSEEK_API_KEY", "")
         base_url = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com")
-        model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
+        model = os.getenv("DEEPSEEK_MODEL", "deepseek-v4-pro")
         temperature = float(os.getenv("LLM_TEMPERATURE", "0.4"))
         max_tokens = int(os.getenv("LLM_MAX_TOKENS", "2048"))
 
@@ -113,7 +120,7 @@ class UnifiedAgent:
     # chat — 同步问答
     # ============================================================
 
-    def chat(self, question: str, thread_id: str = "default") -> dict:
+    def chat(self, question: str, thread_id: str = "default", uid: str = "") -> dict:
         """
         一次性问答（非流式）
 
@@ -147,7 +154,8 @@ class UnifiedAgent:
                 answer = msg.content
 
         # 记录到会话索引（前端侧栏展示用）
-        self._record_session(thread_id, question)
+        if uid:
+            self._record_session(uid, thread_id, question)
 
         elapsed = time.time() - t0
         logger.info(
@@ -160,7 +168,7 @@ class UnifiedAgent:
     # chat_stream — 流式问答（SSE）
     # ============================================================
 
-    async def chat_stream(self, question: str, thread_id: str = "default") -> AsyncIterator[dict]:
+    async def chat_stream(self, question: str, thread_id: str = "default", uid: str = "") -> AsyncIterator[dict]:
         """
         SSE 流式问答
 
@@ -210,7 +218,8 @@ class UnifiedAgent:
                 yield {"type": "tool_end", "name": event.get("name", "?")}
 
         # 记录会话 + 打印统计
-        self._record_session(thread_id, question)
+        if uid:
+            self._record_session(uid, thread_id, question)
         full_answer = "".join(answer_parts)
         elapsed = time.time() - t0
 
@@ -225,28 +234,28 @@ class UnifiedAgent:
     # 会话管理（JSON 索引 — 记录标题/时间，供前端展示）
     # ============================================================
 
-    def _load_index(self) -> dict:
-        """加载会话索引文件"""
-        os.makedirs(os.path.dirname(SESSION_INDEX), exist_ok=True)
-        if os.path.exists(SESSION_INDEX):
-            with open(SESSION_INDEX, "r", encoding="utf-8") as f:
+    def _load_index(self, uid: str) -> dict:
+        """加载指定 UID 的会话索引文件"""
+        path = _index_path(uid)
+        if os.path.exists(path):
+            with open(path, "r", encoding="utf-8") as f:
                 return json.load(f)
         return {}
 
-    def _save_index(self, data: dict):
-        """保存会话索引文件"""
-        os.makedirs(os.path.dirname(SESSION_INDEX), exist_ok=True)
-        with open(SESSION_INDEX, "w", encoding="utf-8") as f:
+    def _save_index(self, uid: str, data: dict):
+        """保存指定 UID 的会话索引文件"""
+        path = _index_path(uid)
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-    def _record_session(self, tid: str, question: str):
+    def _record_session(self, uid: str, tid: str, question: str):
         """
         每次对话后调用，记录会话元数据:
           - 首次出现 → 创建记录（标题 = 第一条问题的前30字）
           - 已存在   → 更新标题（用最新问题）
           - 超过50个  → 删除最旧的
         """
-        idx = self._load_index()
+        idx = self._load_index(uid)
         idx[tid] = {
             "title": question[:30],
             "created_at": idx.get(tid, {}).get("created_at")
@@ -260,11 +269,11 @@ class UnifiedAgent:
                 reverse=True,
             )
             idx = {k: idx[k] for k in keys[:50]}
-        self._save_index(idx)
+        self._save_index(uid, idx)
 
-    def list_sessions(self) -> list:
-        """列出所有会话（按创建时间倒序）"""
-        idx = self._load_index()
+    def list_sessions(self, uid: str) -> list:
+        """列出指定 UID 的所有会话（按创建时间倒序）"""
+        idx = self._load_index(uid)
         sessions = [
             {
                 "id": k,
@@ -276,9 +285,49 @@ class UnifiedAgent:
         sessions.sort(key=lambda s: s["created_at"], reverse=True)
         return sessions
 
-    def delete_session(self, tid: str):
-        """从索引中删除会话"""
-        idx = self._load_index()
+    def get_messages(self, thread_id: str) -> list:
+        """
+        从 LangGraph MemorySaver 获取指定会话的历史消息。
+        返回前端可渲染的消息列表 [{role, content}, ...]。
+        """
+        try:
+            config = {"configurable": {"thread_id": thread_id}}
+            snapshot = self._agent.get_state(config)
+            if snapshot.values and "messages" in snapshot.values:
+                result = []
+                for msg in snapshot.values["messages"]:
+                    role = msg.type
+                    if role == "ai":
+                        role = "ai"
+                    elif role == "human":
+                        role = "user"
+                    elif role == "tool":
+                        role = "tool"
+                    else:
+                        role = "system"
+
+                    content = getattr(msg, "content", "")
+                    # AI 消息的 content 可能是 list[dict]（多模态格式），需要合并
+                    if isinstance(content, list):
+                        content = "".join(
+                            c.get("text", "") if isinstance(c, dict) else str(c)
+                            for c in content
+                        )
+
+                    if content:  # 过滤空消息
+                        result.append({
+                            "role": role,
+                            "content": str(content),
+                            "tool_name": getattr(msg, "name", None),
+                        })
+                return result
+        except Exception as e:
+            logger.warning(f"获取消息失败 [{thread_id}]: {e}")
+        return []
+
+    def delete_session(self, uid: str, tid: str):
+        """从索引中删除指定 UID 的会话"""
+        idx = self._load_index(uid)
         idx.pop(tid, None)
-        self._save_index(idx)
-        logger.info(f"会话已删除: {tid}")
+        self._save_index(uid, idx)
+        logger.info(f"会话已删除: uid={uid} tid={tid}")

@@ -88,6 +88,52 @@ const orderPieOption = computed(() => {
 
 // 月度柱状图（带3D阴影）
 const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
+
+// 每日浏览量面积图
+const viewsOption = computed(() => {
+  if (!data.value?.dailyViews?.length) return {}
+  const dates = data.value.dailyViews.map(d => d.date)
+  const counts = data.value.dailyViews.map(d => d.count)
+  return {
+    tooltip: { trigger: 'axis' },
+    grid: { left: 50, right: 20, top: 16, bottom: 30 },
+    xAxis: { type: 'category', data: dates, axisLabel: { rotate: 45, fontSize: 10 }, boundaryGap: false },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f0f0f0' } }, minInterval: 1 },
+    series: [{
+      type: 'line', smooth: true, symbol: 'circle', symbolSize: 5,
+      data: counts,
+      lineStyle: { width: 3, color: '#27ae60' },
+      itemStyle: { color: '#27ae60' },
+      areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(39,174,96,0.3)' }, { offset: 1, color: 'rgba(39,174,96,0.02)' }] } },
+    }]
+  }
+})
+
+// 交易额趋势柱状图
+const transactionOption = computed(() => {
+  if (!data.value?.transactionTrend?.length) return {}
+  const months = data.value.transactionTrend.map(d => d.month.slice(0, 7))
+  const amounts = data.value.transactionTrend.map(d => d.amount)
+  return {
+    tooltip: { trigger: 'axis', formatter: (p: any[]) => p[0] ? `${p[0].name}<br/>交易额：¥${p[0].value.toFixed(2)}` : '' },
+    grid: { left: 60, right: 20, top: 16, bottom: 30 },
+    xAxis: { type: 'category', data: months, axisLabel: { rotate: 30, fontSize: 10 } },
+    yAxis: { type: 'value', splitLine: { lineStyle: { color: '#f0f0f0' } }, axisLabel: { formatter: (v: number) => '¥' + v } },
+    series: [{
+      type: 'bar', data: amounts.map((v, i) => ({
+        value: v,
+        itemStyle: {
+          borderRadius: [6, 6, 0, 0],
+          color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: '#e67e22' }, { offset: 1, color: '#f0c088' }] }
+        }
+      })),
+      barWidth: 20,
+    }]
+  }
+})
+
+// 总浏览量
+const totalPV = computed(() => data.value?.dailyViews?.reduce((s, d) => s + d.count, 0) || 0)
 </script>
 
 <template>
@@ -117,6 +163,11 @@ const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
           <div class="kpi-num">{{ data.overview.avgAge.toFixed(1) }}</div>
           <div class="kpi-label">平均年龄</div>
         </div>
+        <div class="kpi-card accent-blue">
+          <div class="kpi-icon">👁️</div>
+          <div class="kpi-num">{{ totalPV }}</div>
+          <div class="kpi-label">30日浏览量 (PV)</div>
+        </div>
       </div>
 
       <!-- 图表区 -->
@@ -139,6 +190,27 @@ const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
           </div>
         </div>
       </div>
+
+      <!-- 第二行图表：浏览量 + 交易额趋势 -->
+      <div class="charts-row">
+        <!-- 每日浏览量面积图 -->
+        <div class="chart-card">
+          <h3>👁️ 每日浏览量趋势（近30天）</h3>
+          <div class="chart-body">
+            <VChart v-if="data.dailyViews?.length" :option="viewsOption" autoresize />
+            <div v-else class="empty-inner">暂无浏览数据<br/><small>浏览记录将在用户访问后自动生成</small></div>
+          </div>
+        </div>
+
+        <!-- 交易额趋势柱状图 -->
+        <div class="chart-card">
+          <h3>💰 交易额趋势（近12个月）</h3>
+          <div class="chart-body">
+            <VChart v-if="data.transactionTrend?.length" :option="transactionOption" autoresize />
+            <div v-else class="empty-inner">暂无交易数据</div>
+          </div>
+        </div>
+      </div>
     </template>
   </div>
 </template>
@@ -147,7 +219,7 @@ const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
 .monitor-panel { }
 
 /* KPI 卡片 */
-.kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; margin-bottom: 24px; }
+.kpi-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 20px; margin-bottom: 24px; }
 .kpi-card {
   background: #fff; border-radius: 14px; padding: 22px 20px; text-align: center;
   box-shadow: 0 3px 14px rgba(0,0,0,0.06); border-top: 4px solid #c41e3a;
@@ -157,11 +229,13 @@ const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
 .kpi-card.accent-green  { border-top-color: #27ae60; }
 .kpi-card.accent-purple { border-top-color: #8e44ad; }
 .kpi-card.accent-orange { border-top-color: #e67e22; }
+.kpi-card.accent-blue { border-top-color: #2980b9; }
 .kpi-icon { font-size: 26px; margin-bottom: 6px; }
 .kpi-num { font-size: 34px; font-weight: bold; color: #c41e3a; }
 .kpi-card.accent-green .kpi-num  { color: #27ae60; }
 .kpi-card.accent-purple .kpi-num { color: #8e44ad; }
 .kpi-card.accent-orange .kpi-num { color: #e67e22; }
+.kpi-card.accent-blue .kpi-num { color: #2980b9; }
 .kpi-label { font-size: 12px; color: #999; margin-top: 4px; }
 
 /* 图表 */
@@ -180,6 +254,6 @@ const totalOrders = computed(() => data.value?.orderStats?.totalOrders || 0)
 
 @media (max-width: 992px) {
   .charts-row { grid-template-columns: 1fr; }
-  .kpi-row { grid-template-columns: repeat(2, 1fr); }
+  .kpi-row { grid-template-columns: repeat(3, 1fr); }
 }
 </style>

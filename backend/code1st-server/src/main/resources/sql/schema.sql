@@ -189,6 +189,7 @@ CREATE TABLE product (
     stock            INT            NOT NULL DEFAULT 0 COMMENT '库存数量',
     image_url        VARCHAR(500)   COMMENT '商品图片URL',
     model_url        VARCHAR(500)   DEFAULT NULL COMMENT '3D模型URL（glb/gltf格式）',
+    video_url        VARCHAR(500)   DEFAULT NULL COMMENT '宣传视频URL（mp4/webm/mov格式）',
     category         VARCHAR(100)   COMMENT '商品分类（如剪纸、刺绣、陶艺、竹编等）',
     inheritor_id     BIGINT         COMMENT '传承人ID（关联对应表）',
     inheritor_name   VARCHAR(255)   COMMENT '传承人姓名',
@@ -422,6 +423,8 @@ CREATE TABLE knowledge_article (
     category        VARCHAR(50) COMMENT '分类',
     content         TEXT COMMENT '文章内容',
     cover_url       VARCHAR(500) COMMENT '封面图',
+    video_url       VARCHAR(500) DEFAULT NULL COMMENT '视频URL（mp4/webm/mov格式）',
+    images          TEXT         DEFAULT NULL COMMENT '多张图片URL（逗号分隔）',
     status          INT DEFAULT 0 COMMENT '0-草稿 1-已发布',
     view_count      INT DEFAULT 0 COMMENT '浏览量',
     create_time     DATETIME COMMENT '创建时间',
@@ -675,3 +678,17 @@ CREATE TABLE rag_chat_message (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
+
+-- =====================================================
+-- 页面浏览记录表 — 用于统计网站PV访问量
+-- =====================================================
+DROP TABLE IF EXISTS page_view;
+
+CREATE TABLE page_view (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    path        VARCHAR(500) NOT NULL COMMENT '访问路径',
+    ip          VARCHAR(50)  COMMENT '访问IP',
+    create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '访问时间',
+    INDEX idx_path (path(100)),
+    INDEX idx_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='页面浏览记录表';

@@ -79,6 +79,8 @@ public class StatisticsController {
         result.put("registrationTrend", statisticsService.getRegistrationTrend());
         result.put("orderStats", statisticsService.getOrderStats());
         result.put("overview", statisticsService.getOverview());
+        result.put("dailyViews", statisticsService.getDailyViews());
+        result.put("transactionTrend", statisticsService.getTransactionTrend());
         return Result.success(result);
     }
 
@@ -91,6 +93,34 @@ public class StatisticsController {
         result.put("cities", statisticsService.getCityDistribution());
         result.put("age", statisticsService.getAgeDistribution());
         result.put("craft", statisticsService.getCraftDistribution());
+        result.put("endangered", statisticsService.getEndangered());
+        result.put("hotRanking", statisticsService.getHotRanking());
+        result.put("dailyViews", statisticsService.getDailyViews());
+        result.put("transactionTrend", statisticsService.getTransactionTrend());
         return Result.success(result);
+    }
+
+    @GetMapping("/endangered")
+    @ApiOperation("濒危预警看板")
+    public Result<List<Map<String, Object>>> endangered() {
+        return Result.success(statisticsService.getEndangered());
+    }
+
+    @GetMapping("/hot-ranking")
+    @ApiOperation("排行热门")
+    public Result<List<Map<String, Object>>> hotRanking() {
+        return Result.success(statisticsService.getHotRanking());
+    }
+
+    @GetMapping("/daily-views")
+    @ApiOperation("每日浏览量")
+    public Result<List<Map<String, Object>>> dailyViews() {
+        return Result.success(statisticsService.getDailyViews());
+    }
+
+    @GetMapping("/transaction-trend")
+    @ApiOperation("交易额趋势")
+    public Result<List<Map<String, Object>>> transactionTrend() {
+        return Result.success(statisticsService.getTransactionTrend());
     }
 }
