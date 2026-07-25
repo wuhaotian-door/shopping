@@ -76,6 +76,7 @@ class ChatReq(BaseModel):
     """对话请求"""
     question: str
     thread_id: str = "default"  # 会话 ID，相同 ID 共享 LangGraph 对话记忆
+    uid: str = ""               # 用户 UID（role_id），用于会话隔离
 
 
 # ============================================================
@@ -92,7 +93,7 @@ async def root():
 @app.post("/ai/chat")
 async def chat(req: ChatReq):
     """一次性问答：提交问题 → Agent 推理 → 返回完整答案 + 工具调用记录"""
-    return agent.chat(req.question, req.thread_id)
+    return agent.chat(req.question, req.thread_id, uid=req.uid)
 
 
 @app.post("/ai/chat/stream")
@@ -108,7 +109,7 @@ async def chat_stream(req: ChatReq):
     """
 
     async def gen():
-        async for e in agent.chat_stream(req.question, req.thread_id):
+        async for e in agent.chat_stream(req.question, req.thread_id, uid=req.uid):
             yield f"data: {json.dumps(e, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -123,16 +124,25 @@ async def chat_stream(req: ChatReq):
 
 
 @app.get("/ai/sessions")
-async def list_sessions():
-    """返回历史会话列表（前端侧栏）"""
-    return {"sessions": agent.list_sessions()}
+async def list_sessions(uid: str = ""):
+    """返回指定 UID 的历史会话列表（前端侧栏），uid 为空时返回空列表"""
+    if not uid:
+        return {"sessions": []}
+    return {"sessions": agent.list_sessions(uid)}
 
 
 @app.delete("/ai/sessions/{tid}")
-async def del_session(tid: str):
-    """删除指定会话"""
-    agent.delete_session(tid)
+async def del_session(tid: str, uid: str = ""):
+    """删除指定 UID 的会话"""
+    if uid:
+        agent.delete_session(uid, tid)
     return {"ok": True}
+
+
+@app.get("/ai/sessions/{tid}/messages")
+async def get_messages(tid: str):
+    """获取指定会话的历史消息"""
+    return {"messages": agent.get_messages(tid)}
 
 
 @app.post("/ai/knowledge/reload")

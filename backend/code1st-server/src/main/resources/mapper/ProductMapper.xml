@@ -12,6 +12,7 @@
             <if test="stock != null">stock = #{stock},</if>
             <if test="imageUrl != null">image_url = #{imageUrl},</if>
             <if test="modelUrl != null">model_url = #{modelUrl},</if>
+            <if test="videoUrl != null">video_url = #{videoUrl},</if>
             <if test="category != null">category = #{category},</if>
             <if test="status != null">status = #{status},</if>
             <if test="updateTime != null">update_time = #{updateTime},</if>

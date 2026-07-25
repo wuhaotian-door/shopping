@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, nextTick, onMounted, onUnmounted } from 'vue'
-import { aiChatStream, aiSessions, aiSessionDelete, type StreamEvent } from '@/api/ai'
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { aiChatStream, aiSessions, aiSessionDelete, aiSessionMessages, type StreamEvent } from '@/api/ai'
+import { useAuthStore } from '@/stores/auth'
 
 interface Message {
   id: number; role: 'user' | 'ai' | 'tool' | 'system'
@@ -9,8 +10,11 @@ interface Message {
 
 interface Session { id: string; title: string; created_at: string; msg_count: number }
 
+const authStore = useAuthStore()
+const uid = computed(() => authStore.uid)
+
 const sessions = ref<Session[]>([])
-const activeSid = ref('session-' + Date.now())
+const activeSid = ref('')
 const msgs = ref<Message[]>([])
 const input = ref('')
 const streaming = ref(false)
@@ -21,12 +25,13 @@ let mid = 0, abortFn: (() => void) | null = null
 const sessionMessages = new Map<string, Message[]>()
 
 async function loadSessions() {
-  try { sessions.value = (await aiSessions()).sessions } catch { /* */ }
+  if (!uid.value) { sessions.value = []; return }
+  try { sessions.value = (await aiSessions(uid.value)).sessions } catch { /* */ }
 }
 
 function newSession() {
-  if (streaming.value) return
-  const sid = 'session-' + Date.now()
+  if (streaming.value || !uid.value) return
+  const sid = uid.value + '_session-' + Date.now()
   sessionMessages.set(sid, [])
   activeSid.value = sid
   msgs.value = []
@@ -38,10 +43,30 @@ const switching = ref(false)
 async function switchSession(sid: string) {
   if (streaming.value || switching.value || sid === activeSid.value) return
   switching.value = true
+  // 保存当前会话消息到本地缓存
   if (activeSid.value) sessionMessages.set(activeSid.value, [...msgs.value])
   activeSid.value = sid
   await nextTick()
-  msgs.value = sessionMessages.get(sid) || []
+
+  // 优先从本地缓存取，没有则从 AI 服务拉取历史消息
+  let cached = sessionMessages.get(sid)
+  if (!cached) {
+    try {
+      const res = await aiSessionMessages(sid)
+      const remote = (res.messages || []) as Array<{ role: string; content: string; tool_name?: string }>
+      cached = []
+      let localMid = 0
+      for (const m of remote) {
+        const role = m.role === 'ai' ? 'ai' : m.role === 'user' ? 'user' : m.role === 'tool' ? 'tool' : 'system'
+        cached.push({ id: ++localMid, role, content: m.content, toolName: m.tool_name })
+      }
+      sessionMessages.set(sid, cached)
+    } catch {
+      cached = []
+    }
+  }
+
+  msgs.value = cached || []
   mid = msgs.value.reduce((max, m) => Math.max(max, m.id), 0)
   await nextTick()
   scroll()
@@ -49,8 +74,8 @@ async function switchSession(sid: string) {
 }
 
 async function delSession(sid: string) {
-  if (streaming.value) return
-  await aiSessionDelete(sid)
+  if (streaming.value || !uid.value) return
+  await aiSessionDelete(sid, uid.value)
   if (activeSid.value === sid) newSession()
   loadSessions()
 }
@@ -64,14 +89,16 @@ function addMsg(role: Message['role'], content: string, extra?: Partial<Message>
 function scroll() { nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight }) }
 
 async function send() {
-  const q = input.value.trim(); if (!q || streaming.value) return
+  const q = input.value.trim(); if (!q || streaming.value || !uid.value) return
+  // 如果还没有活跃会话，自动创建一个
+  if (!activeSid.value) newSession()
   input.value = ''; addMsg('user', q); scroll()
 
   streaming.value = true
   const aiMsg = addMsg('ai', '')
   let buf = ''
 
-  abortFn = aiChatStream(q, activeSid.value,
+  abortFn = aiChatStream(q, activeSid.value, uid.value,
     (e: StreamEvent) => {
       if (e.type === 'token' && e.content) { buf += e.content; aiMsg.content = buf; scroll() }
       else if (e.type === 'tool_start') { addMsg('tool', '', { toolName: e.name, toolArgs: JSON.stringify(e.input) }); scroll() }
@@ -81,7 +108,21 @@ async function send() {
   )
 }
 
-onMounted(() => { loadSessions(); sessionMessages.set(activeSid.value, []) })
+// UID 变化时重新加载会话列表（切换账号 / 登录登出）
+watch(uid, (newUid, oldUid) => {
+  if (newUid && newUid !== oldUid) {
+    sessionMessages.clear()
+    newSession()
+    loadSessions()
+  }
+})
+
+onMounted(() => {
+  if (uid.value) {
+    newSession()
+    loadSessions()
+  }
+})
 onUnmounted(() => abortFn?.())
 </script>
 

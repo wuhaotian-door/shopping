@@ -28,4 +28,16 @@ public interface StatisticsService {
 
     /** 订单统计（状态分布 + 月度趋势） */
     Map<String, Object> getOrderStats();
+
+    /** 濒危预警：传承人数 ≤3 的技艺及传承人年龄信息 */
+    List<Map<String, Object>> getEndangered();
+
+    /** 排行热门：按传承人数排序的技艺排行榜 */
+    List<Map<String, Object>> getHotRanking();
+
+    /** 每日浏览量（最近30天） */
+    List<Map<String, Object>> getDailyViews();
+
+    /** 交易额趋势（按月统计商品订单总额） */
+    List<Map<String, Object>> getTransactionTrend();
 }

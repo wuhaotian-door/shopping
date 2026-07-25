@@ -678,3 +678,17 @@ CREATE TABLE rag_chat_message (
     created_at   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     INDEX idx_session (session_id, created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='RAG AI对话消息表';
+
+-- =====================================================
+-- 页面浏览记录表 — 用于统计网站PV访问量
+-- =====================================================
+DROP TABLE IF EXISTS page_view;
+
+CREATE TABLE page_view (
+    id          BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '主键',
+    path        VARCHAR(500) NOT NULL COMMENT '访问路径',
+    ip          VARCHAR(50)  COMMENT '访问IP',
+    create_time DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '访问时间',
+    INDEX idx_path (path(100)),
+    INDEX idx_time (create_time)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='页面浏览记录表';

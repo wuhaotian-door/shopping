@@ -447,7 +447,7 @@ async function handleRejectFriend(r: FriendVO) {
         <div v-else>
           <div v-for="f in friends" :key="f.userId" class="friend-row">
             <span class="friend-name">{{ f.name }}</span><span class="friend-id">ID:{{ f.userId }}</span>
-            <button class="btn-sm-primary" @click="handleStartChat(f.userId,'USER')">发消息</button>
+            <button class="btn-sm-primary" @click="handleStartChat(f.userId, f.role)">发消息</button>
           </div>
           <div v-if="friends.length===0" class="empty-text">暂无好友</div>
         </div>

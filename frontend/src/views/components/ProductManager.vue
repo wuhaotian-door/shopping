@@ -29,6 +29,7 @@ const uploadingImage = ref(false)
 const uploadingModel = ref(false)
 const IMAGE_ACCEPT = '.jpg,.jpeg,.png,.webp'
 const MODEL_ACCEPT = '.glb,.gltf'
+const VIDEO_ACCEPT = '.mp4,.webm,.mov'
 const IMAGE_MAX = 5 * 1024 * 1024
 const MODEL_MAX = 20 * 1024 * 1024
 

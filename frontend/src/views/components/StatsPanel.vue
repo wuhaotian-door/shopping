@@ -17,7 +17,7 @@ use([
 ])
 
 import { getAllStats, getCitiesByProvince } from '@/api/statistics'
-import type { AllStats, StatItem } from '@/api/statistics'
+import type { AllStats, StatItem, EndangeredItem } from '@/api/statistics'
 
 const loading = ref(true)
 const mapReady = ref(false)
@@ -157,6 +157,23 @@ const craftOption = computed(() => {
   }
 })
 
+// 排行热门 TOP10 柱状图配置
+const hotRankingOption = computed(() => {
+  if (!stats.value?.hotRanking?.length) return {}
+  const data = stats.value.hotRanking
+  const TOP_COLORS = ['#e07050', '#d06848', '#c06040', '#b05838', '#a05030', '#904828', '#804020', '#703818', '#603010', '#502808']
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    grid: { left: 100, right: 60, top: 10, bottom: 24 },
+    xAxis: { type: 'value', axisLine: { show: false }, axisTick: { show: false }, splitLine: { lineStyle: { color: '#f0f0f0' } } },
+    yAxis: { type: 'category', data: data.map(d => d.name), inverse: true, axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: '#666', fontSize: 13 } },
+    series: [{
+      type: 'bar', data: data.map((d, i) => ({ value: d.value, itemStyle: { color: TOP_COLORS[i] || '#c05038', borderRadius: [0, 4, 4, 0] } })),
+      barWidth: 18, label: { show: true, position: 'right', color: '#999', fontSize: 12, formatter: '{c}人' }
+    }]
+  }
+})
+
 // 图表点击事件处理
 function onChartClick(params: any) {
   if (mapLevel.value === 'country' && params.name && ALL_PROVINCES.includes(params.name)) {
@@ -244,7 +261,7 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- 图表网格 -->
+      <!-- 图表网格：年龄 + 技艺 同行 -->
       <div class="charts-grid">
         <!-- 年龄饼图 -->
         <div class="chart-card">
@@ -253,14 +270,46 @@ onMounted(async () => {
             <VChart :option="ageOption" autoresize />
           </div>
         </div>
+        <!-- 技艺柱状图 -->
+        <div class="chart-card">
+          <h3>非遗技艺类型分布</h3>
+          <div class="chart-box">
+            <VChart v-if="stats.craft?.length" :option="craftOption" autoresize />
+            <div v-else class="empty-inner">暂无技艺数据</div>
+          </div>
+        </div>
       </div>
 
-      <!-- 技艺分布柱状图（全国行） -->
+      <!-- 濒危预警看板 -->
+      <div class="chart-card chart-full endangered-section">
+        <div class="endangered-header">
+          <h3>⚠️ 濒危预警看板</h3>
+          <span class="endangered-sub">传承人数 ≤ 3 人的非遗技艺（按濒危程度排序）</span>
+        </div>
+        <div v-if="stats.endangered?.length" class="endangered-grid">
+          <div v-for="item in stats.endangered" :key="item.craft" class="endangered-card" :class="'level-' + (item.level === '严重濒危' ? 'critical' : item.level === '高度濒危' ? 'high' : 'warn')">
+            <div class="endangered-level">{{ item.level }}</div>
+            <div class="endangered-craft">{{ item.craft }}</div>
+            <div class="endangered-stats">
+              <span>传承人：<strong>{{ item.count }}</strong> 人</span>
+              <span>平均年龄：<strong>{{ item.avgAge }}</strong> 岁</span>
+            </div>
+            <div class="endangered-inheritors">
+              <span v-for="ih in item.inheritors" :key="ih.name" class="ih-tag">
+                {{ ih.name }}（{{ ih.age }}岁）
+              </span>
+            </div>
+          </div>
+        </div>
+        <div v-else class="empty-inner">🎉 暂无濒危项目，所有技艺传承状况良好</div>
+      </div>
+
+      <!-- 排行热门 -->
       <div class="chart-card chart-full">
-        <h3>非遗技艺类型分布</h3>
+        <h3>🏆 排行热门 · 非遗技艺传承人数量 TOP10</h3>
         <div class="chart-box craft-box">
-          <VChart v-if="stats.craft?.length" :option="craftOption" autoresize />
-          <div v-else class="empty-inner">暂无技艺数据</div>
+          <VChart v-if="stats.hotRanking?.length" :option="hotRankingOption" autoresize />
+          <div v-else class="empty-inner">暂无排行数据</div>
         </div>
       </div>
     </template>
@@ -357,6 +406,35 @@ onMounted(async () => {
 .empty-text { text-align: center; padding: 80px 20px; color: #ccc; font-size: 14px; }
 .empty-inner { text-align: center; padding: 80px 20px; color: #ccc; font-size: 13px; }
 .map-fallback { text-align: center; padding: 100px 20px; color: #ccc; font-size: 14px; }
+
+/* ===== 濒危预警看板 ===== */
+.endangered-section { border-left: 4px solid #dc3545; }
+.endangered-header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 20px; }
+.endangered-header h3 { margin-bottom: 0 !important; color: #dc3545 !important; border-left-color: #dc3545 !important; }
+.endangered-sub { font-size: 12px; color: #999; }
+.endangered-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.endangered-card {
+  background: linear-gradient(145deg, #fff 0%, #fff8f5 100%);
+  border-radius: 12px; padding: 18px 20px;
+  border: 1px solid rgba(220, 53, 69, 0.15);
+  transition: transform 0.3s, box-shadow 0.3s;
+}
+.endangered-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(220,53,69,0.1); }
+.endangered-level {
+  display: inline-block; padding: 3px 12px; border-radius: 10px;
+  font-size: 12px; font-weight: 700; letter-spacing: 1px;
+}
+.level-critical .endangered-level { background: #ffe0e0; color: #dc3545; border: 1px solid #f5c6cb; }
+.level-high .endangered-level { background: #fff3e0; color: #e65100; border: 1px solid #ffcc80; }
+.level-warn .endangered-level { background: #fffde0; color: #f9a825; border: 1px solid #fff9c4; }
+.endangered-craft { font-size: 17px; font-weight: 700; color: #333; margin: 10px 0 8px; }
+.endangered-stats { display: flex; gap: 20px; font-size: 13px; color: #888; margin-bottom: 8px; }
+.endangered-stats strong { color: #c41e3a; }
+.endangered-inheritors { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.ih-tag {
+  padding: 3px 10px; background: #f5f5f5; border-radius: 12px;
+  font-size: 12px; color: #666; border: 1px solid #eee;
+}
 
 @media (max-width: 992px) {
   .charts-grid { grid-template-columns: 1fr; }

@@ -237,6 +237,7 @@ export interface ProductVO {
   stock: number
   imageUrl: string
   modelUrl?: string
+  videoUrl?: string
   category: string
   inheritorId: number
   inheritorName: string

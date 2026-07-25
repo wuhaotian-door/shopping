@@ -234,10 +234,12 @@ function goTo(path: string) {
             </template>
             <!-- 悬浮按钮 -->
             <div class="float-btns">
-              <button v-if="modelUrl && !show3d" class="float-btn" @click="show3d = true; showVideo = false">🔍 3D</button>
-              <button v-if="show3d" class="float-btn" @click="show3d = false">✕ 返回</button>
-              <button v-if="product.videoUrl && !showVideo" class="float-btn" @click="showVideo = true; show3d = false">▶ 视频</button>
-              <button v-if="showVideo" class="float-btn" @click="showVideo = false">✕ 返回</button>
+              <template v-if="!show3d && !showVideo">
+                <button class="float-btn float-btn-3d" @click="show3d = true">🧧 查看文物3D模型</button>
+                <button v-if="product.videoUrl" class="float-btn float-btn-video" @click="showVideo = true">▶ 查看文物视频</button>
+                <span v-else class="float-no-video">目前暂无视频喔</span>
+              </template>
+              <button v-else class="float-btn float-btn-back" @click="show3d = false; showVideo = false">✕ 返回图片</button>
             </div>
           </div>
           <div class="product-info-right">
@@ -867,7 +869,13 @@ function goTo(path: string) {
 .carousel-dot { width: 32px; height: 24px; border-radius: 4px; background: #f0f0f0; color: #999; display: flex; align-items: center; justify-content: center; font-size: 13px; cursor: pointer; transition: all 0.2s; border: 1px solid #e0e0e0; }
 .carousel-dot:hover { border-color: #c41e3a; color: #c41e3a; }
 .carousel-dot.active { background: #c41e3a; color: #fff; border-color: #c41e3a; }
-.float-btns { position: absolute; top: 10px; right: 10px; z-index: 20; display: flex; gap: 6px; }
-.float-btn { padding: 6px 12px; font-size: 12px; color: #fff; background: rgba(196,30,58,0.85); border: none; border-radius: 6px; cursor: pointer; font-weight: 600; backdrop-filter: blur(4px); transition: all 0.2s; }
-.float-btn:hover { background: #c41e3a; box-shadow: 0 2px 8px rgba(196,30,58,0.35); }
+.float-btns { position: absolute; bottom: 12px; left: 12px; right: 12px; z-index: 20; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.float-btn { padding: 10px 20px; font-size: 14px; color: #fff; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; backdrop-filter: blur(6px); transition: all 0.2s; letter-spacing: 1px; font-family: inherit; white-space: nowrap; }
+.float-btn-3d { background: rgba(196,30,58,0.88); }
+.float-btn-3d:hover { background: #c41e3a; box-shadow: 0 3px 12px rgba(196,30,58,0.4); transform: translateY(-1px); }
+.float-btn-video { background: rgba(180,120,50,0.88); }
+.float-btn-video:hover { background: #8b6914; box-shadow: 0 3px 12px rgba(180,120,50,0.4); transform: translateY(-1px); }
+.float-btn-back { background: rgba(100,100,100,0.85); }
+.float-btn-back:hover { background: #555; box-shadow: 0 3px 12px rgba(0,0,0,0.3); transform: translateY(-1px); }
+.float-no-video { padding: 10px 16px; font-size: 13px; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.35); border-radius: 8px; backdrop-filter: blur(4px); letter-spacing: 1px; white-space: nowrap; }
 </style>
