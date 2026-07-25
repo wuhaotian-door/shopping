@@ -73,6 +73,7 @@ public class AuthServiceImpl implements AuthService {
                     .userName(admin.getUsername())
                     .name(admin.getName())
                     .role(RoleConstant.ADMIN)
+                    .avatarUrl(admin.getAvatarUrl())
                     .build();
         }
 
@@ -92,6 +93,7 @@ public class AuthServiceImpl implements AuthService {
                     .userName(inheritor.getUsername())
                     .name(inheritor.getName())
                     .role(RoleConstant.INHERITOR)
+                    .avatarUrl(inheritor.getAvatarUrl())
                     .build();
         }
 
@@ -108,6 +110,7 @@ public class AuthServiceImpl implements AuthService {
                     .userName(user.getUsername())
                     .name(user.getName())
                     .role(RoleConstant.USER)
+                    .avatarUrl(user.getAvatarUrl())
                     .build();
         }
 
