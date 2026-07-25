@@ -254,4 +254,29 @@ async function toggleStatus(slot: AppointmentSlot) {
 .submit-msg { font-size: 13px; }
 .submit-msg.error { color: #dc3545; }
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
+
+@media (max-width: 768px) {
+  .section-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .section-header h2 { font-size: 18px; padding-left: 10px; border-left-width: 3px; }
+  .btn-primary { padding: 8px 16px; font-size: 13px; }
+  .btn-outline { padding: 8px 16px; font-size: 13px; }
+  .form-card { padding: 16px; border-radius: 8px; margin-bottom: 14px; }
+  .form-card h3 { font-size: 16px; margin-bottom: 12px; }
+  .form-row { flex-direction: column; gap: 8px; }
+  .form-group { min-width: 100%; margin-bottom: 8px; }
+  .form-group label { font-size: 12px; }
+  .form-input { height: 38px; font-size: 13px; padding: 0 10px; }
+  .form-hint { font-size: 10px; }
+  .form-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+  .form-actions .btn-primary, .form-actions .btn-outline { width: 100%; text-align: center; }
+  .table-wrap { border-radius: 8px; overflow-x: auto; }
+  .order-table { min-width: 650px; }
+  .order-table th, .order-table td { padding: 10px 8px; font-size: 13px; }
+  .order-table th { font-size: 12px; }
+  .action-cell { flex-wrap: wrap; gap: 4px; }
+  .btn-confirm, .btn-outline-sm, .btn-reject { padding: 4px 8px; font-size: 11px; }
+  .status-tag { font-size: 11px; padding: 2px 8px; }
+  .recurrence-tag { font-size: 11px; padding: 2px 6px; }
+  .empty-state { padding: 40px 16px; font-size: 13px; }
+}
 </style>

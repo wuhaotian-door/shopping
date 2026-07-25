@@ -165,8 +165,20 @@ function startRipple() {
   100% { transform: translate(-50%, -50%) scale(200); opacity: 0; }
 }
 
-/* ===== 全局内容层 ===== */
-.app-main { position: relative; z-index: 1; }
+/* ===== 全局移动端适配 ===== */
+@media (max-width: 768px) {
+  .page-view { animation: pageInMobile 0.2s ease; }
+  @keyframes pageInMobile {
+    0% { opacity: 0; transform: translateY(6px); }
+    100% { opacity: 1; transform: translateY(0); }
+  }
+
+  /* 按钮触控友好 */
+  button, .btn, [role="button"] { min-height: 36px; }
+
+  /* 输入框防缩放 */
+  input, textarea, select { font-size: 16px !important; }
+}
 
 /* ===== 主页入场 ===== */
 .page-enter-enter-active {

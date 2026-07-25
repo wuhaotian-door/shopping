@@ -1,0 +1,148 @@
+/* ============================================================
+   码上非遗 — 全局移动端适配 (≤768px)
+   ============================================================ */
+
+@media (max-width: 768px) {
+  /* ---- 通用容器 ---- */
+  .stats-page-body,
+  .detail-page,
+  .store-page,
+  .news-page,
+  .inheritor-page,
+  .chat-page,
+  .profile-page,
+  .cart-page,
+  .orders-page,
+  .stats-panel,
+  .monitor-panel {
+    padding: 16px 12px !important;
+  }
+
+  /* ---- 弹窗全屏 ---- */
+  .modal-content,
+  .el-dialog {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    max-height: 90vh !important;
+    border-radius: 12px 12px 0 0 !important;
+  }
+
+  .modal-body { padding: 16px !important; }
+
+  /* ---- 表单全宽 ---- */
+  .form-row { flex-direction: column !important; gap: 0 !important; }
+
+  .form-input,
+  .form-textarea,
+  .form-select {
+    width: 100% !important;
+  }
+
+  /* ---- 网格单列 ---- */
+  .overview-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 10px !important;
+  }
+
+  /* ---- 卡片缩间距 ---- */
+  .chart-card,
+  .kpi-card,
+  .overview-card {
+    padding: 16px 12px !important;
+  }
+
+  /* ---- 详情页主体单列 ---- */
+  .detail-main { flex-direction: column !important; }
+
+  .product-image-wrap {
+    height: auto !important;
+    max-height: 320px !important;
+  }
+
+  .product-info-right { padding: 16px 0 !important; }
+
+  /* ---- 图表高度 ---- */
+  .chart-box { height: 260px !important; }
+  .map-box { height: 380px !important; }
+  .craft-box { height: 240px !important; }
+
+  /* ---- 浮动按钮缩小 ---- */
+  .float-btns { gap: 6px !important; }
+  .float-btn { padding: 8px 14px !important; font-size: 12px !important; }
+  .float-no-video { font-size: 11px !important; padding: 6px 10px !important; }
+
+  /* ---- 文章/列表 ---- */
+  .news-grid,
+  .article-list { grid-template-columns: 1fr !important; }
+
+  .news-card,
+  .article-card { margin-bottom: 12px; }
+
+  /* ---- 表格横向滚动 ---- */
+  table, .table-wrap { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+  /* ---- 操作按钮列 ---- */
+  .action-bar {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .action-bar button { width: 100% !important; }
+
+  /* ---- 底部栏 ---- */
+  .page-footer { padding: 16px 12px !important; font-size: 12px !important; }
+
+  /* ---- 侧边工具栏缩小 ---- */
+  .side-toolbar { right: 4px !important; width: 44px !important; border-radius: 22px !important; }
+  .side-btn { padding: 8px 0 !important; }
+  .side-btn svg { width: 18px !important; height: 18px !important; }
+  .side-label { font-size: 10px !important; }
+
+  /* ---- 统计页面概览 ---- */
+  .kpi-row { grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; }
+  .kpi-num { font-size: 24px !important; }
+  .kpi-icon { font-size: 20px !important; }
+
+  /* ---- 濒危预警卡片 ---- */
+  .endangered-grid { grid-template-columns: 1fr !important; }
+  .endangered-stats { flex-direction: column !important; gap: 4px !important; }
+
+  /* ---- 评分/评论 ---- */
+  .review-item { padding: 12px 0 !important; }
+
+  /* ---- 登录/注册卡片 ---- */
+  .deco-card-wrap { padding: 16px !important; }
+
+  /* ---- 继承者面板 ---- */
+  .tab-nav { overflow-x: auto; flex-wrap: nowrap; gap: 4px; }
+  .tab-btn { white-space: nowrap; padding: 8px 14px; font-size: 13px; }
+
+  /* ---- 搜索栏 ---- */
+  .search-bar { flex-direction: column; gap: 8px; }
+  .search-bar input { width: 100% !important; }
+
+  /* ---- 返回栏 ---- */
+  .back-bar { padding: 8px 12px; }
+
+  /* ---- 产品详情价格 ---- */
+  .product-price-detail { font-size: 24px !important; }
+}
+
+/* ============================================================
+   小屏手机 (< 480px)
+   ============================================================ */
+@media (max-width: 480px) {
+  .overview-grid,
+  .kpi-row { grid-template-columns: repeat(2, 1fr) !important; }
+
+  .kpi-num { font-size: 20px !important; }
+
+  .chart-box { height: 220px !important; }
+  .map-box { height: 300px !important; }
+
+  h2, .section-header h2 { font-size: 18px !important; }
+  h3 { font-size: 15px !important; }
+
+  .float-btns { left: 6px !important; right: 6px !important; bottom: 8px !important; }
+  .float-btn { padding: 6px 10px !important; font-size: 11px !important; }
+}

@@ -85,4 +85,20 @@ function sendReply() {
 .btn-primary:hover { background: #a8162b; }
 .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
+
+@media (max-width: 768px) {
+  .section-header { margin-bottom: 16px; }
+  .section-header h2 { font-size: 18px; padding-left: 10px; border-left-width: 3px; }
+  .chat-panel { min-height: 400px; border-radius: 8px; }
+  .chat-messages { padding: 16px; gap: 14px; max-height: 360px; }
+  .chat-msg { max-width: 90%; gap: 8px; }
+  .msg-avatar { width: 32px; height: 32px; font-size: 13px; }
+  .msg-content { padding: 10px 12px; font-size: 13px; border-radius: 10px; }
+  .msg-sender { font-size: 12px; }
+  .msg-time { font-size: 10px; }
+  .chat-reply { padding: 12px 16px; gap: 8px; flex-direction: column; align-items: stretch; }
+  .reply-input { font-size: 13px; padding: 10px; }
+  .btn-primary { padding: 10px 16px; font-size: 13px; width: 100%; }
+  .empty-state { padding: 40px 16px; font-size: 13px; }
+}
 </style>
