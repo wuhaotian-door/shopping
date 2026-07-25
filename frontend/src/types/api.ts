@@ -21,6 +21,7 @@ export interface LoginResponse {
   name: string
   token: string
   role: RoleType | 'ADMIN'
+  avatarUrl?: string
 }
 
 /** 角色类型 */

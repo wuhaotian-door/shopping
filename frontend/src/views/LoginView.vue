@@ -18,6 +18,7 @@ const form = reactive({
 
 const errorMsg = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
 
 async function handleLogin() {
   if (!form.username || !form.password) {
@@ -86,13 +87,18 @@ async function handleLogin() {
 
           <div class="form-item">
             <label for="password">密码</label>
-            <input
-                id="password"
-                v-model="form.password"
-                type="password"
-                placeholder="示例：123456"
-                autocomplete="current-password"
-            />
+            <div class="pwd-wrap">
+              <input
+                  id="password"
+                  v-model="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="示例：123456"
+                  autocomplete="current-password"
+              />
+              <button type="button" class="pwd-toggle" @click="showPassword = !showPassword" :title="showPassword ? '隐藏密码' : '显示密码'">
+                {{ showPassword ? '🙈' : '👁' }}
+              </button>
+            </div>
           </div>
 
           <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
@@ -217,6 +223,18 @@ async function handleLogin() {
   border-color: #c41e3a;
   box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
 }
+
+/* 密码可见切换 */
+.pwd-wrap { position: relative; display: flex; align-items: center; }
+.pwd-wrap input { padding-right: 44px !important; }
+.pwd-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; border: none; background: transparent;
+  font-size: 18px; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; border-radius: 6px; transition: background 0.2s;
+  line-height: 1; padding: 0;
+}
+.pwd-toggle:hover { background: rgba(196, 30, 58, 0.08); }
 .error-msg {
   color: #c41e3a;
   font-size: 13px;

@@ -30,6 +30,8 @@ const form = reactive({
 
 const errorMsg = ref('')
 const loading = ref(false)
+const showPassword = ref(false)
+const showConfirmPassword = ref(false)
 const uploadingAvatar = ref(false)
 const avatarPreview = ref('')
 const cropperVisible = ref(false)
@@ -69,60 +71,94 @@ async function onCropperCrop(blob: Blob) {
   }
 }
 
-const fieldErrors = reactive<Record<string, string>>({
-  username: '',
-  name: '',
-  email: '',
-  password: '',
-  confirmPassword: '',
-  phone: '',
-  idNumber: '',
-  region: '',
-  role: '',
+// 字段是否已触碰过（失焦后才开始显示"有效"状态）
+const touched = reactive<Record<string, boolean>>({
+  username: false, name: false, email: false, password: false,
+  confirmPassword: false, phone: false, idNumber: false, region: false, role: false,
 })
 
+const fieldErrors = reactive<Record<string, string>>({
+  username: '', name: '', email: '', password: '',
+  confirmPassword: '', phone: '', idNumber: '', region: '', role: '',
+})
+
+const fieldOk = reactive<Record<string, boolean>>({
+  username: false, name: false, email: false, password: false,
+  confirmPassword: false, phone: false, idNumber: false, region: false, role: false,
+})
+
+/** 实时字段校验 — 输入时触发，给出具体错误提示 */
 function validateField(field: string) {
   const v = (form as any)[field]
+  const t = (form as any)[field]?.trim?.() ?? ''
+
   switch (field) {
     case 'username':
-      fieldErrors.username = !v || !v.trim() ? '请输入用户名' : ''
+      if (!v || !t) fieldErrors.username = '请输入用户名'
+      else if (t.length < 2) fieldErrors.username = '用户名至少 2 个字符'
+      else if (!/^[a-zA-Z0-9_一-鿿]+$/.test(t)) fieldErrors.username = '用户名包含非法字符'
+      else fieldErrors.username = ''
+      fieldOk.username = touched.username && !fieldErrors.username && !!t
       break
     case 'name':
-      fieldErrors.name = !v || !v.trim() ? '请输入姓名' : ''
+      if (!v || !t) fieldErrors.name = '请输入姓名'
+      else if (t.length < 2) fieldErrors.name = '姓名至少 2 个字符'
+      else fieldErrors.name = ''
+      fieldOk.name = touched.name && !fieldErrors.name && !!t
       break
     case 'email':
-      fieldErrors.email = !v || !v.trim() ? '请输入邮箱' : ''
+      if (!v || !t) fieldErrors.email = '请输入邮箱'
+      else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) fieldErrors.email = '邮箱格式不正确'
+      else fieldErrors.email = ''
+      fieldOk.email = touched.email && !fieldErrors.email && !!t
       break
     case 'password':
-      fieldErrors.password = !v ? '请输入密码' : v.length < 6 ? '密码至少 6 位' : ''
-      if (form.confirmPassword && v !== form.confirmPassword) {
-        fieldErrors.confirmPassword = '两次密码不一致'
-      } else if (form.confirmPassword) {
-        fieldErrors.confirmPassword = ''
+      if (!v) fieldErrors.password = '请输入密码'
+      else if (v.length < 6) fieldErrors.password = '密码至少 6 位'
+      else if (v.length > 20) fieldErrors.password = '密码不能超过 20 位'
+      else fieldErrors.password = ''
+      fieldOk.password = touched.password && !fieldErrors.password && !!v
+      // 联动确认密码
+      if (form.confirmPassword) {
+        if (v !== form.confirmPassword) fieldErrors.confirmPassword = '两次密码不一致'
+        else fieldErrors.confirmPassword = ''
+        fieldOk.confirmPassword = touched.confirmPassword && !fieldErrors.confirmPassword && !!form.confirmPassword
       }
       break
     case 'confirmPassword':
-      fieldErrors.confirmPassword = !v ? '请确认密码' : v !== form.password ? '两次密码不一致' : ''
+      if (!v) fieldErrors.confirmPassword = '请确认密码'
+      else if (v !== form.password) fieldErrors.confirmPassword = '两次密码不一致'
+      else fieldErrors.confirmPassword = ''
+      fieldOk.confirmPassword = touched.confirmPassword && !fieldErrors.confirmPassword && !!v
       break
     case 'phone':
-      if (v && v.trim().length > 11) {
-        fieldErrors.phone = '手机号不能超过11位'
-      } else if (isInheritor.value && (!v || !v.trim())) {
-        fieldErrors.phone = '请输入手机号'
-      } else {
-        fieldErrors.phone = ''
-      }
+      if (isInheritor.value && !t) fieldErrors.phone = '请输入手机号'
+      else if (t && !/^1[3-9]\d{9}$/.test(t)) fieldErrors.phone = '请输入正确的11位手机号'
+      else fieldErrors.phone = ''
+      fieldOk.phone = touched.phone && !fieldErrors.phone && !!t
       break
     case 'idNumber':
-      fieldErrors.idNumber = isInheritor.value && (!v || !v.trim()) ? '请输入身份证号' : ''
+      if (isInheritor.value && !t) fieldErrors.idNumber = '请输入身份证号'
+      else if (t && !/^\d{17}[\dXx]$/.test(t)) fieldErrors.idNumber = '身份证号格式不正确（18位）'
+      else fieldErrors.idNumber = ''
+      fieldOk.idNumber = touched.idNumber && !fieldErrors.idNumber && !!t
       break
     case 'region':
-      fieldErrors.region = isInheritor.value && (!v || !v.trim()) ? '请选择完整省市地区' : ''
+      if (isInheritor.value && !t) fieldErrors.region = '请选择完整省市地区'
+      else fieldErrors.region = ''
+      fieldOk.region = touched.region && !fieldErrors.region && !!t
       break
     case 'role':
       fieldErrors.role = !v ? '请选择注册类型' : ''
+      fieldOk.role = !fieldErrors.role && !!v
       break
   }
+}
+
+/** 失焦时标记字段已触碰，显示通过/错误状态 */
+function onBlur(field: string) {
+  touched[field] = true
+  validateField(field)
 }
 
 const isInheritor = computed(() => form.role === 'INHERITOR')
@@ -217,6 +253,7 @@ async function handleRegister() {
         idNumber: form.idNumber.trim(),
         birthDate: form.birthDate || undefined,
         region: form.region.trim(),
+        avatarUrl: form.avatarUrl || undefined,
       })
       router.push('/register-success?type=inheritor')
     } else {
@@ -228,6 +265,7 @@ async function handleRegister() {
         phone: form.phone || undefined,
         sex: form.sex || undefined,
         email: form.email.trim(),
+        avatarUrl: form.avatarUrl || undefined,
       })
       router.push('/register-success?type=user')
     }
@@ -272,7 +310,7 @@ async function handleRegister() {
               <div
                   class="role-card"
                   :class="{ active: form.role === 'USER' }"
-                  @click="form.role = 'USER'; validateField('role')"
+                  @click="form.role = 'USER'; touched.role = true; validateField('role')"
               >
                 <div class="role-icon user-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -286,7 +324,7 @@ async function handleRegister() {
               <div
                   class="role-card"
                   :class="{ active: form.role === 'INHERITOR' }"
-                  @click="form.role = 'INHERITOR'; validateField('role')"
+                  @click="form.role = 'INHERITOR'; touched.role = true; validateField('role')"
               >
                 <div class="role-icon inheritor-icon">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -299,7 +337,7 @@ async function handleRegister() {
                 <span class="role-desc">展示与传承技艺</span>
               </div>
             </div>
-            <span class="field-error">{{ fieldErrors.role }}</span>
+            <span class="field-msg" :class="{ 'msg-error': fieldErrors.role, 'msg-ok': fieldOk.role }">{{ fieldErrors.role || (fieldOk.role ? '✓' : '') }}</span>
           </div>
           <!-- 头像上传 -->
           <div class="form-item">
@@ -323,11 +361,13 @@ async function handleRegister() {
                 id="reg-username"
                 v-model="form.username"
                 type="text"
-                placeholder="登录账号"
+                placeholder="登录账号（2-20位字母数字下划线）"
                 autocomplete="username"
+                :class="{ 'input-error': touched.username && fieldErrors.username, 'input-ok': fieldOk.username }"
                 @input="validateField('username')"
+                @blur="onBlur('username')"
             />
-            <span class="field-error">{{ fieldErrors.username }}</span>
+            <span class="field-msg" :class="{ 'msg-error': touched.username && fieldErrors.username, 'msg-ok': fieldOk.username }">{{ (touched.username && fieldErrors.username) || (fieldOk.username ? '✓ 格式正确' : '') }}</span>
           </div>
           <div class="form-item">
             <label for="reg-name">姓名 *</label>
@@ -335,10 +375,12 @@ async function handleRegister() {
                 id="reg-name"
                 v-model="form.name"
                 type="text"
-                placeholder="真实姓名"
+                placeholder="真实姓名（至少2个字符）"
+                :class="{ 'input-error': touched.name && fieldErrors.name, 'input-ok': fieldOk.name }"
                 @input="validateField('name')"
+                @blur="onBlur('name')"
             />
-            <span class="field-error">{{ fieldErrors.name }}</span>
+            <span class="field-msg" :class="{ 'msg-error': touched.name && fieldErrors.name, 'msg-ok': fieldOk.name }">{{ (touched.name && fieldErrors.name) || (fieldOk.name ? '✓' : '') }}</span>
           </div>
 
           <!-- 邮箱 | 手机号 -->
@@ -350,9 +392,11 @@ async function handleRegister() {
                 type="email"
                 placeholder="用于找回密码"
                 autocomplete="email"
+                :class="{ 'input-error': touched.email && fieldErrors.email, 'input-ok': fieldOk.email }"
                 @input="validateField('email')"
+                @blur="onBlur('email')"
             />
-            <span class="field-error">{{ fieldErrors.email }}</span>
+            <span class="field-msg" :class="{ 'msg-error': touched.email && fieldErrors.email, 'msg-ok': fieldOk.email }">{{ (touched.email && fieldErrors.email) || (fieldOk.email ? '✓ 格式正确' : '') }}</span>
           </div>
           <div class="form-item">
             <label for="reg-phone">手机号{{ isInheritor ? ' *' : '' }}</label>
@@ -360,37 +404,53 @@ async function handleRegister() {
                 id="reg-phone"
                 v-model="form.phone"
                 type="text"
-                placeholder="11位手机号"
+                placeholder="11位手机号，如 13800138000"
                 maxlength="11"
+                :class="{ 'input-error': touched.phone && fieldErrors.phone, 'input-ok': fieldOk.phone }"
                 @input="validateField('phone')"
+                @blur="onBlur('phone')"
             />
-            <span class="field-error">{{ fieldErrors.phone }}</span>
+            <span class="field-msg" :class="{ 'msg-error': touched.phone && fieldErrors.phone, 'msg-ok': fieldOk.phone }">{{ (touched.phone && fieldErrors.phone) || (fieldOk.phone ? '✓' : '') }}</span>
           </div>
 
           <!-- 密码 | 确认密码 -->
           <div class="form-item">
             <label for="reg-password">密码 *</label>
-            <input
-                id="reg-password"
-                v-model="form.password"
-                type="password"
-                placeholder="至少 6 位密码"
-                autocomplete="new-password"
-                @input="validateField('password')"
-            />
-            <span class="field-error">{{ fieldErrors.password }}</span>
+            <div class="pwd-wrap">
+              <input
+                  id="reg-password"
+                  v-model="form.password"
+                  :type="showPassword ? 'text' : 'password'"
+                  placeholder="6-20 位密码"
+                  autocomplete="new-password"
+                  :class="{ 'input-error': touched.password && fieldErrors.password, 'input-ok': fieldOk.password }"
+                  @input="validateField('password')"
+                  @blur="onBlur('password')"
+              />
+              <button type="button" class="pwd-toggle" @click="showPassword = !showPassword" :title="showPassword ? '隐藏密码' : '显示密码'">
+                {{ showPassword ? '🙈' : '👁' }}
+              </button>
+            </div>
+            <span class="field-msg" :class="{ 'msg-error': touched.password && fieldErrors.password, 'msg-ok': fieldOk.password }">{{ (touched.password && fieldErrors.password) || (fieldOk.password ? '✓ 密码强度合格' : '') }}</span>
           </div>
           <div class="form-item">
             <label for="reg-confirm">确认密码 *</label>
-            <input
-                id="reg-confirm"
-                v-model="form.confirmPassword"
-                type="password"
-                placeholder="再次输入密码"
-                autocomplete="new-password"
-                @input="validateField('confirmPassword')"
-            />
-            <span class="field-error">{{ fieldErrors.confirmPassword }}</span>
+            <div class="pwd-wrap">
+              <input
+                  id="reg-confirm"
+                  v-model="form.confirmPassword"
+                  :type="showConfirmPassword ? 'text' : 'password'"
+                  placeholder="再次输入密码"
+                  autocomplete="new-password"
+                  :class="{ 'input-error': touched.confirmPassword && fieldErrors.confirmPassword, 'input-ok': fieldOk.confirmPassword }"
+                  @input="validateField('confirmPassword')"
+                  @blur="onBlur('confirmPassword')"
+              />
+              <button type="button" class="pwd-toggle" @click="showConfirmPassword = !showConfirmPassword" :title="showConfirmPassword ? '隐藏密码' : '显示密码'">
+                {{ showConfirmPassword ? '🙈' : '👁' }}
+              </button>
+            </div>
+            <span class="field-msg" :class="{ 'msg-error': touched.confirmPassword && fieldErrors.confirmPassword, 'msg-ok': fieldOk.confirmPassword }">{{ (touched.confirmPassword && fieldErrors.confirmPassword) || (fieldOk.confirmPassword ? '✓ 密码一致' : '') }}</span>
           </div>
 
           <!-- 非遗传承人专属字段 -->
@@ -405,11 +465,13 @@ async function handleRegister() {
                     id="reg-idnumber"
                     v-model="form.idNumber"
                     type="text"
-                    placeholder="请输入身份证号"
+                    placeholder="18位身份证号"
                     maxlength="18"
+                    :class="{ 'input-error': touched.idNumber && fieldErrors.idNumber, 'input-ok': fieldOk.idNumber }"
                     @input="validateField('idNumber')"
+                    @blur="onBlur('idNumber')"
                 />
-                <span class="field-error">{{ fieldErrors.idNumber }}</span>
+                <span class="field-msg" :class="{ 'msg-error': touched.idNumber && fieldErrors.idNumber, 'msg-ok': fieldOk.idNumber }">{{ (touched.idNumber && fieldErrors.idNumber) || (fieldOk.idNumber ? '✓' : '') }}</span>
               </div>
 
             <div class="form-item">
@@ -423,16 +485,16 @@ async function handleRegister() {
               <div class="form-item full-width">
                 <label>所属地区 *</label>
                 <div class="region-selects">
-                  <select v-model="selectedProvince" @change="onProvinceChange(); validateField('region')" class="region-select">
+                  <select v-model="selectedProvince" @change="onProvinceChange(); validateField('region')" @blur="onBlur('region')" class="region-select">
                     <option value="">选择省份</option>
                     <option v-for="p in provinces" :key="p" :value="p">{{ p }}</option>
                   </select>
-                  <select v-model="form.region" :disabled="!selectedProvince" class="region-select" @change="validateField('region')">
+                  <select v-model="form.region" :disabled="!selectedProvince" class="region-select" @change="validateField('region')" @blur="onBlur('region')">
                     <option value="">选择城市</option>
                     <option v-for="c in availableCities" :key="c" :value="selectedProvince + c">{{ c }}</option>
                   </select>
                 </div>
-                <span class="field-error">{{ fieldErrors.region }}</span>
+                <span class="field-msg" :class="{ 'msg-error': touched.region && fieldErrors.region, 'msg-ok': fieldOk.region }">{{ (touched.region && fieldErrors.region) || (fieldOk.region ? '✓' : '') }}</span>
               </div>
 
             <div class="form-item">
@@ -804,6 +866,18 @@ async function handleRegister() {
   border-color: #c41e3a;
   box-shadow: 0 0 0 3px rgba(196, 30, 58, 0.1);
 }
+
+/* 密码可见切换 */
+.pwd-wrap { position: relative; display: flex; align-items: center; flex: 1; min-width: 0; }
+.pwd-wrap input { padding-right: 44px !important; }
+.pwd-toggle {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  width: 36px; height: 36px; border: none; background: transparent;
+  font-size: 18px; cursor: pointer; display: flex; align-items: center;
+  justify-content: center; border-radius: 6px; transition: background 0.2s;
+  line-height: 1; padding: 0; min-height: auto;
+}
+.pwd-toggle:hover { background: rgba(196, 30, 58, 0.08); }
 .form-item select {
   cursor: pointer;
   appearance: auto;
@@ -900,7 +974,32 @@ async function handleRegister() {
   color: #444;
   margin: 0 0 6px 0;
 }
-/* 逐字段实时校验错误 */
+/* ===== 逐字段实时校验反馈 ===== */
+.field-msg {
+  width: 100%;
+  margin-left: 70px;
+  font-size: 11px;
+  min-height: 16px;
+  line-height: 1.4;
+  transition: color 0.2s;
+}
+.full-width .field-msg { margin-left: 0; }
+.msg-error { color: #dc3545; }
+.msg-ok { color: #28a745; font-weight: 600; }
+
+/* 输入框校验状态 */
+.input-error {
+  border-color: #dc3545 !important;
+  box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.1) !important;
+  background: #fff5f5 !important;
+}
+.input-ok {
+  border-color: #28a745 !important;
+  box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.08) !important;
+  background: #f6fff6 !important;
+}
+
+/* 旧 field-error 兼容（未迁移字段回退） */
 .field-error {
   width: 100%;
   margin-left: 70px;
@@ -909,12 +1008,8 @@ async function handleRegister() {
   min-height: 16px;
   line-height: 1.4;
 }
-.full-width .field-error {
-  margin-left: 0;
-}
-.field-error:empty {
-  display: none;
-}
+.full-width .field-error { margin-left: 0; }
+.field-error:empty { display: none; }
 .role-selector {
   display: flex;
   gap: 12px;

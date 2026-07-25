@@ -25,6 +25,7 @@ public class Admin implements Serializable {
     private String password;
     private String phone;
     private String sex;
+    private String avatarUrl;
     private Integer status;
     /** 封号截止时间（null表示未封号或永久禁用） */
     private LocalDateTime banUntil;

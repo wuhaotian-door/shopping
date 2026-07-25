@@ -140,7 +140,7 @@ function handleLogout() {
         <div class="chat-bubble">剪纸怎么入门？</div>
         <div class="chat-bubble">了解更多非遗知识</div>
         <p class="ai-desc">智能问答入口，依托 RAG 知识库帮助用户快速了解非遗技艺、传承历史和文创产品信息。</p>
-        <a href="#" class="ai-ask-btn">立即提问</a>
+        <a class="ai-ask-btn" @click="router.push('/rag')">立即提问</a>
       </div>
     </div>
   </section>

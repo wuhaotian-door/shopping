@@ -58,24 +58,27 @@ export const useAuthStore = defineStore('auth', () => {
     const newAccount: StoredAccount = {
       id: data.id, role: data.role, username: data.userName,
       name: data.name, token: data.token,
+      avatarUrl: data.avatarUrl || '',
     }
     // 先写入账号（让 interceptor 能获取到新 token）
     const existIdx = accounts.value.findIndex(a => a.id === data.id && a.role === data.role)
     if (existIdx >= 0) { accounts.value[existIdx] = newAccount; activeIndex.value = existIdx }
     else { accounts.value.push(newAccount); activeIndex.value = accounts.value.length - 1 }
     persist()
-    // 再获取头像（此时 interceptor 已能读到新 token）
-    try {
-      if (data.role === 'INHERITOR') {
-        const { getMyProfile } = await import('@/api/profile')
-        const p = await getMyProfile()
-        if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
-      } else {
-        const { getMyProfile } = await import('@/api/user')
-        const p = await getMyProfile()
-        if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
-      }
-    } catch { /* ignore */ }
+    // 如果登录响应未带头像，再从 profile API 补充获取
+    if (!data.avatarUrl) {
+      try {
+        if (data.role === 'INHERITOR') {
+          const { getMyProfile } = await import('@/api/profile')
+          const p = await getMyProfile()
+          if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
+        } else {
+          const { getMyProfile } = await import('@/api/user')
+          const p = await getMyProfile()
+          if (p.data?.avatarUrl) { newAccount.avatarUrl = p.data.avatarUrl; accounts.value[activeIndex.value] = { ...newAccount }; persist() }
+        }
+      } catch { /* ignore */ }
+    }
     import('@/stores/cart').then(m => m.useCartStore().loadForUser(data.role + '_' + data.id))
   }
 
