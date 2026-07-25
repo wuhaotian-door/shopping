@@ -109,4 +109,21 @@ defineExpose({ loadOrders })
 .btn-reject { padding: 5px 14px; font-size: 12px; color: #fff; background: #dc3545; border: none; border-radius: 4px; cursor: pointer; }
 .btn-reject:hover { background: #c82333; }
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
+
+@media (max-width: 768px) {
+  .section-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .section-header h2 { font-size: 18px; padding-left: 10px; border-left-width: 3px; }
+  .order-stats { gap: 12px; flex-wrap: wrap; }
+  .stat-item { font-size: 13px; }
+  .stat-item strong { font-size: 16px; }
+  .table-wrap { border-radius: 8px; overflow-x: auto; }
+  .order-table { min-width: 650px; }
+  .order-table th, .order-table td { padding: 10px 12px; font-size: 13px; }
+  .order-table th { font-size: 12px; }
+  .remark-cell { max-width: 100px; }
+  .action-cell { display: flex; flex-wrap: wrap; gap: 4px; }
+  .btn-confirm, .btn-reject { padding: 4px 10px; font-size: 11px; }
+  .status-tag { font-size: 11px; padding: 2px 8px; }
+  .empty-state { padding: 40px 16px; font-size: 13px; }
+}
 </style>

@@ -194,4 +194,45 @@ async function handleConfirmReceive(orderId: number) {
   border: none; border-radius: 4px; cursor: pointer; transition: 0.2s;
 }
 .btn-confirm-receive:hover { background: #218838; }
+
+@media (max-width: 768px) {
+  .page-header { height: 56px; padding: 0 4%; }
+  .logo-img { height: 30px; }
+  .logo-text { font-size: 16px; letter-spacing: 2px; }
+  .back-link { font-size: 13px; }
+
+  .orders-page { padding: 20px 4%; }
+  .orders-page h2 { font-size: 20px; margin-bottom: 16px; }
+
+  .tab-bar { justify-content: stretch; }
+  .tab-btn { flex: 1; text-align: center; padding: 10px 8px; font-size: 14px; }
+
+  .tab-content {
+    border-radius: 8px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .order-table { min-width: 600px; }
+  .order-table th, .order-table td { padding: 10px 8px; font-size: 12px; }
+  .order-table th { font-size: 11px; }
+  .rmk { max-width: 80px; }
+
+  .action-col { white-space: normal; }
+  .action-col .btn-view,
+  .action-col .btn-cancel,
+  .action-col .btn-confirm-receive {
+    display: block;
+    width: 100%;
+    margin-bottom: 4px;
+    text-align: center;
+    padding: 6px 0;
+    font-size: 11px;
+  }
+  .action-col .btn-confirm-receive { margin-bottom: 0; }
+
+  .loading, .empty { padding: 40px 16px; font-size: 13px; }
+
+  .status { padding: 2px 8px; font-size: 11px; }
+}
 </style>

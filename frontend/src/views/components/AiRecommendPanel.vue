@@ -85,4 +85,14 @@ watch(() => props.userId, load)
 .loading-text { color: #bbb; font-size: 13px; text-align: center; padding: 20px; }
 .error-text { color: #c41e3a; font-size: 13px; text-align: center; padding: 20px; }
 .empty-text { color: #ccc; font-size: 13px; text-align: center; padding: 20px; }
+
+@media (max-width: 768px) {
+  .recommend-panel { padding: 14px 16px; border-radius: 10px; margin-bottom: 12px; }
+  .panel-title { font-size: 15px; margin-bottom: 10px; gap: 6px; }
+  .badge-personalized { font-size: 10px; padding: 2px 8px; }
+  .recommend-text { font-size: 13px; line-height: 1.7; }
+  .loading-text { font-size: 12px; padding: 16px; }
+  .error-text { font-size: 12px; padding: 16px; }
+  .empty-text { font-size: 12px; padding: 16px; }
+}
 </style>

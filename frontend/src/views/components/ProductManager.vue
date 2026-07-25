@@ -113,16 +113,20 @@ function openEdit(product: ProductVO) {
 }
 
 async function handleSave() {
-  if (!form.value.name) { submitMsg.value = '请填写商品名称'; return }
+  if (!form.value.name) { ElMessage.warning('请填写商品名称'); return }
   try {
     if (editingId.value) {
       await updateProduct(editingId.value, form.value)
     } else {
       await addProduct(form.value)
     }
+    ElMessage.success('保存成功')
     showEditor.value = false
     await loadProducts()
-  } catch { submitMsg.value = '保存失败' }
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : '保存失败，请稍后重试'
+    ElMessage.error(msg)
+  }
 }
 
 async function handleToggle(product: ProductVO) {

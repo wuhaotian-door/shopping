@@ -39,4 +39,16 @@ onMounted(() => {
   min-height: calc(100vh - 56px);
   background: #fcf4e8;
 }
+
+@media (max-width: 768px) {
+  .chat-page-header { height: 48px; padding: 0 4%; }
+  .logo { font-size: 15px; }
+  .header-title { font-size: 12px; }
+  .back-btn { padding: 5px 12px; font-size: 12px; }
+
+  .chat-page-body {
+    padding: 12px 2%;
+    min-height: calc(100vh - 48px);
+  }
+}
 </style>

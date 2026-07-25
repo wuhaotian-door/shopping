@@ -187,4 +187,39 @@ onUnmounted(() => {
   text-align: center;
   padding: 24px 5%;
 }
+
+@media (max-width: 768px) {
+  .page-header { height: 56px; padding: 0 4%; }
+  .logo-img { height: 30px; }
+  .logo-text { font-size: 16px; letter-spacing: 2px; }
+  .back-link { font-size: 13px; }
+
+  .success-wrap {
+    min-height: calc(100vh - 56px - 80px);
+    padding: 24px 16px;
+    align-items: flex-start;
+    padding-top: 48px;
+  }
+
+  .success-card {
+    max-width: 100%;
+    padding: 36px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(196, 30, 58, 0.1);
+  }
+
+  .check-circle {
+    width: 64px;
+    height: 64px;
+    margin-bottom: 18px;
+  }
+  .check-circle svg { width: 32px; height: 32px; }
+
+  .success-title { font-size: 22px; margin-bottom: 12px; }
+  .success-subtitle { font-size: 14px; margin-bottom: 24px; line-height: 1.6; }
+
+  .login-btn { height: 44px; font-size: 15px; }
+
+  .page-footer { padding: 18px 4%; font-size: 12px; }
+}
 </style>

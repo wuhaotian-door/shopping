@@ -352,4 +352,34 @@ async function handleToggle(project: HeritageProjectVO) {
 .submit-msg { font-size: 13px; }
 .submit-msg.error { color: #dc3545; }
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
+
+@media (max-width: 768px) {
+  .section-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .heading-welfare, .heading-forprofit { font-size: 18px; padding-left: 10px; border-left-width: 3px; }
+  .header-right { flex-direction: column; align-items: flex-start; gap: 8px; width: 100%; }
+  .slot-range-info, .slot-range-warn { font-size: 12px; padding: 3px 10px; }
+  .btn-primary { padding: 8px 16px; font-size: 13px; width: 100%; text-align: center; }
+  .btn-outline { padding: 8px 16px; font-size: 13px; }
+  .editor-card { padding: 16px; border-radius: 8px; margin-bottom: 14px; }
+  .editor-card h3 { font-size: 16px; margin-bottom: 12px; }
+  .form-row { flex-direction: column; gap: 8px; }
+  .form-group { margin-bottom: 10px; }
+  .form-group label { font-size: 12px; }
+  .flex-2, .flex-1 { flex: auto; }
+  .form-input { height: 38px; font-size: 13px; padding: 0 10px; background: #fff; }
+  .form-textarea { font-size: 13px; padding: 10px; }
+  .form-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+  .form-actions .btn-primary, .form-actions .btn-outline { width: 100%; text-align: center; }
+  .table-wrap { border-radius: 8px; overflow-x: auto; }
+  .order-table { min-width: 650px; }
+  .order-table th, .order-table td { padding: 10px 8px; font-size: 13px; }
+  .order-table th { font-size: 12px; }
+  .article-title-cell { max-width: 120px; }
+  .action-cell { flex-wrap: wrap; gap: 4px; }
+  .btn-confirm, .btn-outline-sm, .btn-reject { padding: 4px 8px; font-size: 11px; }
+  .category-tag { font-size: 11px; padding: 2px 8px; }
+  .article-status { font-size: 11px; padding: 2px 8px; }
+  .submit-msg { font-size: 12px; }
+  .empty-state { padding: 40px 16px; font-size: 13px; }
+}
 </style>

@@ -152,4 +152,56 @@ async function submit() {
 .btn-cancel { padding: 10px 20px; border: 1px solid #ddd; border-radius: 6px; background: #fff; cursor: pointer; }
 .btn-submit { padding: 10px 24px; background: #c41e3a; color: #fff; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; }
 .btn-submit:disabled { opacity: 0.5; }
+
+@media (max-width: 768px) {
+  .page-header { height: 56px; padding: 0 4%; }
+  .logo-img { height: 30px; }
+  .logo-text { font-size: 16px; letter-spacing: 2px; }
+  .back-link { font-size: 13px; }
+
+  .cart-page { padding: 20px 4%; }
+  .cart-page h2 { font-size: 20px; margin-bottom: 18px; }
+
+  .empty { padding: 48px 16px; }
+  .empty button { padding: 10px 24px; font-size: 14px; }
+
+  .cart-list { border-radius: 8px; }
+  .cart-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    padding: 14px 16px;
+  }
+  .cart-info { flex: none; }
+  .cart-name { font-size: 15px; }
+  .cart-price { width: auto; font-size: 14px; }
+  .cart-price::before { content: '单价：'; font-weight: 400; color: #999; }
+  .cart-qty { justify-content: center; }
+  .cart-qty button { width: 32px; height: 32px; font-size: 18px; }
+  .cart-sub { width: auto; text-align: right; font-size: 15px; }
+  .cart-sub::before { content: '小计：'; font-weight: 400; color: #999; }
+  .cart-del { align-self: flex-end; font-size: 13px; padding: 6px 14px; background: #fff5f5; border-radius: 4px; }
+
+  .cart-footer {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 16px;
+  }
+  .total { text-align: right; }
+  .total strong { font-size: 20px; }
+  .checkout-btn { width: 100%; text-align: center; padding: 14px 0; font-size: 16px; }
+
+  .modal-overlay { align-items: flex-end; }
+  .modal-box {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 16px 16px 0 0;
+    padding: 24px 20px 32px;
+  }
+  .modal-box h3 { font-size: 18px; margin-bottom: 16px; }
+  .field { font-size: 16px; padding: 12px 14px; }
+  .modal-btns { flex-direction: column-reverse; gap: 10px; }
+  .btn-cancel, .btn-submit { width: 100%; text-align: center; padding: 12px 0; font-size: 15px; }
+}
 </style>

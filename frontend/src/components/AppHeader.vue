@@ -19,6 +19,12 @@ const badgeCount = computed(() => unreadCount.value)
 // 多账户切换
 const showAccountMenu = ref(false)
 const switcherRef = ref<HTMLElement | null>(null)
+
+// 移动端汉堡菜单
+const mobileMenuOpen = ref(false)
+const hamburgerRef = ref<HTMLElement | null>(null)
+const mobileMenuRef = ref<HTMLElement | null>(null)
+
 const accounts = computed(() => authStore.accounts)
 const activeIndex = computed(() => authStore.activeIndex)
 const avatarUrl = computed(() => authStore.avatarUrl)
@@ -31,6 +37,13 @@ function roleLabel(r: string) {
 function toggleAccountMenu() {
   showAccountMenu.value = !showAccountMenu.value
 }
+function toggleMobileMenu() {
+  mobileMenuOpen.value = !mobileMenuOpen.value
+}
+function handleMobileNav(path: string) {
+  mobileMenuOpen.value = false
+  router.push(path)
+}
 function doSwitchAccount(index: number) {
   authStore.switchAccount(index)
   showAccountMenu.value = false
@@ -41,8 +54,16 @@ function addAccount() {
   router.push('/login?add=1')
 }
 function onDocumentClick(e: MouseEvent) {
-  if (switcherRef.value && !switcherRef.value.contains(e.target as Node)) {
+  const target = e.target as Node
+  if (switcherRef.value && !switcherRef.value.contains(target)) {
     showAccountMenu.value = false
+  }
+  if (mobileMenuOpen.value) {
+    const insideHamburger = hamburgerRef.value?.contains(target)
+    const insideMenu = mobileMenuRef.value?.contains(target)
+    if (!insideHamburger && !insideMenu) {
+      mobileMenuOpen.value = false
+    }
   }
 }
 onMounted(() => document.addEventListener('click', onDocumentClick))
@@ -144,7 +165,36 @@ function handleLogout() {
         <button class="login-top-btn" @click="router.push('/login')">登录</button>
       </template>
     </div>
+
+    <!-- 移动端汉堡按钮（桌面端隐藏） -->
+    <button ref="hamburgerRef" class="hamburger-btn" @click.stop="toggleMobileMenu" :aria-label="mobileMenuOpen ? '关闭菜单' : '打开菜单'">
+      <span v-if="!mobileMenuOpen">&#9776;</span>
+      <span v-else>&#10005;</span>
+    </button>
   </header>
+
+  <!-- 移动端下拉菜单 -->
+  <Transition name="mobile-slide">
+    <div v-if="mobileMenuOpen" ref="mobileMenuRef" class="mobile-menu" @click.stop>
+      <a
+        v-for="item in navItems"
+        :key="item.label"
+        class="mobile-nav-item"
+        :class="{ active: isActive(item.path) }"
+        @click="handleMobileNav(item.path)"
+      >
+        {{ item.label }}
+      </a>
+      <template v-if="isInheritor">
+        <div class="mobile-nav-divider"></div>
+        <a class="mobile-nav-item mobile-nav-inheritor" @click="handleMobileNav('/inheritor')">我的工坊</a>
+      </template>
+      <template v-if="isAdmin">
+        <div class="mobile-nav-divider"></div>
+        <a class="mobile-nav-item mobile-nav-admin" @click="handleMobileNav('/admin')">管理后台</a>
+      </template>
+    </div>
+  </Transition>
 </template>
 
 <style scoped>
@@ -301,6 +351,12 @@ function handleLogout() {
 }
 .login-top-btn:hover { background: #ffe9ec; }
 
+/* 汉堡按钮（桌面端默认隐藏，移动端显示） */
+.hamburger-btn { display: none; }
+
+/* 移动端菜单（桌面端默认隐藏） */
+.mobile-menu { display: none; }
+
 /* 消息按钮红点徽标 */
 .msg-btn { position: relative; }
 .msg-badge {
@@ -317,11 +373,151 @@ function handleLogout() {
   50% { transform: scale(1.15); }
 }
 
+/* ========== 移动端适配 (≤768px) ========== */
 @media (max-width: 768px) {
-  .nav-links { gap: 2px; }
-  .nav-item { padding: 6px 10px; font-size: 13px; }
-  .page-header { height: auto; padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
-  .logo-text { font-size: 18px; }
-  .logo-img { height: 32px; }
+  .page-header {
+    height: 56px;
+    padding: 0 16px;
+    flex-wrap: nowrap;
+    gap: 0;
+  }
+  .logo { gap: 6px; }
+  .logo-text { font-size: 16px; letter-spacing: 2px; }
+  .logo-img { height: 30px; }
+
+  /* 隐藏桌面端导航 */
+  .nav-links { display: none; }
+
+  /* 汉堡按钮 */
+  .hamburger-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    height: 40px;
+    padding: 0;
+    margin-left: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 6px;
+    color: #fff;
+    font-size: 22px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background 0.2s;
+    line-height: 1;
+  }
+  .hamburger-btn:hover {
+    background: rgba(255, 255, 255, 0.22);
+  }
+
+  /* 头部右侧紧凑布局 */
+  .header-right {
+    gap: 6px;
+    margin-left: auto;
+  }
+  .user-role-tag {
+    display: none; /* 移动端隐藏角色标签 */
+  }
+  .account-btn {
+    padding: 4px 8px;
+    font-size: 12px;
+    gap: 4px;
+  }
+  .account-btn .user-name {
+    display: none; /* 只显示头像 */
+  }
+  .header-avatar,
+  .header-avatar-placeholder {
+    width: 24px !important;
+    height: 24px !important;
+  }
+  .account-arrow {
+    display: none;
+  }
+  .header-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  .logout-btn {
+    padding: 4px 10px;
+    font-size: 11px;
+  }
+  .login-top-btn {
+    padding: 6px 16px;
+    font-size: 13px;
+  }
+
+  /* 移动端下拉菜单 */
+  .mobile-menu {
+    position: fixed;
+    top: 56px;
+    left: 0;
+    right: 0;
+    background: linear-gradient(160deg, #3d0a12 0%, #5c1522 50%, #7a1e2d 100%);
+    border-bottom: 2px solid rgba(255, 215, 0, 0.35);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+    z-index: 99;
+    padding: 6px 0;
+    display: flex;
+    flex-direction: column;
+  }
+  .mobile-nav-item {
+    display: block;
+    padding: 12px 24px;
+    color: rgba(255, 255, 255, 0.85);
+    text-decoration: none;
+    font-size: 15px;
+    cursor: pointer;
+    letter-spacing: 2px;
+    transition: all 0.2s;
+    font-family: inherit;
+    white-space: nowrap;
+  }
+  .mobile-nav-item:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.1);
+  }
+  .mobile-nav-item.active {
+    color: #ffd700;
+    background: rgba(255, 215, 0, 0.1);
+    font-weight: 700;
+  }
+  .mobile-nav-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.12);
+    margin: 4px 0;
+  }
+  .mobile-nav-inheritor {
+    color: #ffd700 !important;
+    background: rgba(255, 215, 0, 0.08) !important;
+  }
+  .mobile-nav-inheritor:hover {
+    background: rgba(255, 215, 0, 0.2) !important;
+  }
+  .mobile-nav-admin {
+    color: #fff !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+  }
+  .mobile-nav-admin:hover {
+    background: rgba(255, 255, 255, 0.15) !important;
+  }
+
+  /* 移动菜单滑入动画 */
+  .mobile-slide-enter-active {
+    transition: all 0.3s ease-out;
+  }
+  .mobile-slide-leave-active {
+    transition: all 0.2s ease-in;
+  }
+  .mobile-slide-enter-from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  .mobile-slide-leave-to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
 }
 </style>

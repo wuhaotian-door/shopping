@@ -348,4 +348,37 @@ async function togglePublish(article: KnowledgeArticleVO) {
 .upload-msg.upload-err { color: #dc3545; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: #999; font-size: 14px; }
+
+@media (max-width: 768px) {
+  .section-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
+  .section-header h2 { font-size: 18px; padding-left: 10px; border-left-width: 3px; }
+  .btn-primary { padding: 8px 16px; font-size: 13px; width: 100%; text-align: center; }
+  .btn-outline { padding: 8px 16px; font-size: 13px; }
+  .editor-card { padding: 16px; border-radius: 8px; margin-bottom: 14px; }
+  .editor-card h3 { font-size: 16px; margin-bottom: 12px; }
+  .form-row { flex-direction: column; gap: 8px; }
+  .form-group { margin-bottom: 10px; }
+  .form-group label { font-size: 12px; }
+  .flex-2, .flex-1 { flex: auto; }
+  .form-input { height: 38px; font-size: 13px; padding: 0 10px; background: #fff; }
+  .form-textarea { font-size: 13px; padding: 10px; }
+  .form-actions { flex-direction: column; gap: 8px; align-items: stretch; }
+  .form-actions .btn-primary, .form-actions .btn-outline { width: 100%; text-align: center; }
+  .cover-upload-row { flex-direction: column; gap: 10px; }
+  .cover-preview { width: 100%; height: 180px; }
+  .cover-upload-btn { width: 100%; height: 100px; }
+  .upload-label { font-size: 12px; }
+  .upload-msg { font-size: 11px; }
+  .table-wrap { border-radius: 8px; overflow-x: auto; }
+  .order-table { min-width: 580px; }
+  .order-table th, .order-table td { padding: 10px 8px; font-size: 13px; }
+  .order-table th { font-size: 12px; }
+  .article-title-cell { max-width: 140px; }
+  .action-cell { flex-wrap: wrap; gap: 4px; }
+  .btn-confirm, .btn-outline-sm, .btn-reject { padding: 4px 8px; font-size: 11px; }
+  .category-tag { font-size: 11px; padding: 2px 8px; }
+  .article-status { font-size: 11px; padding: 2px 8px; }
+  .submit-msg { font-size: 12px; }
+  .empty-state { padding: 40px 16px; font-size: 13px; }
+}
 </style>
