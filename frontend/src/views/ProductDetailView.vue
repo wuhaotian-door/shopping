@@ -8,11 +8,13 @@ import { listReviews, submitReview, deleteReview } from '@/api/review'
 import type { ProductVO, ProductReviewVO } from '@/types/api'
 import CommentItem from '@/components/CommentItem.vue'
 import Product3dViewer from '@/components/Product3dViewer.vue'
+import { useHistory } from '@/composables/useHistory'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const cartStore = useCartStore()
+const { record } = useHistory()
 
 onMounted(() => {
   const id = Number(route.params.id)
@@ -32,6 +34,16 @@ async function loadProduct(id: number) {
     const res = await getProductById(id)
     product.value = res.data
     document.title = (res.data?.name || '商品详情') + ' — 码上非遗'
+    // 自动记录浏览历史
+    if (res.data) {
+      record({
+        targetType: 'product',
+        targetId: res.data.id!,
+        targetTitle: res.data.name || '商品',
+        targetCover: res.data.imageUrl || '',
+        targetPath: `/product/${res.data.id}`,
+      })
+    }
   } catch {
     // ignore
   } finally {

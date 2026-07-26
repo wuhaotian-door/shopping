@@ -6,10 +6,12 @@ import { getArticleById } from '@/api/knowledge'
 import { listComments, submitComment, deleteComment } from '@/api/comment'
 import type { KnowledgeArticleVO, ArticleCommentVO } from '@/types/api'
 import CommentItem from '@/components/CommentItem.vue'
+import { useHistory } from '@/composables/useHistory'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
+const { record } = useHistory()
 
 onMounted(() => {
   const id = Number(route.params.id)
@@ -29,6 +31,16 @@ async function loadArticle(id: number) {
     const res = await getArticleById(id)
     article.value = res.data
     document.title = (res.data?.title || '文章详情') + ' — 码上非遗'
+    // 自动记录浏览历史
+    if (res.data) {
+      record({
+        targetType: 'news',
+        targetId: res.data.id!,
+        targetTitle: res.data.title || '文章',
+        targetCover: res.data.coverUrl || '',
+        targetPath: `/news/${res.data.id}`,
+      })
+    }
   } catch {
     // ignore
   } finally {
