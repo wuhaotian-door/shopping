@@ -16,10 +16,9 @@ import { useHistory } from '@/composables/useHistory'
 const router = useRouter()
 const cartStore = useCartStore()
 const authStore = useAuthStore()
-const { getUserHistory } = useHistory()
+const { historyList, getUserHistory, loadHistory, deleteHistory, clearHistory, loading: historyLoading } = useHistory()
 const cartCount = computed(() => cartStore.count)
 const showHistory = ref(false)
-const historyList = computed(() => getUserHistory())
 
 // ==================== 我的预约 ====================
 const orders = ref<OrderVO[]>([])
@@ -68,6 +67,7 @@ onMounted(() => {
   loadProfile()
   loadOrders()
   loadProductOrders()
+  loadHistory()
 })
 
 const profile = ref<UserProfileVO>({
@@ -352,11 +352,17 @@ async function handleDeleteAccount() {
           </div>
         </div>
         <div v-if="showHistory" class="history-panel">
-          <h3>浏览足迹</h3>
-          <div v-if="historyList.length === 0" class="empty-tip">暂无浏览记录</div>
-          <div v-for="h in historyList.slice(0, 10)" :key="h.path" class="history-item" @click="$router.push(h.path)">
+          <div class="history-panel-header">
+            <h3>浏览足迹</h3>
+            <button v-if="historyList.length > 0" class="btn-clear-history" @click.stop="clearHistory()">🗑 清空全部</button>
+          </div>
+          <div v-if="historyLoading" class="empty-tip">加载中...</div>
+          <div v-else-if="historyList.length === 0" class="empty-tip">暂无浏览记录</div>
+          <div v-for="h in historyList.slice(0, 20)" :key="h.id || h.path" class="history-item" @click="$router.push(h.path)">
+            <span class="hi-cover" v-if="h.cover" :style="{ backgroundImage: 'url(' + h.cover + ')' }"></span>
             <span class="hi-title">{{ h.title }}</span>
             <span class="hi-time">{{ h.time }}</span>
+            <button class="hi-del" @click.stop="deleteHistory(h.id)" title="删除此记录">×</button>
           </div>
         </div>
 
@@ -1101,11 +1107,17 @@ select.form-input {
 .qc-label { font-size: 14px; color: #666; font-weight: 600; }
 .qc-badge { position: absolute; top: 12px; right: 16px; min-width: 22px; height: 22px; border-radius: 11px; background: #c41e3a; color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; }
 .history-panel { background: #fff; border-radius: 14px; padding: 20px 24px; margin-top: 16px; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
-.history-panel h3 { font-size: 16px; color: #c41e3a; margin-bottom: 12px; }
-.history-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
+.history-panel-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.history-panel-header h3 { font-size: 16px; color: #c41e3a; margin: 0; }
+.btn-clear-history { padding: 4px 12px; font-size: 12px; color: #999; background: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 6px; cursor: pointer; transition: 0.2s; }
+.btn-clear-history:hover { color: #c41e3a; background: #fff5f7; border-color: #c41e3a; }
+.history-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #f5f5f5; cursor: pointer; transition: background 0.15s; }
 .history-item:hover { background: #fefafa; margin: 0 -12px; padding: 10px 12px; border-radius: 6px; }
-.hi-title { font-size: 14px; color: #333; }
-.hi-time { font-size: 12px; color: #aaa; }
+.hi-cover { width: 36px; height: 36px; border-radius: 6px; background-size: cover; background-position: center; background-color: #f0f0f0; flex-shrink: 0; }
+.hi-title { flex: 1; font-size: 14px; color: #333; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hi-time { font-size: 12px; color: #aaa; white-space: nowrap; flex-shrink: 0; }
+.hi-del { width: 22px; height: 22px; border: none; background: transparent; color: #ccc; font-size: 16px; cursor: pointer; border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: 0.15s; }
+.hi-del:hover { color: #c41e3a; background: rgba(196,30,58,0.08); }
 .delete-account-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; }
 .delete-label { font-size: 15px; font-weight: 600; color: #dc3545; display: block; }
 .delete-desc { font-size: 12px; color: #999; display: block; margin-top: 4px; }

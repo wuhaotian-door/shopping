@@ -692,3 +692,23 @@ CREATE TABLE page_view (
     INDEX idx_path (path(100)),
     INDEX idx_time (create_time)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='页面浏览记录表';
+
+-- =====================================================
+-- 用户浏览记录表 — 按 UID（user_id + user_role）隔离
+-- =====================================================
+DROP TABLE IF EXISTS `browse_history`;
+
+CREATE TABLE `browse_history` (
+    `id`           BIGINT       NOT NULL AUTO_INCREMENT COMMENT '主键',
+    `user_id`      BIGINT       NOT NULL COMMENT '用户ID',
+    `user_role`    VARCHAR(20)  NOT NULL COMMENT '用户角色: USER/INHERITOR/ADMIN',
+    `target_type`  VARCHAR(20)  NOT NULL COMMENT '浏览目标类型: product/news/project',
+    `target_id`    BIGINT       NOT NULL COMMENT '浏览目标ID',
+    `target_title` VARCHAR(200) COMMENT '浏览目标标题',
+    `target_cover` VARCHAR(500) COMMENT '浏览目标封面图',
+    `target_path`  VARCHAR(500) COMMENT '浏览器径（如 /product/6）',
+    `create_time`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '浏览时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_bh_user` (`user_id`, `user_role`, `create_time` DESC),
+    INDEX `idx_bh_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户浏览记录表';
