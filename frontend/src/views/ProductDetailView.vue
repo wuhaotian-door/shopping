@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -193,6 +193,16 @@ async function submitBuy() {
 const cartToast = ref('')
 const show3d = ref(false)
 const showVideo = ref(false)
+const fullscreen3d = ref(false)
+
+function onKeydown(e: KeyboardEvent) {
+  if (e.key === 'Escape' && fullscreen3d.value) {
+    fullscreen3d.value = false
+  }
+}
+onMounted(() => document.addEventListener('keydown', onKeydown))
+onUnmounted(() => document.removeEventListener('keydown', onKeydown))
+
 let toastTimer: ReturnType<typeof setTimeout> | null = null
 const modelUrl = computed(() => product.value?.modelUrl || '/models/a_chinese_tongguan_kiln_teapot-1.glb')
 function showToast() {
@@ -222,7 +232,7 @@ function goTo(path: string) {
         <div class="product-info-section">
           <div class="product-image-wrap">
             <!-- 3D 视图 -->
-            <Product3dViewer v-if="show3d && modelUrl" :model-url="modelUrl" :poster-image="product.imageUrl || ''" :product-name="product.name" :auto-rotate="true" credit="CC BY 4.0 · 中国潼关窑茶壶" />
+            <Product3dViewer v-if="show3d && modelUrl && !fullscreen3d" :model-url="modelUrl" :poster-image="product.imageUrl || ''" :product-name="product.name" :auto-rotate="true" credit="CC BY 4.0 · 中国潼关窑茶壶" @dblclick.prevent="fullscreen3d = true" />
             <!-- 视频播放 -->
             <template v-else-if="showVideo && product.videoUrl">
               <video :src="product.videoUrl" controls playsinline class="product-video"></video>
@@ -418,6 +428,22 @@ function goTo(path: string) {
     <footer class="page-footer">
       <p>校园非遗与文创传承人平台 © 2026 码上非遗</p>
     </footer>
+    <!-- ===== 3D 全屏放大 ===== -->
+    <Teleport to="body">
+      <Transition name="fullscreen-fade">
+        <div v-if="fullscreen3d" class="fullscreen-overlay" @click.self="fullscreen3d = false">
+          <button class="fullscreen-close" @click="fullscreen3d = false">✕ 退出全屏</button>
+          <Product3dViewer
+            :model-url="modelUrl"
+            :poster-image="product?.imageUrl || ''"
+            :product-name="product?.name || ''"
+            :auto-rotate="true"
+            credit="双击空白处或按 ESC 退出"
+            class="fullscreen-viewer"
+          />
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
 
@@ -878,4 +904,33 @@ function goTo(path: string) {
 .float-btn-back { background: rgba(100,100,100,0.85); }
 .float-btn-back:hover { background: #555; box-shadow: 0 3px 12px rgba(0,0,0,0.3); transform: translateY(-1px); }
 .float-no-video { padding: 10px 16px; font-size: 13px; color: rgba(255,255,255,0.7); background: rgba(0,0,0,0.35); border-radius: 8px; backdrop-filter: blur(4px); letter-spacing: 1px; white-space: nowrap; }
+/* ===== 3D 全屏放大 ===== */
+.fullscreen-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0, 0, 0, 0.92);
+  display: flex; align-items: center; justify-content: center;
+}
+.fullscreen-close {
+  position: absolute; top: 20px; right: 20px; z-index: 10;
+  padding: 10px 24px; font-size: 15px; font-weight: 600;
+  color: #fff; background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.3); border-radius: 8px;
+  cursor: pointer; backdrop-filter: blur(6px); transition: all 0.2s;
+}
+.fullscreen-close:hover { background: rgba(196,30,58,0.6); border-color: #c41e3a; }
+.fullscreen-viewer {
+  width: 90vw; height: 85vh; border-radius: 12px; overflow: hidden;
+}
+.fullscreen-viewer :deep(.p3d-container) {
+  height: 85vh; border-radius: 12px;
+}
+.fullscreen-viewer :deep(.p3d-hint) {
+  font-size: 14px; color: rgba(255,255,255,0.5);
+}
+
+/* 全屏过渡动画 */
+.fullscreen-fade-enter-active { transition: opacity 0.3s ease; }
+.fullscreen-fade-leave-active { transition: opacity 0.2s ease; }
+.fullscreen-fade-enter-from,
+.fullscreen-fade-leave-to { opacity: 0; }
 </style>

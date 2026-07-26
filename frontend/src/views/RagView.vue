@@ -1,11 +1,48 @@
 <script setup lang="ts">
 import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { aiChatStream, aiSessions, aiSessionDelete, aiSessionMessages, type StreamEvent } from '@/api/ai'
 import { useAuthStore } from '@/stores/auth'
+
+const router = useRouter()
 
 interface Message {
   id: number; role: 'user' | 'ai' | 'tool' | 'system'
   content: string; toolName?: string; toolArgs?: string
+}
+
+/** 将 AI 回复中的 Markdown 链接、URL、换行转为可点击 HTML */
+function renderContent(text: string): string {
+  if (!text) return ''
+  let html = text
+    // 转义 HTML
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Markdown 链接 [text](url) — 支持 http 和相对路径
+    .replace(/\[([^\]]+)\]\(((?:https?:\/\/|\/)[^\s)]+)\)/g, '<a href="$2" class="ai-link">$1</a>')
+    // 裸 URL
+    .replace(/(?<!href=")(?<!">)(https?:\/\/[^\s<]+)/g, '<a href="$1" target="_blank" rel="noopener" class="ai-link">$1</a>')
+    // **加粗**
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    // 换行
+    .replace(/\n/g, '<br>')
+    // 列表符号
+    .replace(/(?:^|<br>)(\d+\.\s)/g, '<br>$1')
+    .replace(/(?:^|<br>)(-\s)/g, '<br>• ')
+  return html
+}
+
+/** 点击 AI 消息气泡中的链接：内部路径用 router，外部 URL 新标签打开 */
+function onBubbleClick(e: MouseEvent) {
+  const target = e.target as HTMLElement
+  if (target.tagName === 'A' && target.getAttribute('href')) {
+    const href = target.getAttribute('href')!
+    e.preventDefault()
+    if (href.startsWith('/')) {
+      router.push(href)
+    } else if (href.startsWith('http')) {
+      window.open(href, '_blank', 'noopener')
+    }
+  }
 }
 
 interface Session { id: string; title: string; created_at: string; msg_count: number }
@@ -86,11 +123,20 @@ function addMsg(role: Message['role'], content: string, extra?: Partial<Message>
   return m
 }
 
-function scroll() { nextTick(() => { if (msgBox.value) msgBox.value.scrollTop = msgBox.value.scrollHeight }) }
+function scrollNow() {
+  if (!msgBox.value) return
+  msgBox.value.scrollTop = msgBox.value.scrollHeight
+}
+function scroll() {
+  // 双重确保：nextTick 等 Vue DOM 更新完成，rAF 等浏览器渲染完成
+  nextTick(() => {
+    scrollNow()
+    requestAnimationFrame(() => scrollNow())
+  })
+}
 
 async function send() {
   const q = input.value.trim(); if (!q || streaming.value || !uid.value) return
-  // 如果还没有活跃会话，自动创建一个
   if (!activeSid.value) newSession()
   input.value = ''; addMsg('user', q); scroll()
 
@@ -99,9 +145,20 @@ async function send() {
   let buf = ''
 
   abortFn = aiChatStream(q, activeSid.value, uid.value,
-    (e: StreamEvent) => {
-      if (e.type === 'token' && e.content) { buf += e.content; aiMsg.content = buf; scroll() }
-      else if (e.type === 'tool_start') { addMsg('tool', '', { toolName: e.name, toolArgs: JSON.stringify(e.input) }); scroll() }
+    // onEvent — 逐 token 刷新 DOM → 让浏览器绘制（打字机效果）→ 滚动
+    async (e: StreamEvent) => {
+      if (e.type === 'token' && e.content) {
+        buf += e.content
+        aiMsg.content = buf
+        await nextTick()                                // 1. Vue 刷新虚拟 DOM → 真实 DOM
+        await new Promise(r => setTimeout(r, 0))       // 2. 跳出微任务，浏览器有时机绘制
+        scrollNow()                                      // 3. 绘制后再滚到底部
+      } else if (e.type === 'tool_start') {
+        addMsg('tool', '', { toolName: e.name, toolArgs: JSON.stringify(e.input) })
+        await nextTick()
+        await new Promise(r => setTimeout(r, 0))
+        scrollNow()
+      }
     },
     (err) => { aiMsg.content = `错误: ${err.message}`; streaming.value = false },
     () => { streaming.value = false; aiMsg.content ||= '(无回答)'; sessionMessages.set(activeSid.value, [...msgs.value]); loadSessions() }
@@ -181,7 +238,9 @@ onUnmounted(() => abortFn?.())
         </div>
         <div v-for="m in msgs" :key="m.id" class="msg-row" :class="'m-' + m.role">
           <div v-if="m.role === 'user'" class="bubble bu">{{ m.content }}</div>
-          <div v-else-if="m.role === 'ai'" class="bubble ba"><div class="ac">{{ m.content || (streaming ? '思考中…' : '') }}</div></div>
+          <div v-else-if="m.role === 'ai'" class="bubble ba" :class="{ 'is-streaming': streaming && m === msgs[msgs.length-1] }">
+            <div class="ac" v-html="renderContent(m.content) || (streaming ? '<span class=\'streaming-cursor\'>思考中…</span>' : '(无回答)')" @click="onBubbleClick"></div>
+          </div>
           <div v-else-if="m.role === 'tool'" class="tool-note">🔧 {{ m.toolName }}({{ m.toolArgs?.slice(0, 60) }})</div>
           <div v-else class="sys-note">{{ m.content }}</div>
         </div>
@@ -227,7 +286,22 @@ onUnmounted(() => abortFn?.())
 @keyframes up { from { opacity:0; transform:translateY(8px); } }
 .bu { background:linear-gradient(135deg,#c41e3a,#d43030); color:#fff; border-bottom-right-radius:4px; }
 .ba { background:#fff; border:1px solid rgba(0,0,0,0.04); box-shadow:0 1px 3px rgba(0,0,0,0.06); border-bottom-left-radius:4px; color:#333; }
-.ac { white-space:pre-wrap; word-break:break-word; }
+.ac { white-space:pre-wrap; word-break:break-word; line-height:1.9; }
+.ac :deep(a.ai-link) {
+  color: #2563eb; font-weight: 600; text-decoration: underline;
+  text-underline-offset: 3px; cursor: pointer; transition: color 0.15s;
+}
+.ac :deep(a.ai-link:hover) { color: #1d4ed8; }
+.ac :deep(strong) { color: #c41e3a; font-weight: 700; }
+
+/* 打字机闪烁光标 — ::after 伪元素自然出现在文字末尾（inline） */
+.ba.is-streaming .ac::after {
+  content: '|'; display: inline; color: #c41e3a; font-weight: 700;
+  animation: blink 0.8s step-end infinite; margin-left: 1px;
+}
+@keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0; } }
+.streaming-cursor { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100% { opacity:0.5; } 50% { opacity:1; } }
 .tool-note { font-size:12px; color:#8d6e63; padding:6px 12px; background:#f0ebe3; border:1px dashed #d4a574; border-radius:10px; max-width:80%; }
 .sys-note { text-align:center; font-size:12px; color:#bbb; padding:6px; }
 .bar { display:flex; gap:10px; padding:14px 20px; border-top:1px solid rgba(196,30,58,0.06); background:#fff; }

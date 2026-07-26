@@ -12,7 +12,7 @@ export interface StreamEvent {
 }
 
 export function aiChatStream(question: string, threadId: string, uid: string,
-  onEvent: (e: StreamEvent) => void,
+  onEvent: (e: StreamEvent) => Promise<void> | void,
   onError?: (err: Error) => void, onDone?: () => void,
 ): () => void {
   const ctrl = new AbortController()
@@ -42,14 +42,15 @@ export function aiChatStream(question: string, threadId: string, uid: string,
 
         const payload = line.slice(5).trim()  // 去掉 "data:" 前缀
         if (payload === '[DONE]') {
-          onEvent({ type: 'done' })
+          await onEvent({ type: 'done' })
           onDone?.()
           return
         }
 
         try {
           const evt = JSON.parse(payload) as StreamEvent
-          onEvent(evt)
+          // ★ 关键：await 每一个事件，让 Vue 有时机逐字渲染到 DOM
+          await onEvent(evt)
         } catch {
           // 忽略解析失败的行
         }

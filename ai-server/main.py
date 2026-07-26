@@ -110,6 +110,7 @@ async def chat_stream(req: ChatReq):
 
     async def gen():
         async for e in agent.chat_stream(req.question, req.thread_id, uid=req.uid):
+            # 每个 SSE 事件后用空行分隔，立即 flush 确保前端逐 token 收到
             yield f"data: {json.dumps(e, ensure_ascii=False)}\n\n"
         yield "data: [DONE]\n\n"
 
@@ -117,8 +118,9 @@ async def chat_stream(req: ChatReq):
         gen(),
         media_type="text/event-stream",
         headers={
-            "Cache-Control": "no-cache",        # 禁止缓存
-            "X-Accel-Buffering": "no",          # 禁止 nginx 缓冲（直通 SSE）
+            "Cache-Control": "no-cache",         # 禁止缓存
+            "X-Accel-Buffering": "no",           # 禁止 nginx 缓冲
+            "Connection": "keep-alive",
         },
     )
 
