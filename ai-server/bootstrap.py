@@ -27,21 +27,27 @@ SYNC_TABLES = [
     {
         "name": "knowledge_article",
         "dir": "knowledge",
+        "link_prefix": "/news/",   # 资讯详情页 URL 前缀
         "sql": """
             SELECT
                 title,
-                CONCAT('分类：', IFNULL(category,''), '\n\n', IFNULL(content,''))
+                CONCAT(
+                    '[平台链接:','/news/',id,']\n',
+                    '分类：', IFNULL(category,''), '\n\n', IFNULL(content,'')
+                )
             FROM knowledge_article WHERE status = 1
         """,
     },
     {
         "name": "inheritor",
         "dir": "inheritors",
+        "link_prefix": "/inheritors/",      # 传承人列表页
         # inheritor 与 inheritor_profile 做 LEFT JOIN 获取详细信息
         "sql": """
             SELECT
                 i.name,
                 CONCAT(
+                    '[平台链接:','/inheritors/',i.id,']\n',
                     '地区：', IFNULL(i.region,''), '\n',
                     '擅长：', IFNULL(p.craft_types,''), '\n',
                     CASE WHEN p.honor_title IS NOT NULL AND p.honor_title != ''
@@ -56,10 +62,12 @@ SYNC_TABLES = [
     {
         "name": "heritage_project",
         "dir": "projects",
+        "link_prefix": "/inheritors/",       # 非遗项目跳转传承人详情
         "sql": """
             SELECT
                 title,
                 CONCAT(
+                    '[平台链接:','/inheritors/',inheritor_id,']\n',
                     '分类：', IFNULL(category,''), '\n',
                     '地点：', IFNULL(location,''), '\n',
                     '费用：', IF(price > 0, CONCAT('¥', price), '免费'), '\n',
@@ -71,10 +79,12 @@ SYNC_TABLES = [
     {
         "name": "product",
         "dir": "products",
+        "link_prefix": "/product/",    # 商品详情页 URL 前缀
         "sql": """
             SELECT
                 name,
                 CONCAT(
+                    '[平台链接:','/product/',id,']\n',
                     '分类：', IFNULL(category,''), '\n',
                     '价格：¥', price, '\n',
                     '传承人：', IFNULL(inheritor_name,''), '\n',
@@ -130,13 +140,13 @@ def bootstrap():
     total = 0
     try:
         for tbl in SYNC_TABLES:
-            # 建表 + 清空
+            # 建表 + 清空（包含 id 列用于生成详情页链接）
             conn_sqlite.execute(
-                f"CREATE TABLE IF NOT EXISTS {tbl['name']} (title TEXT, content TEXT)"
+                f"CREATE TABLE IF NOT EXISTS {tbl['name']} (id INTEGER, title TEXT, content TEXT)"
             )
             conn_sqlite.execute(f"DELETE FROM {tbl['name']}")
 
-            # 从 MySQL 读取
+            # 从 MySQL 读取（现在 SELECT 也包含 id）
             cur = conn_mysql.cursor()
             cur.execute(tbl["sql"])
             rows = cur.fetchall()
@@ -146,7 +156,8 @@ def bootstrap():
             if not rows:
                 continue
 
-            # 写入 SQLite
+            # 写入 SQLite（现在包含 id 字段）
+            # MySQL SELECT 返回 (title, content_with_link) 两列，id 已嵌入 content 中
             conn_sqlite.executemany(
                 f"INSERT INTO {tbl['name']} (title, content) VALUES (?, ?)", rows
             )

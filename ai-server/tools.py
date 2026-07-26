@@ -398,11 +398,14 @@ def _fmt(results: list) -> str:
 
     开头加指令提示语，强制 LLM 注意这是真实数据。
     每条结果标注来源和集合类型，方便 LLM 引用。
+    如果内容中包含 [平台链接:...]，提示 LLM 必须使用该精确链接。
 
     示例输出:
       【以下内容必须据此回答用户，这是平台真实知识库数据，找到 3 条】
+      【重要指令：资料中的 [平台链接:/xxx/N] 标记即为精确详情页链接，你必须用它生成 Markdown 链接】
       ---
-      [资料1] 来源: 紫砂壶.md | 类型: knowledge
+      [资料1] 来源: 紫砂壶.md | 类型: products
+      [平台链接:/store/product/6]
       紫砂壶是中国江苏宜兴特产...
       ---
       [资料2] ...
@@ -411,7 +414,8 @@ def _fmt(results: list) -> str:
         return ""
 
     header = f"【以下内容必须据此回答用户，这是平台真实知识库数据，找到 {len(results)} 条】"
-    parts = [header]
+    link_hint = "【重要指令：每条资料开头的 [平台链接:/xxx/yyy/N] 格式标记就是该内容的精确详情页链接。回答时你必须将其转为 Markdown 链接 [名称](链接)，让用户点击直接跳转到详情页，而不是跳到列表页让用户自己找！】"
+    parts = [header, link_hint]
 
     for i, r in enumerate(results, 1):
         src = r["source"].replace("\\", "/").split("/")[-1] if r.get("source") else "?"

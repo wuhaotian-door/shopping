@@ -14,8 +14,10 @@ const containerRef = ref<HTMLElement | null>(null)
 const isInViewport = ref(false)
 const modelError = ref(false)
 const modelLoaded = ref(false)
+const showHint = ref(true)
 
 let observer: IntersectionObserver | null = null
+let hintTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
   if (!containerRef.value) return
@@ -30,11 +32,15 @@ onMounted(() => {
     { rootMargin: '200px' }
   )
   observer.observe(containerRef.value)
+
+  // 操作提示 5 秒后自动消失
+  hintTimer = setTimeout(() => { showHint.value = false }, 5000)
 })
 
 onUnmounted(() => {
   observer?.disconnect()
   observer = null
+  if (hintTimer) { clearTimeout(hintTimer); hintTimer = null }
 })
 
 function onModelError() {
@@ -70,6 +76,18 @@ function onModelLoad() {
       />
       <div class="p3d-hint">拖拽旋转 查看3D细节</div>
       <div v-if="credit" class="p3d-credit">{{ credit }}</div>
+      <!-- 操作提示浮层 -->
+      <Transition name="hint-fade">
+        <div v-if="showHint" class="p3d-tutorial" @click="showHint = false">
+          <div class="tutorial-content">
+            <div class="tutorial-item">🖱 <strong>左键拖拽</strong> — 旋转模型</div>
+            <div class="tutorial-item">🖱 <strong>右键拖拽</strong> — 平移视角</div>
+            <div class="tutorial-item">🖱 <strong>滚轮缩放</strong> — 拉近拉远</div>
+            <div class="tutorial-item">👆 <strong>双击</strong> — 全屏展示</div>
+            <div class="tutorial-dismiss">点击任意处关闭提示</div>
+          </div>
+        </div>
+      </Transition>
     </div>
 
     <!-- 降级：静态图片 -->
@@ -151,6 +169,30 @@ function onModelLoad() {
   color: rgba(0, 0, 0, 0.25);
   user-select: none;
 }
+
+/* ===== 操作教程浮层 ===== */
+.p3d-tutorial {
+  position: absolute; inset: 0; z-index: 10;
+  background: rgba(0, 0, 0, 0.72);
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 10px; cursor: pointer;
+  backdrop-filter: blur(4px);
+}
+.tutorial-content {
+  text-align: center; color: #fff; padding: 24px;
+}
+.tutorial-item {
+  font-size: 15px; margin-bottom: 10px; opacity: 0.9;
+  line-height: 1.8;
+}
+.tutorial-dismiss {
+  margin-top: 16px; font-size: 12px; color: rgba(255,255,255,0.5);
+}
+.tutorial-content strong { color: #ffd700; }
+
+/* 提示淡出动画 */
+.hint-fade-leave-active { transition: opacity 0.5s ease; }
+.hint-fade-leave-to { opacity: 0; }
 
 /* 降级静态图 */
 .p3d-fallback {

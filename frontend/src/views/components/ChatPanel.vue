@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, nextTick, watch, computed } from 'vue'
+import { ref, onMounted, onUnmounted, nextTick, watch, computed } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { listConversations, getMessages, sendMessage, searchUser } from '@/api/chat'
 import { listFriends, listPendingRequests, listMyRequests, applyFriend, acceptFriend, rejectFriend } from '@/api/friend'
@@ -25,6 +25,34 @@ const messages = ref<ChatMessageVO[]>([])
 const activeConv = ref<ConversationVO | null>(null)
 const inputText = ref('')
 const loading = ref(false)
+const showEmoji = ref(false)
+const emojiPickerRef = ref<HTMLElement | null>(null)
+
+// 表情包数据
+const emojiCategories = [
+  {
+    name: '😀 表情',
+    emojis: ['😀','😃','😄','😁','😅','🤣','😂','🙂','😊','😇','😍','🤩','😘','😜','😋','😎','🤗','🤔','😐','😶','🙄','😏','😬','😴','😪','🤤','😷','🤒','🤕','🥺','😢','😭','😤','😡','🤬','💀','👻','👽','🤖','🎃','😺','😸','😹','😻','🙈','🙉','🙊','💋','💌','💘','💝','💖','💗','💓','💞','💕','❤️','🧡','💛','💚','💙','💜','🤎','🖤','🤍','💯','💢','💥','💫','💦','💤','🫶','🤝']
+  },
+  {
+    name: '🎉 庆祝',
+    emojis: ['🎉','🎊','🎂','🍰','🎈','🎁','🏆','🥇','🥈','🥉','👏','🙌','🎓','🌟','⭐','✨','🔥','💯','✅','🎯']
+  },
+  {
+    name: '🌸 日常',
+    emojis: ['🌸','🌺','🌻','🌹','💐','🍀','🌈','☀️','🌙','⭐','☁️','❄️','☔','🍎','🍕','🍔','☕','🍵','🎵','🎶','📚','✏️','💻','📱','🏠','🚗','✈️','🌍','🏖️','⛄','🐱','🐶','🐼','🦊','🐰','🐣','🦋','🐝','🐳','🦄']
+  },
+  {
+    name: '👍 手势',
+    emojis: ['👍','👎','👌','✌️','🤞','🤟','🤘','🤙','👋','🤚','✋','🖐','👆','👇','👉','👈','🙏','💪','🦾','🤳','🖖','✍️','🙅','🙆','💁','🙋','🤦','🤷']
+  },
+]
+
+function toggleEmoji() { showEmoji.value = !showEmoji.value }
+function pickEmoji(emoji: string) {
+  inputText.value += emoji
+  showEmoji.value = false
+}
 const msgLoading = ref(false)
 const pollTimer = ref<ReturnType<typeof setInterval> | null>(null)
 const msgContainer = ref<HTMLElement | null>(null)
@@ -86,7 +114,13 @@ const inheritorCache = ref<{ employeeId: number; name: string }[]>([])
 async function loadInheritorCache() {
   try { inheritorCache.value = (await listPublicProfiles()).data || [] } catch { /* */ }
 }
-onMounted(() => { loadConversations(); loadInheritorCache() })
+function onClickOutside(e: MouseEvent) {
+  if (emojiPickerRef.value && !emojiPickerRef.value.contains(e.target as Node)) {
+    showEmoji.value = false
+  }
+}
+onMounted(() => { loadConversations(); loadInheritorCache(); document.addEventListener('click', onClickOutside) })
+onUnmounted(() => { document.removeEventListener('click', onClickOutside) })
 
 // 好友
 const showFriendPanel = ref(false)
@@ -425,6 +459,19 @@ async function handleRejectFriend(r: FriendVO) {
           </template>
         </div>
         <div class="chat-input-area">
+          <div class="emoji-wrap" ref="emojiPickerRef">
+            <button class="btn-emoji" @click.stop="toggleEmoji" title="表情">😊</button>
+            <Transition name="emoji-drop">
+              <div v-if="showEmoji" class="emoji-panel" @click.stop>
+                <div v-for="cat in emojiCategories" :key="cat.name" class="emoji-cat">
+                  <div class="emoji-cat-name">{{ cat.name }}</div>
+                  <div class="emoji-grid">
+                    <button v-for="e in cat.emojis" :key="e" class="emoji-item" @click="pickEmoji(e)">{{ e }}</button>
+                  </div>
+                </div>
+              </div>
+            </Transition>
+          </div>
           <input v-model="inputText" type="text" placeholder="输入消息..." @keyup.enter="handleSend" />
           <button class="btn-send" @click="handleSend" :disabled="!inputText.trim()">发送</button>
         </div>
@@ -601,12 +648,51 @@ async function handleRejectFriend(r: FriendVO) {
 .msg-text { font-size: 14px; line-height: 1.7; word-break: break-word; }
 .msg-time { font-size: 10px; opacity: 0.65; margin-top: 4px; text-align: right; }
 
-.chat-input-area { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid rgba(196,30,58,0.06); background: #fff; }
+.chat-input-area { display: flex; gap: 10px; padding: 14px 22px; border-top: 1px solid rgba(196,30,58,0.06); background: #fff; align-items: center; }
 .chat-input-area input { flex: 1; height: 44px; padding: 0 16px; border: 1px solid rgba(196,30,58,0.12); border-radius: 22px; font-size: 14px; outline: none; transition: 0.2s; background: #fefaf7; }
 .chat-input-area input:focus { border-color: #c41e3a; box-shadow: 0 0 0 3px rgba(196,30,58,0.06); }
 .btn-send { padding: 0 28px; height: 44px; background: linear-gradient(135deg, #c41e3a, #d43030); color: #fff; border: none; border-radius: 22px; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.2s; letter-spacing: 1px; }
 .btn-send:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(196,30,58,0.3); }
 .btn-send:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* ===== 表情选择器 ===== */
+.emoji-wrap { position: relative; }
+.btn-emoji {
+  width: 44px; height: 44px; border: 1px solid rgba(196,30,58,0.12);
+  background: #fefaf7; border-radius: 50%; font-size: 22px;
+  cursor: pointer; transition: 0.2s; display: flex; align-items: center;
+  justify-content: center; padding: 0; line-height: 1;
+}
+.btn-emoji:hover { background: #fff5f7; border-color: #c41e3a; transform: scale(1.08); }
+.emoji-panel {
+  position: absolute; bottom: calc(100% + 10px); left: 0;
+  width: 340px; max-height: 320px; overflow-y: auto;
+  background: #fff; border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.15), 0 2px 8px rgba(196,30,58,0.08);
+  border: 1px solid rgba(196,30,58,0.08);
+  padding: 14px; z-index: 200;
+}
+.emoji-cat { margin-bottom: 10px; }
+.emoji-cat-name { font-size: 12px; color: #999; margin-bottom: 6px; font-weight: 600; }
+.emoji-grid { display: grid; grid-template-columns: repeat(10, 1fr); gap: 4px; }
+.emoji-item {
+  width: 100%; aspect-ratio: 1; font-size: 20px; border: none;
+  background: transparent; cursor: pointer; border-radius: 6px;
+  transition: 0.15s; display: flex; align-items: center;
+  justify-content: center; padding: 0;
+}
+.emoji-item:hover { background: #fef0f2; transform: scale(1.2); }
+
+/* 表情面板动画 */
+.emoji-drop-enter-active { transition: all 0.2s ease-out; }
+.emoji-drop-leave-active { transition: all 0.15s ease-in; }
+.emoji-drop-enter-from { opacity: 0; transform: translateY(8px); }
+.emoji-drop-leave-to { opacity: 0; transform: translateY(4px); }
+
+@media (max-width: 768px) {
+  .emoji-panel { width: 290px; max-height: 260px; left: -10px; }
+  .emoji-grid { grid-template-columns: repeat(8, 1fr); }
+}
 
 .no-chat { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; color: #ccc; }
 .no-chat-icon { font-size: 72px; margin-bottom: 16px; filter: grayscale(0.4); }
