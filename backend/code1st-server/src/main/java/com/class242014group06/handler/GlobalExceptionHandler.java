@@ -3,8 +3,12 @@ package com.class242014group06.handler;
 
 import com.class242014group06.constant.MessageConstant;
 import com.class242014group06.exception.BaseException;
+import com.class242014group06.exception.ProductCatalogBusyException;
 import com.class242014group06.result.Result;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.multipart.MaxUploadSizeExceededException;
@@ -18,6 +22,13 @@ import java.sql.SQLIntegrityConstraintViolationException;
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(ProductCatalogBusyException.class)
+    public ResponseEntity<Result<Void>> handleProductCatalogBusy(ProductCatalogBusyException ex) {
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                .header(HttpHeaders.RETRY_AFTER, "1")
+                .body(Result.error(ex.getMessage()));
+    }
 
     /**
      * 捕获业务异常

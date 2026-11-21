@@ -9,6 +9,7 @@ import com.class242014group06.entity.Product;
 import com.class242014group06.exception.OrderBusinessException;
 import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.ProductMapper;
+import com.class242014group06.service.ProductCatalogCache;
 import com.class242014group06.service.ProductReviewService;
 import com.class242014group06.service.ProductService;
 import com.class242014group06.vo.ProductVO;
@@ -31,6 +32,9 @@ public class ProductServiceImpl implements ProductService {
     @Autowired
     private ProductReviewService reviewService;
 
+    @Autowired
+    private ProductCatalogCache catalogCache;
+
     @Override
     public void add(Long inheritorId, ProductSubmitDTO dto) {
         // 从数据库查询传承人姓名
@@ -45,6 +49,7 @@ public class ProductServiceImpl implements ProductService {
         product.setInheritorName(name);
         product.setStatus(1); // 默认上架
         productMapper.insert(product);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
@@ -70,6 +75,7 @@ public class ProductServiceImpl implements ProductService {
         BeanUtils.copyProperties(dto, update);
         update.setId(productId);
         productMapper.update(update);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Value("${code1st.static.path:./static}")
@@ -111,50 +117,52 @@ public class ProductServiceImpl implements ProductService {
                 .status(status)
                 .build();
         productMapper.update(update);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
     public List<ProductVO> listAll() {
-        List<Product> products = productMapper.listAll();
-        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
+        return catalogCache.listAll(() -> toRatedProducts(productMapper.listAll()));
     }
 
     @Override
     public List<ProductVO> listAllAdmin() {
-        List<Product> products = productMapper.listAllAdmin();
-        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
+        return toRatedProducts(productMapper.listAllAdmin());
     }
 
     @Override
     public List<ProductVO> listByCategory(String category) {
-        List<Product> products = productMapper.listByCategory(category);
-        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
+        return catalogCache.listByCategory(category, () -> toRatedProducts(productMapper.listByCategory(category)));
     }
 
     @Override
     public ProductVO getById(Long id) {
-        Product product = productMapper.getById(id);
-        if (product == null) {
+        ProductVO result = catalogCache.getById(id, () -> {
+            Product product = productMapper.getById(id);
+            return product == null ? null : enrichWithRating(toVO(product));
+        });
+        if (result == null) {
             throw new OrderBusinessException(MessageConstant.PRODUCT_NOT_FOUND);
         }
-        return enrichWithRating(toVO(product));
+        return result;
     }
 
     @Override
     public List<ProductVO> listByInheritor(Long inheritorId) {
-        List<Product> products = productMapper.listByInheritor(inheritorId);
-        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
+        return toRatedProducts(productMapper.listByInheritor(inheritorId));
     }
 
     @Override
     public void deleteByAdmin(Long id) {
         productMapper.deleteById(id);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
     public void toggleByAdmin(Long id, Integer status) {
         Product product = Product.builder().id(id).status(status).build();
         productMapper.update(product);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
@@ -169,6 +177,10 @@ public class ProductServiceImpl implements ProductService {
         for (Long id : ids) {
             deleteByAdmin(id);
         }
+    }
+
+    private List<ProductVO> toRatedProducts(List<Product> products) {
+        return products.stream().map(this::toVO).map(this::enrichWithRating).collect(Collectors.toList());
     }
 
     private ProductVO toVO(Product product) {

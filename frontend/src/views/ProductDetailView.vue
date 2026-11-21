@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, shallowRef, computed, onMounted, onUnmounted } from 'vue'
+import { isAxiosError } from 'axios'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { useCartStore } from '@/stores/cart'
@@ -27,9 +28,11 @@ onMounted(() => {
 // ===== 商品信息 =====
 const product = ref<ProductVO | null>(null)
 const loading = ref(true)
+const productBusy = shallowRef(false)
 
 async function loadProduct(id: number) {
   loading.value = true
+  productBusy.value = false
   try {
     const res = await getProductById(id)
     product.value = res.data
@@ -44,8 +47,8 @@ async function loadProduct(id: number) {
         targetPath: `/product/${res.data.id}`,
       })
     }
-  } catch {
-    // ignore
+  } catch (error) {
+    productBusy.value = isAxiosError(error) && error.response?.status === 503
   } finally {
     loading.value = false
   }
@@ -238,6 +241,10 @@ function goTo(path: string) {
     <!-- ==================== 主体 ==================== -->
     <main class="detail-main">
       <div v-if="loading" class="loading-state">加载中...</div>
+      <div v-else-if="productBusy" class="loading-state">
+        <p role="alert">商城繁忙，请稍后重试</p>
+        <button type="button" class="nav-btn" @click="loadProduct(Number(route.params.id))">重试</button>
+      </div>
 
       <template v-else-if="product">
         <!-- 商品信息区 -->

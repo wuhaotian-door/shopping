@@ -8,6 +8,7 @@ import com.class242014group06.entity.ProductOrder;
 import com.class242014group06.exception.OrderBusinessException;
 import com.class242014group06.mapper.ProductMapper;
 import com.class242014group06.mapper.ProductOrderMapper;
+import com.class242014group06.service.ProductCatalogCache;
 import com.class242014group06.service.ProductOrderService;
 import com.class242014group06.vo.ProductOrderVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,6 +27,9 @@ public class ProductOrderServiceImpl implements ProductOrderService {
 
     @Autowired
     private ProductMapper productMapper;
+
+    @Autowired
+    private ProductCatalogCache catalogCache;
 
     @Override
     @Transactional
@@ -63,6 +67,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
                 .stock(product.getStock() - dto.getQuantity())
                 .build();
         productMapper.update(update);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
@@ -156,6 +161,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
                     .stock(product.getStock() + order.getQuantity())
                     .build();
             productMapper.update(stockUpdate);
+            catalogCache.invalidateAfterCommit();
         }
     }
 
@@ -196,6 +202,7 @@ public class ProductOrderServiceImpl implements ProductOrderService {
                         .stock(product.getStock() + order.getQuantity())
                         .build();
                 productMapper.update(stockUpdate);
+                catalogCache.invalidateAfterCommit();
             }
         }
     }

@@ -12,6 +12,7 @@ import com.class242014group06.mapper.AdminMapper;
 import com.class242014group06.mapper.InheritorMapper;
 import com.class242014group06.mapper.ProductReviewMapper;
 import com.class242014group06.mapper.UserMapper;
+import com.class242014group06.service.ProductCatalogCache;
 import com.class242014group06.service.ProductReviewService;
 import com.class242014group06.vo.ProductReviewVO;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,6 +39,9 @@ public class ProductReviewServiceImpl implements ProductReviewService {
 
     @Autowired
     private AdminMapper adminMapper;
+
+    @Autowired
+    private ProductCatalogCache catalogCache;
 
     @Override
     public void addReview(Long userId, Long productId, ProductReviewDTO dto) {
@@ -90,6 +94,7 @@ public class ProductReviewServiceImpl implements ProductReviewService {
                 .createTime(LocalDateTime.now())
                 .build();
         reviewMapper.insert(review);
+        catalogCache.invalidateAfterCommit();
     }
 
     @Override
@@ -121,6 +126,7 @@ public class ProductReviewServiceImpl implements ProductReviewService {
             throw new OrderBusinessException("无权删除他人评价");
         }
         reviewMapper.deleteById(reviewId);
+        catalogCache.invalidateAfterCommit();
     }
 
     /**

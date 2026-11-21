@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, shallowRef, computed, onMounted } from 'vue'
+import { isAxiosError } from 'axios'
 import { useAuthStore } from '@/stores/auth'
 import { useRouter } from 'vue-router'
 import { useCartStore } from '@/stores/cart'
@@ -15,25 +16,32 @@ onMounted(() => { document.title = '文创周边 — 码上非遗'; loadProducts
 const isLoggedIn = computed(() => authStore.isLoggedIn)
 
 const productList = ref<ProductVO[]>([])
-const loading = ref(false)
-const activeCategory = ref('')
+const loading = shallowRef(false)
+const loadError = shallowRef('')
+const activeCategory = shallowRef('')
 const categories = ['全部', '剪纸', '刺绣', '陶艺', '竹编', '综合']
 const failedImages = ref(new Set<number>())
+let latestRequest = 0
 
 function onImgError(id: number) { failedImages.value.add(id) }
 
-async function loadProducts() {
+async function loadProducts(category = activeCategory.value) {
+  activeCategory.value = category
+  const request = ++latestRequest
+  loadError.value = ''
   loading.value = true
-  try { productList.value = (await listProducts()).data }
-  catch { /* */ } finally { loading.value = false }
-}
-
-async function filterByCategory(cat: string) {
-  activeCategory.value = cat
-  if (!cat || cat === '全部') { await loadProducts(); return }
-  loading.value = true
-  try { productList.value = (await listProductsByCategory(cat)).data }
-  catch { /* */ } finally { loading.value = false }
+  try {
+    const result = await (category ? listProductsByCategory(category) : listProducts())
+    if (request === latestRequest) productList.value = result.data
+  } catch (error) {
+    if (request === latestRequest) {
+      loadError.value = isAxiosError(error) && error.response?.status === 503
+        ? '商城繁忙，请稍后重试'
+        : '商品加载失败，请重试'
+    }
+  } finally {
+    if (request === latestRequest) loading.value = false
+  }
 }
 
 function addToCart(p: ProductVO) {
@@ -57,12 +65,16 @@ function goTo(path: string) {
       <div class="category-bar">
         <span v-for="cat in categories" :key="cat" class="category-chip"
           :class="{ active: activeCategory === cat || (cat === '全部' && !activeCategory) }"
-          @click="filterByCategory(cat === '全部' ? '' : cat)">{{ cat }}</span>
+          @click="loadProducts(cat === '全部' ? '' : cat)">{{ cat }}</span>
       </div>
 
       <div v-if="loading" class="loading-state">加载中...</div>
       <div v-else-if="!isLoggedIn" class="not-login-prompt">
         <div class="prompt-card"><div class="prompt-icon">🔐</div><h3>请先登录</h3><p>登录后即可浏览和选购心仪的文创商品</p><button class="btn-primary" @click="router.push('/login')">去登录</button></div>
+      </div>
+      <div v-else-if="loadError" class="empty-state">
+        <p role="alert">{{ loadError }}</p>
+        <button type="button" class="btn-primary retry-button" @click="loadProducts()">重试</button>
       </div>
       <div v-else-if="productList.length === 0" class="empty-state">暂无文创商品，敬请期待</div>
       <div v-else class="product-grid">
@@ -191,6 +203,7 @@ function goTo(path: string) {
 .btn-primary:hover { background: #a8162b; }
 
 .loading-state, .empty-state { text-align: center; padding: 60px; color: #999; font-size: 14px; }
+.retry-button { margin-top: 12px; }
 .page-footer { background-color: #c41e3a; color: #fff; text-align: center; padding: 20px 5%; font-size: 14px; }
 
 @media (max-width: 768px) {
